@@ -185,6 +185,12 @@ end)
 memory.registerexecute(0xCD70, function(address, size, value)
     log_event("dmc-entry", address, value)
 end)
+memory.registerexecute(0xC724, function(address, size, value)
+    local stack = memory.getregister("s")
+    local return_address = memory.readbyte(0x0101 + stack) +
+        memory.readbyte(0x0102 + stack) * 256 + 1
+    log_event("vram-command", return_address, memory.getregister("a"))
+end)
 
 if intro_trace then
     memory.registerwrite(0x0200, 0x0600, function(address, size, value)

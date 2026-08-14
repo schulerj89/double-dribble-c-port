@@ -239,6 +239,17 @@ int dd_render_title_selection(const DDAssetPack *pack, uint32_t selection, int s
                            pixels, width, height);
 }
 
+int dd_title_confirmation_visible(uint32_t frame) {
+    /*
+     * Fixed bank $C230-$C248 tests bit 3 of the descending confirmation
+     * timer. Its VRAM command is displayed one frame later, producing an
+     * initial blank interval followed by alternating eight-frame bands.
+     */
+    if (frame == 0u) return 1;
+    if (frame == 1u) return 0;
+    return ((frame - 2u) & 8u) != 0u;
+}
+
 int dd_render_title(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, uint32_t height) {
     return dd_render_title_selection(pack, 0u, 1, pixels, width, height);
 }

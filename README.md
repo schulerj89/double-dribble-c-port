@@ -20,7 +20,7 @@ Run the native port:
 .\build\double_dribble_game.exe .\build\double-dribble.assetpack
 ```
 
-Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot, plays its acceptance cue, and advances through the opening tip. Once possession is awarded, the user-controlled 1UP player flashes between team palettes and moves with the arrow keys. X/Z are wired as NES A/B inputs, but pass and shot actions are intentionally outside this slice. Escape exits.
+Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro; the selected words continue flashing at the original eight-frame cadence until the scene changes. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot, plays its acceptance cue, and advances through the opening tip. Once possession is awarded, the user-controlled 1UP player flashes between team palettes and moves with the arrow keys. X/Z are wired as NES A/B inputs, but pass and shot actions are intentionally outside this slice. Escape exits.
 
 Reproduce the reference and native captures:
 

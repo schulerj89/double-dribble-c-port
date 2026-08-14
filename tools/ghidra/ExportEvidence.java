@@ -15,9 +15,10 @@ import ghidra.program.model.symbol.Reference;
 
 public class ExportEvidence extends GhidraScript {
     private static final long[] ANCHORS = {
-        0xC001L, 0xC036L, 0xC04EL, 0xC08FL, 0xC164L,
+        0xC001L, 0xC036L, 0xC04EL, 0xC08FL, 0xC164L, 0xC187L,
+        0xC220L, 0xC230L,
         0xC41CL, 0xC43AL, 0xC566L, 0xC57DL, 0xC597L, 0xC5A9L, 0xC5B4L,
-        0xC5C3L, 0xC141L, 0xC724L, 0xCBE0L,
+        0xC5C3L, 0xC141L, 0xC724L, 0xC77FL, 0xCBE0L,
         0xCD70L, 0xCD83L, 0xCD8BL, 0xCD96L, 0xCE75L,
         0xD368L, 0xD371L, 0xD393L, 0xD3A0L
     };
@@ -37,7 +38,8 @@ public class ExportEvidence extends GhidraScript {
         PseudoDisassembler pseudo = new PseudoDisassembler(currentProgram);
         for (long value : ANCHORS) {
             Address address = toAddr(value);
-            if (getInstructionAt(address) == null && pseudo.isValidSubroutine(address, true)) {
+            if (getInstructionAt(address) == null &&
+                (pseudo.isValidSubroutine(address, true) || value == 0xC220L || value == 0xC724L)) {
                 disassemble(address);
             }
             if (getFunctionContaining(address) == null && getInstructionAt(address) != null) {

@@ -12,6 +12,7 @@ static void dd_usage(void) {
     puts("  --inspect-assetpack <input.assetpack>");
     puts("  --render-title <input.assetpack> <output.bmp>");
     puts("  --render-title-state <input.assetpack> <selection> <selection-visible> <output.bmp>");
+    puts("  --render-title-confirm <input.assetpack> <frame> <output.bmp>");
     puts("  --render-intro <input.assetpack> <frame> <output.bmp>");
     puts("  --render-config <input.assetpack> <selection> <output.bmp>");
     puts("  --render-config-state <input.assetpack> <selection> <time> <team> <level> <action-row> <action-frame> <output.bmp>");
@@ -61,6 +62,23 @@ int main(int argc, char **argv) {
                                                          selection_visible != 0u, pixels,
                                                          pack.meta.width, pack.meta.height) &&
              dd_write_bmp(argv[5], pixels, pack.meta.width, pack.meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-title-confirm") == 0) {
+        uint32_t *pixels;
+        unsigned long frame;
+        char *end;
+        int ok;
+        frame = strtoul(argv[3], &end, 10);
+        if (*argv[3] == '\0' || *end != '\0' || frame > UINT32_MAX ||
+            !dd_asset_pack_load(argv[2], &pack)) return 1;
+        pixels = (uint32_t *)malloc((size_t)pack.meta.width * pack.meta.height * sizeof(uint32_t));
+        ok = pixels != NULL && dd_render_title_selection(&pack, 0u,
+                                                         dd_title_confirmation_visible((uint32_t)frame),
+                                                         pixels, pack.meta.width, pack.meta.height) &&
+             dd_write_bmp(argv[4], pixels, pack.meta.width, pack.meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;

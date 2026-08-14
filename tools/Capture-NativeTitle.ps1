@@ -12,6 +12,7 @@ $captureRoot = Join-Path $projectRoot 'captures\native'
 $bmpPath = Join-Path $captureRoot 'title.bmp'
 $pngPath = Join-Path $captureRoot 'title.png'
 $wavPath = Join-Path $captureRoot 'double-dribble.wav'
+$confirmationFrames = @(1, 10, 18, 26, 34, 42, 50, 58, 66, 74)
 New-Item -ItemType Directory -Force -Path $captureRoot | Out-Null
 
 & $CliPath --render-title $AssetPackPath $bmpPath
@@ -26,6 +27,18 @@ try {
 } finally {
     $bitmap.Dispose()
 }
+foreach ($frame in $confirmationFrames) {
+    $confirmBmpPath = Join-Path $captureRoot ('title-confirm-{0:D4}.bmp' -f $frame)
+    $confirmPngPath = Join-Path $captureRoot ('title-confirm-{0:D4}.png' -f $frame)
+    & $CliPath --render-title-confirm $AssetPackPath $frame $confirmBmpPath
+    if ($LASTEXITCODE -ne 0) { throw "Native title confirmation rendering failed at frame $frame." }
+    $confirmation = [System.Drawing.Bitmap]::FromFile($confirmBmpPath)
+    try {
+        $confirmation.Save($confirmPngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+    } finally {
+        $confirmation.Dispose()
+    }
+}
 Write-Host "Native title: $pngPath"
 Write-Host "Native audio: $wavPath"
-
+Write-Host "Native repeating confirmation frames: $captureRoot\title-confirm-*.png"

@@ -48,7 +48,7 @@ Preserve the completed title/voice, 1P-confirm sound, full native 1P introductio
 - an assetpack-only native executable;
 - native screenshot and audio evidence plus a documented comparison.
 - keyboard-selectable 1P and original transition timing;
-- the 1P confirmation flash blanks the selected words while leaving the red cursor visible;
+- the 1P confirmation flash continuously alternates the selected words in eight-frame bands while leaving the red cursor visible;
 - the road-intro PPU streams, compact update state machine, blimp motion, balloon flights, flag rise/wave, and complete native music synthesis;
 - exact comparisons at stable road, balloon, and flag checkpoints through original frame 2084.
 - the cyan/black configuration loading transition and pixel-exact first visible frame at original frame 2097;

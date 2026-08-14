@@ -107,7 +107,7 @@ static int dd_render_current_frame(void) {
     frame = dd_elapsed_frames();
     if (frame >= DD_CONFIG_VISIBLE_FRAME) dd_update_config(frame);
     if (frame < 83u) {
-        return dd_render_title_selection(&g_pack, 0u, frame == 0u || frame >= 15u, g_pixels,
+        return dd_render_title_selection(&g_pack, 0u, dd_title_confirmation_visible(frame), g_pixels,
                                          g_pack.meta.width, g_pack.meta.height);
     }
     if (frame < 90u) {
