@@ -137,6 +137,7 @@ local log_path = join_path(capture_root, "trace.csv")
 local log_file = assert(io.open(log_path, "w"))
 log_file:write("frame,event,address,value,pc,bank,a,x,y,p,zp00,zp01,zp02\n")
 local intro_pc_counts = {}
+local bank_pc_counts = {}
 
 local function log_event(event_name, address, value)
     log_file:write(string.format(
@@ -194,8 +195,13 @@ if intro_trace then
     end)
     memory.registerexecute(0x8000, 0x4000, function(address, size, value)
         local frame = emu.framecount()
-        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 1 then
-            intro_pc_counts[address] = (intro_pc_counts[address] or 0) + 1
+        if frame >= trace_start and frame <= trace_end then
+            local bank = current_switch_bank()
+            bank_pc_counts[bank] = bank_pc_counts[bank] or {}
+            bank_pc_counts[bank][address] = (bank_pc_counts[bank][address] or 0) + 1
+            if bank == 1 then
+                intro_pc_counts[address] = (intro_pc_counts[address] or 0) + 1
+            end
         end
     end)
 end
@@ -242,5 +248,13 @@ if intro_trace then
         count_file:write(string.format("%04X,%d\n", address, count))
     end
     count_file:close()
+    local bank_count_file = assert(io.open(join_path(capture_root, "pc-counts.csv"), "w"))
+    bank_count_file:write("bank,address,count\n")
+    for bank, counts in pairs(bank_pc_counts) do
+        for address, count in pairs(counts) do
+            bank_count_file:write(string.format("%d,%04X,%d\n", bank, address, count))
+        end
+    end
+    bank_count_file:close()
 end
 emu.exit()

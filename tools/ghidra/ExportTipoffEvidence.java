@@ -1,4 +1,4 @@
-// Ghidra headless post-script for repeatable Double Dribble evidence exports.
+// Ghidra headless post-script for the bank-0 tip-off setup and formation slice.
 // @category DoubleDribble
 
 import java.io.File;
@@ -11,29 +11,24 @@ import ghidra.app.util.PseudoDisassembler;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
-import ghidra.program.model.symbol.Reference;
 
-public class ExportEvidence extends GhidraScript {
+public class ExportTipoffEvidence extends GhidraScript {
+    /* FCEUX execution counts from original frames 2328-2490 select these roots. */
     private static final long[] ANCHORS = {
-        0xC001L, 0xC036L, 0xC04EL, 0xC08FL, 0xC164L,
-        0xC41CL, 0xC43AL, 0xC566L, 0xC57DL, 0xC597L, 0xC5A9L, 0xC5B4L,
-        0xC5C3L, 0xC141L, 0xC724L, 0xCBE0L,
-        0xCD70L, 0xCD83L, 0xCD8BL, 0xCD96L, 0xCE75L,
-        0xD368L, 0xD371L, 0xD393L, 0xD3A0L
+        0x8491L, 0x89B2L, 0x914EL, 0x91A6L, 0x9395L, 0x94A5L,
+        0x94D9L, 0x9583L, 0x9977L, 0x9B42L, 0x9B84L, 0x9BB0L,
+        0x9BF6L, 0x9C06L, 0x9C0BL, 0x9CA0L, 0x9CF6L, 0x9D2DL,
+        0x9E90L, 0x9EBDL, 0x9F26L, 0x9F70L, 0x9FA3L,
+        0xA603L, 0xA84CL, 0xA85AL, 0xA896L, 0xAA07L, 0xAA20L,
+        0xAA4AL, 0xAAC4L, 0xAAEEL, 0xAB53L, 0xAB72L, 0xAEDA,
+        0xB035L, 0xB11FL, 0xB377L, 0xB3E9L, 0xB400L, 0xB473L,
+        0xB501L, 0xB503L
     };
 
     @Override
     public void run() throws Exception {
-        if (getScriptArgs().length != 1) {
-            throw new IllegalArgumentException("Expected output report path");
-        }
-
         File output = new File(getScriptArgs()[0]);
-        File parent = output.getParentFile();
-        if (parent != null) {
-            parent.mkdirs();
-        }
-
+        output.getParentFile().mkdirs();
         PseudoDisassembler pseudo = new PseudoDisassembler(currentProgram);
         for (long value : ANCHORS) {
             Address address = toAddr(value);
@@ -41,54 +36,33 @@ public class ExportEvidence extends GhidraScript {
                 disassemble(address);
             }
             if (getFunctionContaining(address) == null && getInstructionAt(address) != null) {
-                createFunction(address, String.format("evidence_%04X", value));
+                createFunction(address, String.format("tipoff_%04X", value));
             }
         }
-
         DecompInterface decompiler = new DecompInterface();
         decompiler.openProgram(currentProgram);
-
         try (PrintWriter report = new PrintWriter(output, "UTF-8")) {
-            report.println("Double Dribble Rev 1 - Ghidra evidence report");
-            report.println("Program: " + currentProgram.getName());
-            report.println("Language: " + currentProgram.getLanguageID());
-            report.println();
-
+            report.println("Double Dribble Rev 1 - bank 0 tip-off evidence");
             for (long value : ANCHORS) {
                 Address address = toAddr(value);
-                report.printf("==== $%04X ====%n", value);
                 Function function = getFunctionContaining(address);
-                report.println("Function: " + (function == null ? "<unresolved>" : function.getName()));
-                report.println("References to anchor:");
-                Reference[] references = getReferencesTo(address);
-                if (references.length == 0) {
-                    report.println("  <none>");
-                }
-                for (Reference reference : references) {
-                    report.printf("  %s (%s)%n", reference.getFromAddress(), reference.getReferenceType());
-                }
-
+                report.printf("==== $%04X ==== Function: %s%n", value,
+                    function == null ? "<unresolved>" : function.getName());
                 Instruction instruction = getInstructionAt(address);
-                for (int count = 0; instruction != null && count < 32; count++) {
+                for (int count = 0; instruction != null && count < 96; count++) {
                     report.printf("%s  %s%n", instruction.getAddress(), instruction);
                     instruction = instruction.getNext();
                 }
-
                 if (function != null) {
                     DecompileResults result = decompiler.decompileFunction(function, 60, monitor);
                     if (result.decompileCompleted() && result.getDecompiledFunction() != null) {
                         report.println("-- decompiler --");
                         report.println(result.getDecompiledFunction().getC());
-                    } else {
-                        report.println("Decompiler unavailable: " + result.getErrorMessage());
                     }
                 }
-                report.println();
             }
         } finally {
             decompiler.dispose();
         }
-
-        println("Wrote Ghidra evidence report to " + output.getAbsolutePath());
     }
 }

@@ -45,6 +45,25 @@ typedef struct DDConfigMeta {
     uint32_t original_visible_frame;
 } DDConfigMeta;
 
+typedef struct DDTipoffMeta {
+    uint32_t width;
+    uint32_t height;
+    uint32_t background_pattern_base;
+    uint32_t nametable_base;
+    uint32_t ppu_control;
+    uint32_t sprite_count;
+    uint32_t black_frame;
+    uint32_t blue_frame;
+    uint32_t dmc_frame;
+    uint32_t visible_frame;
+    uint32_t dmc_rate_index;
+    uint32_t dmc_initial_dac;
+    uint32_t dmc_source_cpu;
+    uint32_t dmc_length;
+    uint32_t end_music_frames;
+    uint32_t scroll_x;
+} DDTipoffMeta;
+
 #pragma pack(push, 1)
 typedef struct DDConfigAssetsHeader {
     uint32_t metasprite_offset[15];
@@ -98,9 +117,18 @@ typedef struct DDAssetPack {
     size_t config_oam_size;
     uint8_t *config_assets;
     size_t config_assets_size;
+    uint8_t *tipoff_ppu;
+    size_t tipoff_ppu_size;
+    uint8_t *tipoff_oam;
+    size_t tipoff_oam_size;
+    uint8_t *tipoff_dmc;
+    size_t tipoff_dmc_size;
+    DDMusicNote *end_music;
+    size_t end_music_count;
     DDTitleMeta meta;
     DDIntroMeta intro_meta;
     DDConfigMeta config_meta;
+    DDTipoffMeta tipoff_meta;
 } DDAssetPack;
 
 int dd_build_asset_pack(const char *rom_path, const char *output_path);

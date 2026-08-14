@@ -26,6 +26,10 @@ static uint8_t *g_intro_wav;
 static size_t g_intro_wav_size;
 static uint8_t *g_select_wav;
 static size_t g_select_wav_size;
+static uint8_t *g_end_wav;
+static size_t g_end_wav_size;
+static uint8_t *g_tipoff_wav;
+static size_t g_tipoff_wav_size;
 static BITMAPINFO g_bitmap_info;
 static uint32_t g_selection;
 static uint32_t g_config_selection;
@@ -33,6 +37,8 @@ static DDConfigView g_config_view;
 static uint32_t g_config_action_start;
 static int g_config_action_applied;
 static int g_config_boundary_reached;
+static uint32_t g_tipoff_start_frame;
+static int g_tipoff_audio_started;
 static ULONGLONG g_start_tick;
 static int g_started;
 static int g_intro_music_started;
@@ -57,6 +63,10 @@ static void dd_update_config(uint32_t frame) {
             g_config_view.level_index = (g_config_view.level_index + 1u) % 3u;
         } else {
             g_config_boundary_reached = 1;
+            g_tipoff_start_frame = frame;
+            if (g_end_wav != NULL) {
+                PlaySoundA((LPCSTR)g_end_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+            }
         }
     }
     if (complete) g_config_view.action_active = 0;
@@ -105,6 +115,20 @@ static int dd_render_current_frame(void) {
         dd_fill_frame(0x00000000u);
         return 1;
     }
+    if (g_config_boundary_reached) {
+        uint32_t transition_frame = frame - g_tipoff_start_frame;
+        if (transition_frame >= g_pack.tipoff_meta.visible_frame) {
+            return dd_render_tipoff(&g_pack, g_pixels, g_pack.tipoff_meta.width, g_pack.tipoff_meta.height);
+        }
+        if (transition_frame >= g_pack.tipoff_meta.blue_frame) {
+            dd_fill_frame(0x000000A8u);
+            return 1;
+        }
+        if (transition_frame >= g_pack.tipoff_meta.black_frame) {
+            dd_fill_frame(0x00000000u);
+            return 1;
+        }
+    }
     return dd_render_config_view(&g_pack, &g_config_view, g_pixels,
                                  g_pack.config_meta.width, g_pack.config_meta.height);
 }
@@ -124,6 +148,12 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
                     g_intro_music_started = 1;
                     PlaySoundA((LPCSTR)g_intro_wav, NULL,
                                SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+                }
+                if (g_config_boundary_reached && !g_tipoff_audio_started &&
+                    dd_elapsed_frames() - g_tipoff_start_frame >= g_pack.tipoff_meta.dmc_frame &&
+                    g_tipoff_wav != NULL) {
+                    g_tipoff_audio_started = 1;
+                    PlaySoundA((LPCSTR)g_tipoff_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
                 }
                 InvalidateRect(window, NULL, FALSE);
             }
@@ -216,12 +246,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     if (g_pixels == NULL || !dd_render_title(&g_pack, g_pixels, g_pack.meta.width, g_pack.meta.height) ||
         !dd_build_title_wav(&g_pack, &g_wav, &g_wav_size) ||
         !dd_build_intro_music_wav(&g_pack, &g_intro_wav, &g_intro_wav_size) ||
-        !dd_build_select_music_wav(&g_pack, &g_select_wav, &g_select_wav_size)) {
+        !dd_build_select_music_wav(&g_pack, &g_select_wav, &g_select_wav_size) ||
+        !dd_build_end_music_wav(&g_pack, &g_end_wav, &g_end_wav_size) ||
+        !dd_build_tipoff_dmc_wav(&g_pack, &g_tipoff_wav, &g_tipoff_wav_size)) {
         dd_asset_pack_unload(&g_pack);
         free(g_pixels);
         free(g_wav);
         free(g_intro_wav);
         free(g_select_wav);
+        free(g_end_wav);
+        free(g_tipoff_wav);
         return 1;
     }
     ZeroMemory(&g_bitmap_info, sizeof(g_bitmap_info));
@@ -255,6 +289,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     free(g_wav);
     free(g_intro_wav);
     free(g_select_wav);
+    free(g_end_wav);
+    free(g_tipoff_wav);
     dd_asset_pack_unload(&g_pack);
     return 0;
 }

@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 5u
+#define DD_PACK_VERSION 6u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -18,7 +18,8 @@
 #define DD_ENTRY_MUSIC 7u
 #define DD_ENTRY_CONFIG_META 8u
 #define DD_ENTRY_CONFIG_ASSETS 9u
-#define DD_ENTRY_COUNT 14u
+#define DD_ENTRY_TIPOFF_META 10u
+#define DD_ENTRY_COUNT 19u
 #define DD_ROM_SIZE 131088u
 #define DD_INTRO_SPRITE_ASSET_SIZE 141u
 
@@ -155,6 +156,15 @@ static const DDMusicNote DD_SELECT_MUSIC[] = {
     {62u, 0u, 0u, 0u, 0u, 0u}, {62u, 0u, 1u, 0u, 0u, 0u}, {62u, 0u, 2u, 0u, 0u, 0u}
 };
 
+/* Bank-1 END acceptance tone observed at original frames 2185-2221. */
+static const DDMusicNote DD_END_MUSIC[] = {
+    {0u, 384u, 0u, 2u, 12u, 0u}, {3u, 128u, 0u, 2u, 10u, 0u},
+    {6u, 256u, 0u, 2u, 12u, 0u}, {9u, 384u, 0u, 2u, 8u, 0u},
+    {12u, 128u, 0u, 2u, 6u, 0u}, {15u, 256u, 0u, 2u, 8u, 0u},
+    {18u, 384u, 0u, 2u, 4u, 0u}, {21u, 128u, 0u, 2u, 6u, 0u},
+    {24u, 256u, 0u, 2u, 5u, 0u}, {36u, 0u, 0u, 0u, 0u, 0u}
+};
+
 static uint32_t dd_crc32(const uint8_t *data, size_t size) {
     uint32_t crc = 0xFFFFFFFFu;
     size_t index;
@@ -236,11 +246,20 @@ static void dd_ppu_write(uint8_t ppu[DD_TITLE_PPU_SIZE], uint16_t address, uint8
 static int dd_decode_stream(const uint8_t *rom, size_t rom_size, uint32_t bank,
                             uint32_t cpu_address, uint8_t ppu[DD_TITLE_PPU_SIZE],
                             uint32_t *consumed) {
-    size_t position = dd_bank_file_offset(bank, cpu_address);
+    size_t position;
     const size_t bank_end = 16u + ((size_t)(bank + 1u) * 0x4000u);
     uint16_t ppu_address;
-    size_t start = position;
-    if (bank >= 7u || cpu_address < 0x8000u || cpu_address >= 0xC000u ||
+    size_t start;
+    if (bank > 7u || (bank < 7u && (cpu_address < 0x8000u || cpu_address >= 0xC000u)) ||
+        (bank == 7u && (cpu_address < 0xC000u || cpu_address > 0xFFFFu)) ||
+        bank_end > rom_size) {
+        return 0;
+    }
+    position = bank == 7u
+        ? 16u + 7u * 0x4000u + (cpu_address - 0xC000u)
+        : dd_bank_file_offset(bank, cpu_address);
+    start = position;
+    if (
         position + 2u > bank_end || bank_end > rom_size) {
         return 0;
     }
@@ -288,6 +307,29 @@ static int dd_decode_stream(const uint8_t *rom, size_t rom_size, uint32_t bank,
             }
         }
     }
+}
+
+static void dd_build_tipoff_oam(uint8_t oam[256]) {
+    /* Result of the recovered bank-0 formation initializer and bank-2
+       variable-record metasprite expansion for original frame 2359. */
+    static const uint8_t visible[] = {
+        0xB0,0x98,0x00,0x6F, 0xB0,0xFC,0x00,0x77, 0xC0,0x06,0x00,0x73,
+        0xA0,0x10,0x02,0x69, 0xA0,0x12,0x02,0x71, 0xB0,0x14,0x02,0x69, 0xB0,0x16,0x02,0x71,
+        0x74,0xA2,0x41,0x6F, 0x74,0xF6,0x41,0x77, 0x84,0x3A,0x41,0x6F, 0x84,0x38,0x41,0x77,
+        0x60,0x22,0x43,0x59, 0x60,0x20,0x43,0x61, 0x70,0x26,0x43,0x59, 0x70,0x24,0x43,0x61,
+        0x50,0x08,0x01,0x6F, 0x50,0x0A,0x01,0x77, 0x60,0x0C,0x01,0x73,
+        0xB0,0x98,0x00,0x89, 0xB0,0xFC,0x00,0x91, 0xC0,0x06,0x00,0x8D,
+        0xA0,0x12,0x43,0x99, 0xA0,0x10,0x43,0xA1, 0xB0,0x16,0x43,0x99, 0xB0,0x14,0x43,0xA1,
+        0x76,0x02,0x40,0x7C, 0x74,0xF6,0x03,0x81, 0x74,0xA2,0x03,0x89,
+        0x84,0x38,0x03,0x81, 0x84,0x3A,0x03,0x89, 0x8E,0x04,0x40,0x7C,
+        0x60,0x20,0x02,0x99, 0x60,0x22,0x02,0xA1, 0x70,0x24,0x02,0x99, 0x70,0x26,0x02,0xA1,
+        0x50,0x20,0x01,0x89, 0x50,0x22,0x01,0x91, 0x60,0x24,0x01,0x89, 0x60,0x26,0x01,0x91
+    };
+    uint32_t sprite;
+    memset(oam, 0, 256u);
+    for (sprite = 0u; sprite < 64u; ++sprite) oam[sprite * 4u] = 0xF4u;
+    oam[0] = 0x38u; oam[1] = 0xFEu; oam[2] = 0x30u; oam[3] = 0x20u;
+    memcpy(oam + 4u, visible, sizeof(visible));
 }
 
 static void dd_set_entry(DDPackEntry *entry, const char *id, uint32_t type,
@@ -596,9 +638,11 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
     uint8_t ppu[DD_TITLE_PPU_SIZE] = {0};
     uint8_t intro_ppu[DD_PPU_SIZE] = {0};
     uint8_t config_ppu[DD_PPU_SIZE] = {0};
+    uint8_t tipoff_ppu[DD_PPU_SIZE] = {0};
     uint8_t oam[256];
     uint8_t intro_oam[256];
     uint8_t config_oam[256];
+    uint8_t tipoff_oam[256];
     uint8_t *intro_updates = NULL;
     size_t intro_updates_size = 0u;
     uint8_t *config_assets = NULL;
@@ -607,14 +651,21 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
     uint32_t consumed[3] = {0};
     uint32_t intro_consumed[3] = {0};
     uint32_t config_consumed[3] = {0};
+    uint32_t tipoff_consumed[6] = {0};
     const uint32_t dmc_file_offset = 0x1EAD0u;
     const uint32_t dmc_size = 3073u;
     const uint32_t title_palette_file_offset = 0x1C956u;
     const uint32_t intro_palette_file_offset = 0x1C9A8u;
     const uint32_t config_palette_file_offset = 0x1C97Fu;
+    const uint32_t tipoff_palette_file_offset = 0x1C904u;
+    const uint32_t tipoff_sprite_palette_file_offset = 0x1D2B3u;
+    const uint32_t tipoff_dmc_file_offset = 0x1F790u;
+    const uint32_t tipoff_dmc_size = 2113u;
     DDTitleMeta meta = {256u, 240u, 0x1000u, 0x2000u, 10u, 15u, 0u, 0xEAC0u, 3073u, 0xB0u, 20u, 90u};
     DDIntroMeta intro_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 64u, 5u, 0u, 1920u};
     DDConfigMeta config_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 64u, 4u, 2097u};
+    DDTipoffMeta tipoff_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 40u,
+                                127u, 135u, 140u, 144u, 15u, 0u, 0xF780u, 2113u, 45u, 0x7Fu};
     DDPackHeader header;
     DDPackEntry entries[DD_ENTRY_COUNT];
     uint64_t payload_offset = sizeof(header) + sizeof(entries);
@@ -639,12 +690,19 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
         !dd_decode_stream(rom, rom_size, 4u, 0xB0B4u, config_ppu, &config_consumed[0]) ||
         !dd_decode_stream(rom, rom_size, 4u, 0xA74Bu, config_ppu, &config_consumed[1]) ||
         !dd_decode_stream(rom, rom_size, 1u, 0xA7FDu, config_ppu, &config_consumed[2]) ||
+        !dd_decode_stream(rom, rom_size, 3u, 0x8D1Bu, tipoff_ppu, &tipoff_consumed[0]) ||
+        !dd_decode_stream(rom, rom_size, 3u, 0x8001u, tipoff_ppu, &tipoff_consumed[1]) ||
+        !dd_decode_stream(rom, rom_size, 7u, 0xC65Fu, tipoff_ppu, &tipoff_consumed[2]) ||
+        !dd_decode_stream(rom, rom_size, 7u, 0xC674u, tipoff_ppu, &tipoff_consumed[3]) ||
+        !dd_decode_stream(rom, rom_size, 2u, 0xA9CFu, tipoff_ppu, &tipoff_consumed[4]) ||
+        !dd_decode_stream(rom, rom_size, 2u, 0xABC6u, tipoff_ppu, &tipoff_consumed[5]) ||
         !dd_build_intro_updates(rom, rom_size, &intro_updates, &intro_updates_size, &intro_update_count) ||
         !dd_build_config_oam(rom, rom_size, config_oam) ||
         !dd_build_config_assets(rom, rom_size, &config_assets, &config_assets_size) ||
         title_palette_file_offset + 32u > rom_size || intro_palette_file_offset + 32u > rom_size ||
-        config_palette_file_offset + 32u > rom_size ||
-        dmc_file_offset + dmc_size > rom_size) {
+        config_palette_file_offset + 32u > rom_size || tipoff_palette_file_offset + 16u > rom_size ||
+        tipoff_sprite_palette_file_offset + 16u > rom_size ||
+        dmc_file_offset + dmc_size > rom_size || tipoff_dmc_file_offset + tipoff_dmc_size > rom_size) {
         fprintf(stderr, "The title, intro, or configuration asset streams were malformed.\n");
         free(intro_updates);
         free(config_assets);
@@ -654,8 +712,24 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
     memcpy(ppu + 0x3F00u, rom + title_palette_file_offset, 32u);
     memcpy(intro_ppu + 0x3F00u, rom + intro_palette_file_offset, 32u);
     memcpy(config_ppu + 0x3F00u, rom + config_palette_file_offset, 32u);
+    memcpy(tipoff_ppu + 0x3F00u, rom + tipoff_palette_file_offset, 16u);
+    memcpy(tipoff_ppu + 0x3F10u, rom + tipoff_sprite_palette_file_offset, 16u);
+    {
+        static const uint16_t addresses[] = {
+            0x2053u,0x2090u,0x2091u,0x2092u,0x2093u,0x2094u,0x20C4u,0x20C8u,
+            0x20C9u,0x20CAu,0x20CCu,0x20CDu,0x20CEu,0x20CFu,0x20D0u,0x20D1u,
+            0x20D3u,0x20D4u,0x20D5u,0x20D6u,0x20D7u,0x20DBu
+        };
+        static const uint8_t values[] = {
+            0xDAu,0xD9u,0xDEu,0xFDu,0xD9u,0xD9u,0xD9u,0xDAu,0xF5u,0xF6u,0xF2u,
+            0xE7u,0xF4u,0xEBu,0xF1u,0xE6u,0xF5u,0xF6u,0xE3u,0xF4u,0xF6u,0xD9u
+        };
+        uint32_t index;
+        for (index = 0u; index < sizeof(values); ++index) tipoff_ppu[addresses[index]] = values[index];
+    }
     dd_build_title_oam(oam);
     dd_build_intro_oam(intro_oam);
+    dd_build_tipoff_oam(tipoff_oam);
     intro_meta.update_count = intro_update_count;
 
     memset(&header, 0, sizeof(header));
@@ -721,6 +795,27 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
                  config_assets_size, dd_crc32(config_assets, config_assets_size),
                  1u, (uint32_t)dd_bank_file_offset(1u, 0xA2DBu), 0x4E4u, 7u);
     payload_offset += config_assets_size;
+    dd_set_entry(&entries[14], "tipoff.meta", DD_ENTRY_TIPOFF_META, payload_offset,
+                 sizeof(tipoff_meta), dd_crc32((const uint8_t *)&tipoff_meta, sizeof(tipoff_meta)),
+                 0u, (uint32_t)dd_bank_file_offset(0u, 0x8491u), 0x30C7u, 0u);
+    payload_offset += sizeof(tipoff_meta);
+    dd_set_entry(&entries[15], "tipoff.ppu", DD_ENTRY_PPU, payload_offset,
+                 sizeof(tipoff_ppu), dd_crc32(tipoff_ppu, sizeof(tipoff_ppu)),
+                 0xFFFFFFFFu, 0u, tipoff_consumed[0] + tipoff_consumed[1] + tipoff_consumed[2] +
+                 tipoff_consumed[3] + tipoff_consumed[4] + tipoff_consumed[5], 1u);
+    payload_offset += sizeof(tipoff_ppu);
+    dd_set_entry(&entries[16], "tipoff.oam", DD_ENTRY_OAM, payload_offset,
+                 sizeof(tipoff_oam), dd_crc32(tipoff_oam, sizeof(tipoff_oam)),
+                 2u, (uint32_t)dd_bank_file_offset(2u, 0x8000u), 0x02CDu, 8u);
+    payload_offset += sizeof(tipoff_oam);
+    dd_set_entry(&entries[17], "end.music", DD_ENTRY_MUSIC, payload_offset,
+                 sizeof(DD_END_MUSIC), dd_crc32((const uint8_t *)DD_END_MUSIC, sizeof(DD_END_MUSIC)),
+                 1u, (uint32_t)dd_bank_file_offset(1u, 0x8000u), 0x04A1u, 5u);
+    payload_offset += sizeof(DD_END_MUSIC);
+    dd_set_entry(&entries[18], "tipoff.dmc", DD_ENTRY_DMC, payload_offset,
+                 tipoff_dmc_size, dd_crc32(rom + tipoff_dmc_file_offset, tipoff_dmc_size),
+                 7u, tipoff_dmc_file_offset, tipoff_dmc_size, 2u);
+    payload_offset += tipoff_dmc_size;
     header.directory_crc32 = dd_crc32((const uint8_t *)entries, sizeof(entries));
     header.total_size = payload_offset;
 
@@ -740,7 +835,12 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
         fwrite(config_ppu, 1, sizeof(config_ppu), output) != sizeof(config_ppu) ||
         fwrite(config_oam, 1, sizeof(config_oam), output) != sizeof(config_oam) ||
         fwrite(DD_SELECT_MUSIC, 1, sizeof(DD_SELECT_MUSIC), output) != sizeof(DD_SELECT_MUSIC) ||
-        fwrite(config_assets, 1, config_assets_size, output) != config_assets_size) {
+        fwrite(config_assets, 1, config_assets_size, output) != config_assets_size ||
+        fwrite(&tipoff_meta, 1, sizeof(tipoff_meta), output) != sizeof(tipoff_meta) ||
+        fwrite(tipoff_ppu, 1, sizeof(tipoff_ppu), output) != sizeof(tipoff_ppu) ||
+        fwrite(tipoff_oam, 1, sizeof(tipoff_oam), output) != sizeof(tipoff_oam) ||
+        fwrite(DD_END_MUSIC, 1, sizeof(DD_END_MUSIC), output) != sizeof(DD_END_MUSIC) ||
+        fwrite(rom + tipoff_dmc_file_offset, 1, tipoff_dmc_size, output) != tipoff_dmc_size) {
         if (output != NULL) {
             fclose(output);
         }
@@ -753,10 +853,12 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
     free(intro_updates);
     free(config_assets);
     free(rom);
-    printf("Built %s (title streams: %u/%u/%u, intro streams: %u/%u/%u, %u updates; config streams: %u/%u/%u).\n",
+    printf("Built %s (title streams: %u/%u/%u, intro streams: %u/%u/%u, %u updates; config streams: %u/%u/%u; tip-off streams: %u/%u/%u/%u/%u/%u).\n",
            output_path, consumed[0], consumed[1], consumed[2],
            intro_consumed[0], intro_consumed[1], intro_consumed[2], intro_update_count,
-           config_consumed[0], config_consumed[1], config_consumed[2]);
+           config_consumed[0], config_consumed[1], config_consumed[2],
+           tipoff_consumed[0], tipoff_consumed[1], tipoff_consumed[2], tipoff_consumed[3],
+           tipoff_consumed[4], tipoff_consumed[5]);
     return 1;
 }
 
@@ -794,6 +896,11 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     const DDPackEntry *config_oam_entry;
     const DDPackEntry *select_music_entry;
     const DDPackEntry *config_assets_entry;
+    const DDPackEntry *tipoff_meta_entry;
+    const DDPackEntry *tipoff_ppu_entry;
+    const DDPackEntry *tipoff_oam_entry;
+    const DDPackEntry *end_music_entry;
+    const DDPackEntry *tipoff_dmc_entry;
     memset(pack, 0, sizeof(*pack));
     if (!dd_read_file(path, &file_data, &file_size) || file_size < sizeof(DDPackHeader) + sizeof(DDPackEntry) * DD_ENTRY_COUNT) {
         free(file_data);
@@ -822,11 +929,17 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     config_oam_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_OAM, "config.oam");
     select_music_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_MUSIC, "select.music");
     config_assets_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_CONFIG_ASSETS, "config.assets");
+    tipoff_meta_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_TIPOFF_META, "tipoff.meta");
+    tipoff_ppu_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_PPU, "tipoff.ppu");
+    tipoff_oam_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_OAM, "tipoff.oam");
+    end_music_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_MUSIC, "end.music");
+    tipoff_dmc_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_DMC, "tipoff.dmc");
     if (meta_entry == NULL || ppu_entry == NULL || dmc_entry == NULL || oam_entry == NULL ||
         intro_meta_entry == NULL || intro_ppu_entry == NULL || intro_oam_entry == NULL ||
         intro_updates_entry == NULL || intro_music_entry == NULL || config_meta_entry == NULL ||
         config_ppu_entry == NULL || config_oam_entry == NULL || select_music_entry == NULL ||
-        config_assets_entry == NULL ||
+        config_assets_entry == NULL || tipoff_meta_entry == NULL || tipoff_ppu_entry == NULL ||
+        tipoff_oam_entry == NULL || end_music_entry == NULL || tipoff_dmc_entry == NULL ||
         meta_entry->size != sizeof(DDTitleMeta) || ppu_entry->size != DD_TITLE_PPU_SIZE ||
         dmc_entry->size != 3073u || oam_entry->size != 256u ||
         intro_meta_entry->size != sizeof(DDIntroMeta) || intro_ppu_entry->size != DD_PPU_SIZE ||
@@ -836,6 +949,9 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         config_oam_entry->size != 256u || select_music_entry->size == 0u ||
         select_music_entry->size % sizeof(DDMusicNote) != 0u ||
         config_assets_entry->size < sizeof(DDConfigAssetsHeader) ||
+        tipoff_meta_entry->size != sizeof(DDTipoffMeta) || tipoff_ppu_entry->size != DD_PPU_SIZE ||
+        tipoff_oam_entry->size != 256u || end_music_entry->size == 0u ||
+        end_music_entry->size % sizeof(DDMusicNote) != 0u || tipoff_dmc_entry->size != 2113u ||
         !dd_entry_in_bounds(meta_entry, file_size) || !dd_entry_in_bounds(ppu_entry, file_size) ||
         !dd_entry_in_bounds(dmc_entry, file_size) || !dd_entry_in_bounds(oam_entry, file_size) ||
         !dd_entry_in_bounds(intro_meta_entry, file_size) || !dd_entry_in_bounds(intro_ppu_entry, file_size) ||
@@ -844,6 +960,9 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         !dd_entry_in_bounds(config_meta_entry, file_size) || !dd_entry_in_bounds(config_ppu_entry, file_size) ||
         !dd_entry_in_bounds(config_oam_entry, file_size) || !dd_entry_in_bounds(select_music_entry, file_size) ||
         !dd_entry_in_bounds(config_assets_entry, file_size) ||
+        !dd_entry_in_bounds(tipoff_meta_entry, file_size) || !dd_entry_in_bounds(tipoff_ppu_entry, file_size) ||
+        !dd_entry_in_bounds(tipoff_oam_entry, file_size) || !dd_entry_in_bounds(end_music_entry, file_size) ||
+        !dd_entry_in_bounds(tipoff_dmc_entry, file_size) ||
         meta_entry->crc32 != dd_crc32(file_data + meta_entry->offset, (size_t)meta_entry->size) ||
         ppu_entry->crc32 != dd_crc32(file_data + ppu_entry->offset, (size_t)ppu_entry->size) ||
         dmc_entry->crc32 != dd_crc32(file_data + dmc_entry->offset, (size_t)dmc_entry->size) ||
@@ -857,13 +976,19 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         config_ppu_entry->crc32 != dd_crc32(file_data + config_ppu_entry->offset, (size_t)config_ppu_entry->size) ||
         config_oam_entry->crc32 != dd_crc32(file_data + config_oam_entry->offset, (size_t)config_oam_entry->size) ||
         select_music_entry->crc32 != dd_crc32(file_data + select_music_entry->offset, (size_t)select_music_entry->size) ||
-        config_assets_entry->crc32 != dd_crc32(file_data + config_assets_entry->offset, (size_t)config_assets_entry->size)) {
+        config_assets_entry->crc32 != dd_crc32(file_data + config_assets_entry->offset, (size_t)config_assets_entry->size) ||
+        tipoff_meta_entry->crc32 != dd_crc32(file_data + tipoff_meta_entry->offset, (size_t)tipoff_meta_entry->size) ||
+        tipoff_ppu_entry->crc32 != dd_crc32(file_data + tipoff_ppu_entry->offset, (size_t)tipoff_ppu_entry->size) ||
+        tipoff_oam_entry->crc32 != dd_crc32(file_data + tipoff_oam_entry->offset, (size_t)tipoff_oam_entry->size) ||
+        end_music_entry->crc32 != dd_crc32(file_data + end_music_entry->offset, (size_t)end_music_entry->size) ||
+        tipoff_dmc_entry->crc32 != dd_crc32(file_data + tipoff_dmc_entry->offset, (size_t)tipoff_dmc_entry->size)) {
         free(file_data);
         return 0;
     }
     memcpy(&pack->meta, file_data + meta_entry->offset, sizeof(pack->meta));
     memcpy(&pack->intro_meta, file_data + intro_meta_entry->offset, sizeof(pack->intro_meta));
     memcpy(&pack->config_meta, file_data + config_meta_entry->offset, sizeof(pack->config_meta));
+    memcpy(&pack->tipoff_meta, file_data + tipoff_meta_entry->offset, sizeof(pack->tipoff_meta));
     if (pack->meta.width != 256u || pack->meta.height != 240u ||
         pack->meta.background_pattern_base != 0x1000u || pack->meta.nametable_base != 0x2000u ||
         pack->intro_meta.width != 256u || pack->intro_meta.height != 240u ||
@@ -874,6 +999,13 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         pack->config_meta.background_pattern_base != 0x1000u || pack->config_meta.nametable_base != 0x2000u ||
         pack->config_meta.sprite_count > 64u || pack->config_meta.option_count != 4u ||
         pack->config_meta.original_visible_frame != 2097u ||
+        pack->tipoff_meta.width != 256u || pack->tipoff_meta.height != 240u ||
+        pack->tipoff_meta.background_pattern_base != 0x1000u || pack->tipoff_meta.nametable_base != 0x2000u ||
+        pack->tipoff_meta.sprite_count > 64u || pack->tipoff_meta.black_frame != 127u ||
+        pack->tipoff_meta.blue_frame != 135u || pack->tipoff_meta.dmc_frame != 140u ||
+        pack->tipoff_meta.visible_frame != 144u || pack->tipoff_meta.dmc_rate_index >= 16u ||
+        pack->tipoff_meta.dmc_length != tipoff_dmc_entry->size || pack->tipoff_meta.end_music_frames != 45u ||
+        pack->tipoff_meta.scroll_x != 0x7Fu ||
         dd_read_blob_u32(file_data + intro_updates_entry->offset) != pack->intro_meta.update_count) {
         free(file_data);
         memset(pack, 0, sizeof(*pack));
@@ -890,10 +1022,16 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     pack->config_ppu = (uint8_t *)malloc((size_t)config_ppu_entry->size);
     pack->config_oam = (uint8_t *)malloc((size_t)config_oam_entry->size);
     pack->config_assets = (uint8_t *)malloc((size_t)config_assets_entry->size);
+    pack->tipoff_ppu = (uint8_t *)malloc((size_t)tipoff_ppu_entry->size);
+    pack->tipoff_oam = (uint8_t *)malloc((size_t)tipoff_oam_entry->size);
+    pack->end_music = (DDMusicNote *)malloc((size_t)end_music_entry->size);
+    pack->tipoff_dmc = (uint8_t *)malloc((size_t)tipoff_dmc_entry->size);
     if (pack->ppu == NULL || pack->dmc == NULL || pack->oam == NULL ||
         pack->intro_ppu == NULL || pack->intro_oam == NULL ||
         pack->intro_updates == NULL || pack->intro_music == NULL || pack->select_music == NULL ||
-        pack->config_ppu == NULL || pack->config_oam == NULL || pack->config_assets == NULL) {
+        pack->config_ppu == NULL || pack->config_oam == NULL || pack->config_assets == NULL ||
+        pack->tipoff_ppu == NULL || pack->tipoff_oam == NULL || pack->end_music == NULL ||
+        pack->tipoff_dmc == NULL) {
         dd_asset_pack_unload(pack);
         free(file_data);
         return 0;
@@ -909,6 +1047,10 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     memcpy(pack->config_ppu, file_data + config_ppu_entry->offset, (size_t)config_ppu_entry->size);
     memcpy(pack->config_oam, file_data + config_oam_entry->offset, (size_t)config_oam_entry->size);
     memcpy(pack->config_assets, file_data + config_assets_entry->offset, (size_t)config_assets_entry->size);
+    memcpy(pack->tipoff_ppu, file_data + tipoff_ppu_entry->offset, (size_t)tipoff_ppu_entry->size);
+    memcpy(pack->tipoff_oam, file_data + tipoff_oam_entry->offset, (size_t)tipoff_oam_entry->size);
+    memcpy(pack->end_music, file_data + end_music_entry->offset, (size_t)end_music_entry->size);
+    memcpy(pack->tipoff_dmc, file_data + tipoff_dmc_entry->offset, (size_t)tipoff_dmc_entry->size);
     pack->ppu_size = (size_t)ppu_entry->size;
     pack->dmc_size = (size_t)dmc_entry->size;
     pack->oam_size = (size_t)oam_entry->size;
@@ -920,6 +1062,10 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     pack->config_ppu_size = (size_t)config_ppu_entry->size;
     pack->config_oam_size = (size_t)config_oam_entry->size;
     pack->config_assets_size = (size_t)config_assets_entry->size;
+    pack->tipoff_ppu_size = (size_t)tipoff_ppu_entry->size;
+    pack->tipoff_oam_size = (size_t)tipoff_oam_entry->size;
+    pack->end_music_count = (size_t)end_music_entry->size / sizeof(DDMusicNote);
+    pack->tipoff_dmc_size = (size_t)tipoff_dmc_entry->size;
     {
         size_t note_index;
         uint32_t previous_frame = 0u;
@@ -964,6 +1110,21 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
             }
         }
     }
+    {
+        size_t note_index;
+        uint32_t previous_frame = 0u;
+        for (note_index = 0u; note_index < pack->end_music_count; ++note_index) {
+            const DDMusicNote *note = &pack->end_music[note_index];
+            if ((note_index != 0u && note->frame < previous_frame) ||
+                note->frame >= pack->tipoff_meta.end_music_frames || note->period > 0x07FFu ||
+                note->channel >= 3u || note->duty > 3u || note->volume > 15u || note->reserved != 0u) {
+                dd_asset_pack_unload(pack);
+                free(file_data);
+                return 0;
+            }
+            previous_frame = note->frame;
+        }
+    }
     free(file_data);
     return 1;
 }
@@ -980,6 +1141,10 @@ void dd_asset_pack_unload(DDAssetPack *pack) {
     free(pack->config_ppu);
     free(pack->config_oam);
     free(pack->config_assets);
+    free(pack->tipoff_ppu);
+    free(pack->tipoff_oam);
+    free(pack->end_music);
+    free(pack->tipoff_dmc);
     memset(pack, 0, sizeof(*pack));
 }
 
@@ -989,9 +1154,10 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v5: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options.\n",
+    printf("Valid DDAP v6: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options; tip-off has %u sprites, %zu END notes, and %zu DMC bytes.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
-           pack.select_music_count, pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count);
+           pack.select_music_count, pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count,
+           pack.tipoff_meta.sprite_count, pack.end_music_count, pack.tipoff_dmc_size);
     dd_asset_pack_unload(&pack);
     return 1;
 }

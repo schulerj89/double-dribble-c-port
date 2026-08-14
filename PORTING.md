@@ -206,13 +206,34 @@ Status: **configuration sequence implemented through END**. Original frame 2084 
 
 The title-confirm sound was traced from original frames 76-138 through the bank-1 APU driver and normalized into the v5 asset pack as `select.music`. It plays immediately when 1P is accepted and ends before the road-intro score begins.
 
-The v5 pack adds `config.assets`, containing only importer-extracted menu tables and metasprites needed by the native state machine. The runtime still has no ROM access, bank switching, instruction interpretation, or frame-log playback.
+The v6 pack retains `config.assets` and adds bounded tip-off PPU/OAM, END-score, and DPCM entries. The runtime still has no ROM access, bank switching, instruction interpretation, or frame-log playback.
 
 Original and native frames 2097/2100 report **0 differing pixels out of 57,344**. The TEAM shot launch, jump, basket, and settled Chicago checkpoints also compare exactly; original frame 2180 differs only in the 31 overlapping ball pixels (0.0541%). `Capture-NativeConfig.ps1` and `Compare-ConfigCaptures.ps1` reproduce the configuration screenshot check without storing any game assets in the repository.
+
+## Milestone 4: END audio and opening tip-off formation
+
+Status: **pre-jump formation complete**. FCEUX presses Down on original frames 2105, 2107, and 2109, then A on 2112/2113. The basket acceptance reaches the END handler at frame 2201. The configuration remains visible for 126 more frames, frame 2327 contains the original partial clear, frame 2328 is black, frame 2336 switches to blue, and frame 2345 first displays the assembled court. This milestone intentionally freezes before the referee toss begins around frame 2520.
+
+| Behavior | Source evidence | Native counterpart |
+|---|---|---|
+| END acceptance tone | bank 1 APU driver `$80ED-$83AA`, original frames 2185-2221 | ten normalized pulse events in `end.music` |
+| END handoff | bank 1 `$A631-$A63C`, `$048F=$80` at frame 2201 | 127/135/144-frame black, blue, and visible boundaries |
+| Court CHR streams | bank 3 `$8D1B`/`$8001`, 3,510/3,354 encoded bytes | decoded `tipoff.ppu` pattern tables |
+| HUD clears | fixed bank `$C65F`/`$C674`, 42/21 encoded bytes | decoded into both nametables |
+| Court nametables | bank 2 `$A9CF`/`$ABC6`, 503/417 encoded bytes | decoded court/HUD state plus score-label patches |
+| Formation/gameplay roots | bank 0 `$8491`, `$9395`, `$94D9`, `$9CA0`, `$9CF6`, `$A84C`, `$AA20`, `$B11F`, `$B501` | named Ghidra evidence for object initialization, fixed-point helpers, and per-frame clears |
+| Metasprite expansion | bank 2 `$8000-$81C2` and pointer table `$828D` | native 8×16 OAM renderer and recovered formation ordering |
+| Split scroll | RAM `$0043=$7F`, fixed HUD through scanline 63 | scroll-zero HUD/crowd and `$7F` court camera |
+| Sprite overflow | alternating formation OAM observed on frames 2358-2363 | native eight-sprites-per-scanline evaluation |
+| Tip-off DPCM | fixed `$CD70-$CD9A`; frame 2341 writes `$4010=$0F`, `$4011=$00`, `$4012=$DE`, `$4013=$84` | 2,113 ROM-derived DPCM bytes, decoded natively at frame 140 of the handoff |
+
+`capture_original_title.lua` now records aggregate executed-PC counts for every active switch bank in `pc-counts.csv`. The 2328-2490 formation window showed bank 2 dominating the shared metasprite work and bank 0 owning the gameplay/object loops. `Run-TipoffAnalysis.ps1` reproduces the bank-0 Ghidra report; the fixed-bank report includes the audio reset and DPCM setup anchors. Headless Ghidra was sufficient for this slice, so no live MCP dependency is required to rebuild the evidence.
+
+`Capture-NativeTipoff.ps1` exports the formation plus both native audio cues. `Compare-TipoffCaptures.ps1` compares original frame 2359 to native rows 8-231 and reports **0 differing pixels out of 57,344**. The generated `.wav`, screenshot, trace, Ghidra project/report, and asset pack all remain ignored local outputs.
 
 ## Open research questions
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
-- Trace and port the gameplay scene entered after the END handoff; this milestone intentionally stops before it.
+- Trace the referee toss, jump-ball loop, possession result, and transition into live player control.

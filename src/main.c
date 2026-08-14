@@ -14,9 +14,12 @@ static void dd_usage(void) {
     puts("  --render-intro <input.assetpack> <frame> <output.bmp>");
     puts("  --render-config <input.assetpack> <selection> <output.bmp>");
     puts("  --render-config-state <input.assetpack> <selection> <time> <team> <level> <action-row> <action-frame> <output.bmp>");
+    puts("  --render-tipoff <input.assetpack> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
+    puts("  --dump-end-wav <input.assetpack> <output.wav>");
+    puts("  --dump-tipoff-wav <input.assetpack> <output.wav>");
 }
 
 int main(int argc, char **argv) {
@@ -89,6 +92,36 @@ int main(int argc, char **argv) {
             if (file != NULL) fclose(file);
             free(wav);
         }
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 4 && (strcmp(argv[1], "--dump-end-wav") == 0 ||
+                      strcmp(argv[1], "--dump-tipoff-wav") == 0)) {
+        uint8_t *wav;
+        size_t size;
+        FILE *file;
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        ok = strcmp(argv[1], "--dump-end-wav") == 0
+            ? dd_build_end_music_wav(&pack, &wav, &size)
+            : dd_build_tipoff_dmc_wav(&pack, &wav, &size);
+        if (ok) {
+            file = fopen(argv[3], "wb");
+            ok = file != NULL && fwrite(wav, 1, size, file) == size;
+            if (file != NULL) fclose(file);
+            free(wav);
+        }
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 4 && strcmp(argv[1], "--render-tipoff") == 0) {
+        uint32_t *pixels;
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width * pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = pixels != NULL && dd_render_tipoff(&pack, pixels, pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[3], pixels, pack.tipoff_meta.width, pack.tipoff_meta.height);
+        free(pixels);
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;
     }

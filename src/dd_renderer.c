@@ -5,7 +5,7 @@
 
 static uint32_t dd_nes_color(uint8_t index) {
     static const uint32_t colors[64] = {
-        0x00757575u, 0x0024188Cu, 0x000000A8u, 0x0044009Cu,
+        0x00757575u, 0x0024188Cu, 0x000000AAu, 0x0044009Cu,
         0x008C0074u, 0x00AA0010u, 0x00A60000u, 0x007D0800u,
         0x00402C00u, 0x00004500u, 0x00005100u, 0x00003C14u,
         0x00183C5Du, 0x00000000u, 0x00000000u, 0x00000000u,
@@ -98,6 +98,85 @@ static int dd_render_scene(const uint8_t *ppu, size_t ppu_size,
                     if ((attributes & 0x20u) != 0u && background_opaque[destination] != 0u) continue;
                     palette_index = ppu[0x3F10u + (uint32_t)(attributes & 3u) * 4u + color];
                     pixels[destination] = dd_nes_color(palette_index);
+                }
+            }
+        }
+    }
+    return 1;
+}
+
+static int dd_render_scrolled_scene(const uint8_t *ppu, size_t ppu_size,
+                                    const uint8_t *oam, size_t oam_size,
+                                    uint32_t background_pattern_base, uint32_t nametable_base,
+                                    uint32_t ppu_control, uint32_t sprite_count, uint32_t scroll_x,
+                                    uint32_t *pixels, uint32_t width, uint32_t height) {
+    uint8_t background_opaque[256u * 240u];
+    uint32_t x;
+    uint32_t y;
+    if (ppu == NULL || ppu_size != DD_PPU_SIZE || oam == NULL || oam_size != 256u ||
+        pixels == NULL || width > 256u || height > 240u || sprite_count > 64u ||
+        background_pattern_base + 0x1000u > DD_PPU_SIZE || nametable_base + 0x800u > DD_PPU_SIZE) return 0;
+    for (y = 0u; y < height; ++y) {
+        for (x = 0u; x < width; ++x) {
+            /* The fixed HUD uses scroll zero; the court switches at scanline 56. */
+            uint32_t world_x = x + (y < 64u ? 0u : scroll_x);
+            uint32_t table = nametable_base + ((world_x >> 8u) & 1u) * 0x400u;
+            uint32_t tile_x = (world_x >> 3u) & 31u;
+            uint32_t tile_y = y >> 3u;
+            uint32_t fine_x = world_x & 7u;
+            uint32_t fine_y = y & 7u;
+            uint8_t tile = ppu[table + tile_y * 32u + tile_x];
+            uint32_t pattern = background_pattern_base + (uint32_t)tile * 16u + fine_y;
+            uint8_t bit = (uint8_t)(7u - fine_x);
+            uint8_t color = (uint8_t)(((ppu[pattern] >> bit) & 1u) | (((ppu[pattern + 8u] >> bit) & 1u) << 1u));
+            uint8_t palette_index;
+            if (color == 0u) {
+                palette_index = ppu[0x3F00u];
+            } else {
+                uint8_t attribute = ppu[table + 0x3C0u + (tile_y >> 2u) * 8u + (tile_x >> 2u)];
+                uint8_t shift = (uint8_t)(((tile_y & 2u) << 1u) | (tile_x & 2u));
+                palette_index = ppu[0x3F00u + ((attribute >> shift) & 3u) * 4u + color];
+            }
+            pixels[y * width + x] = dd_nes_color(palette_index);
+            background_opaque[y * width + x] = color != 0u;
+        }
+    }
+    if ((ppu_control & 0x20u) != 0u) {
+        int sprite_index;
+        for (sprite_index = (int)sprite_count - 1; sprite_index >= 0; --sprite_index) {
+            const uint8_t *sprite = oam + (size_t)sprite_index * 4u;
+            uint32_t sprite_y = (uint32_t)sprite[0] + 1u;
+            uint32_t sprite_x = sprite[3];
+            uint8_t tile = sprite[1];
+            uint8_t attributes = sprite[2];
+            uint32_t sy;
+            for (sy = 0u; sy < 16u; ++sy) {
+                uint32_t source_y = (attributes & 0x80u) != 0u ? 15u - sy : sy;
+                uint32_t tile_number = (uint32_t)(tile & 0xFEu) + (source_y >> 3u);
+                uint32_t pattern_base = (tile & 1u) != 0u ? 0x1000u : 0u;
+                uint32_t pattern = pattern_base + tile_number * 16u + (source_y & 7u);
+                uint32_t sx;
+                uint32_t destination_y = sprite_y + sy;
+                if (destination_y >= height) continue;
+                {
+                    int candidate;
+                    uint32_t on_scanline = 0u;
+                    for (candidate = 0; candidate <= sprite_index; ++candidate) {
+                        uint32_t candidate_y = (uint32_t)oam[(size_t)candidate * 4u] + 1u;
+                        if (candidate_y <= destination_y && destination_y < candidate_y + 16u) ++on_scanline;
+                    }
+                    if (on_scanline > 8u) continue;
+                }
+                for (sx = 0u; sx < 8u; ++sx) {
+                    uint32_t source_x = (attributes & 0x40u) != 0u ? 7u - sx : sx;
+                    uint8_t bit = (uint8_t)(7u - source_x);
+                    uint8_t color = (uint8_t)(((ppu[pattern] >> bit) & 1u) | (((ppu[pattern + 8u] >> bit) & 1u) << 1u));
+                    uint32_t destination_x = sprite_x + sx;
+                    uint32_t destination;
+                    if (color == 0u || destination_x >= width) continue;
+                    destination = destination_y * width + destination_x;
+                    if ((attributes & 0x20u) != 0u && background_opaque[destination] != 0u) continue;
+                    pixels[destination] = dd_nes_color(ppu[0x3F10u + (uint32_t)(attributes & 3u) * 4u + color]);
                 }
             }
         }
@@ -551,6 +630,20 @@ int dd_render_config(const DDAssetPack *pack, uint32_t selection,
     memset(&view, 0, sizeof(view));
     view.selection = selection;
     return dd_render_config_view(pack, &view, pixels, width, height);
+}
+
+int dd_render_tipoff(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, uint32_t height) {
+    if (pack == NULL || pack->tipoff_ppu == NULL || pack->tipoff_ppu_size != DD_PPU_SIZE ||
+        pack->tipoff_oam == NULL || pack->tipoff_oam_size != 256u ||
+        width != pack->tipoff_meta.width || height != pack->tipoff_meta.height) return 0;
+    return dd_render_scrolled_scene(pack->tipoff_ppu, pack->tipoff_ppu_size,
+                                    pack->tipoff_oam, pack->tipoff_oam_size,
+                                    pack->tipoff_meta.background_pattern_base,
+                                    pack->tipoff_meta.nametable_base,
+                                    pack->tipoff_meta.ppu_control,
+                                    pack->tipoff_meta.sprite_count,
+                                    pack->tipoff_meta.scroll_x,
+                                    pixels, width, height);
 }
 
 #pragma pack(push, 1)

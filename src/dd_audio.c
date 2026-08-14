@@ -172,3 +172,57 @@ int dd_build_select_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_
     return dd_build_music_wav(pack->select_music, pack->select_music_count,
                               pack->meta.select_music_frames, wav_data, wav_size);
 }
+
+int dd_build_end_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->end_music, pack->end_music_count,
+                              pack->tipoff_meta.end_music_frames, wav_data, wav_size);
+}
+
+int dd_build_tipoff_dmc_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    static const uint16_t periods[16] = {428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 85, 72, 54};
+    const uint32_t sample_rate = 44100u;
+    const double cpu_clock = 1789773.0;
+    double dmc_rate;
+    uint32_t sample_count;
+    uint32_t sample;
+    uint8_t level;
+    uint8_t *wav;
+    if (pack == NULL || pack->tipoff_dmc == NULL || pack->tipoff_dmc_size == 0u ||
+        pack->tipoff_meta.dmc_rate_index >= 16u || wav_data == NULL || wav_size == NULL) return 0;
+    dmc_rate = cpu_clock / periods[pack->tipoff_meta.dmc_rate_index];
+    sample_count = (uint32_t)(((double)pack->tipoff_dmc_size * 8.0 * sample_rate) / dmc_rate + 0.5);
+    if (sample_count > (UINT32_MAX - 44u) / 2u) return 0;
+    wav = (uint8_t *)malloc(44u + (size_t)sample_count * 2u);
+    if (wav == NULL) return 0;
+    memcpy(wav, "RIFF", 4);
+    dd_write_u32(wav + 4, 36u + sample_count * 2u);
+    memcpy(wav + 8, "WAVEfmt ", 8);
+    dd_write_u32(wav + 16, 16u);
+    dd_write_u16(wav + 20, 1u);
+    dd_write_u16(wav + 22, 1u);
+    dd_write_u32(wav + 24, sample_rate);
+    dd_write_u32(wav + 28, sample_rate * 2u);
+    dd_write_u16(wav + 32, 2u);
+    dd_write_u16(wav + 34, 16u);
+    memcpy(wav + 36, "data", 4);
+    dd_write_u32(wav + 40, sample_count * 2u);
+    level = (uint8_t)pack->tipoff_meta.dmc_initial_dac;
+    for (sample = 0u; sample < sample_count; ++sample) {
+        uint32_t bit_index = (uint32_t)(((double)sample * dmc_rate) / sample_rate);
+        uint8_t bit;
+        int16_t pcm;
+        if (bit_index >= pack->tipoff_dmc_size * 8u) bit_index = (uint32_t)(pack->tipoff_dmc_size * 8u - 1u);
+        bit = (uint8_t)((pack->tipoff_dmc[bit_index >> 3] >> (bit_index & 7u)) & 1u);
+        if (bit != 0u) {
+            if (level <= 125u) level = (uint8_t)(level + 2u);
+        } else if (level >= 2u) {
+            level = (uint8_t)(level - 2u);
+        }
+        pcm = (int16_t)(((int)level - 64) * 480);
+        dd_write_u16(wav + 44u + (size_t)sample * 2u, (uint16_t)pcm);
+    }
+    *wav_data = wav;
+    *wav_size = 44u + (size_t)sample_count * 2u;
+    return 1;
+}
