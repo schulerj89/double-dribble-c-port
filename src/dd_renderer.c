@@ -109,22 +109,27 @@ static int dd_render_scrolled_scene(const uint8_t *ppu, size_t ppu_size,
                                     const uint8_t *oam, size_t oam_size,
                                     uint32_t background_pattern_base, uint32_t nametable_base,
                                     uint32_t ppu_control, uint32_t sprite_count, uint32_t scroll_x,
+                                    uint32_t hud_split_y,
                                     uint32_t *pixels, uint32_t width, uint32_t height) {
     uint8_t background_opaque[256u * 240u];
     uint32_t x;
     uint32_t y;
     if (ppu == NULL || ppu_size != DD_PPU_SIZE || oam == NULL || oam_size != 256u ||
         pixels == NULL || width > 256u || height > 240u || sprite_count > 64u ||
-        background_pattern_base + 0x1000u > DD_PPU_SIZE || nametable_base + 0x800u > DD_PPU_SIZE) return 0;
+        background_pattern_base + 0x1000u > DD_PPU_SIZE || nametable_base + 0x800u > DD_PPU_SIZE ||
+        hud_split_y > height) return 0;
     for (y = 0u; y < height; ++y) {
         for (x = 0u; x < width; ++x) {
-            /* The fixed HUD uses scroll zero; the court switches at scanline 56. */
-            uint32_t world_x = x + (y < 64u ? 0u : scroll_x);
+            int raster_gap = hud_split_y < 64u && y >= hud_split_y && y < hud_split_y + 8u;
+            uint32_t world_x = x + (y < hud_split_y || raster_gap ? 0u : scroll_x);
+            /* The sprite-zero reset reuses the preceding blank HUD tile row
+               while the former PERIOD START row leaves the raster. */
+            uint32_t world_y = raster_gap ? y - 8u : y;
             uint32_t table = nametable_base + ((world_x >> 8u) & 1u) * 0x400u;
             uint32_t tile_x = (world_x >> 3u) & 31u;
-            uint32_t tile_y = y >> 3u;
+            uint32_t tile_y = (world_y >> 3u) % 30u;
             uint32_t fine_x = world_x & 7u;
-            uint32_t fine_y = y & 7u;
+            uint32_t fine_y = world_y & 7u;
             uint8_t tile = ppu[table + tile_y * 32u + tile_x];
             uint32_t pattern = background_pattern_base + (uint32_t)tile * 16u + fine_y;
             uint8_t bit = (uint8_t)(7u - fine_x);
@@ -666,6 +671,7 @@ int dd_render_tipoff(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, 
                                     pack->tipoff_meta.ppu_control,
                                     pack->tipoff_meta.sprite_count,
                                     pack->tipoff_meta.scroll_x,
+                                    64u,
                                     pixels, width, height);
 }
 
@@ -729,7 +735,8 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
     return dd_render_scrolled_scene(ppu, sizeof(ppu),
                                     oam, sizeof(oam), pack->tipoff_meta.background_pattern_base,
                                     pack->tipoff_meta.nametable_base, pack->tipoff_meta.ppu_control,
-                                    64u, (uint32_t)camera, pixels, width, height);
+                                    64u, (uint32_t)camera, state->hud_split_y,
+                                    pixels, width, height);
 }
 
 #pragma pack(push, 1)

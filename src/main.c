@@ -25,6 +25,7 @@ static void dd_usage(void) {
     puts("  --dump-config-wav <input.assetpack> <output.wav>");
     puts("  --dump-end-wav <input.assetpack> <output.wav>");
     puts("  --dump-tipoff-wav <input.assetpack> <output.wav>");
+    puts("  --dump-gameplay-wav <input.assetpack> <output.wav>");
 }
 
 int main(int argc, char **argv) {
@@ -141,15 +142,20 @@ int main(int argc, char **argv) {
         return ok ? 0 : 1;
     }
     if (argc == 4 && (strcmp(argv[1], "--dump-end-wav") == 0 ||
-                      strcmp(argv[1], "--dump-tipoff-wav") == 0)) {
+                      strcmp(argv[1], "--dump-tipoff-wav") == 0 ||
+                      strcmp(argv[1], "--dump-gameplay-wav") == 0)) {
         uint8_t *wav;
         size_t size;
         FILE *file;
         int ok;
         if (!dd_asset_pack_load(argv[2], &pack)) return 1;
-        ok = strcmp(argv[1], "--dump-end-wav") == 0
-            ? dd_build_end_music_wav(&pack, &wav, &size)
-            : dd_build_tipoff_dmc_wav(&pack, &wav, &size);
+        if (strcmp(argv[1], "--dump-end-wav") == 0) {
+            ok = dd_build_end_music_wav(&pack, &wav, &size);
+        } else if (strcmp(argv[1], "--dump-tipoff-wav") == 0) {
+            ok = dd_build_tipoff_dmc_wav(&pack, &wav, &size);
+        } else {
+            ok = dd_build_gameplay_audio_wav(&pack, &wav, &size);
+        }
         if (ok) {
             file = fopen(argv[3], "wb");
             ok = file != NULL && fwrite(wav, 1, size, file) == size;

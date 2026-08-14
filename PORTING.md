@@ -314,7 +314,7 @@ DDAP v10 carries the bounded, checksummed `tipoff.assets` entry containing the 4
 
 `dd_gameplay.c` expresses the recovered sequence as native `Player`, `Ball`, `Camera`, possession, and inbound state. It reproduces the opening ball parabola, both jumpers' table-driven height, CPU and well-timed user tip results, owner-relative ball attachment, the first CPU decision, shot states `$04-$07`, pass state `$02`, the observed dead-ball/inbound sequence, and resumed CPU possession. Arrow keys update the native 1UP player. Z (NES B) jumps during the tip and shoots while carrying; X (NES A) passes while carrying. The controlled player's palette follows the observed two-frames-on/two-frames-off flash without hiding its sprite.
 
-`Capture-NativeGameplay.ps1` renders any gameplay checkpoint without launching the Win32 window. `Compare-GameplayCaptures.ps1` compares native and FCEUX frames after cropping native overscan. The frame-2557 handoff baseline remains 2,002 differing pixels out of 57,344 (3.4912%); complete clock logic, collision/steal branches, exact dynamic OAM ordering, and the rest of the match remain future slices.
+`Capture-NativeGameplay.ps1` renders any gameplay checkpoint without launching the Win32 window. `Compare-GameplayCaptures.ps1` compares native and FCEUX frames after cropping native overscan. After the post-tip raster correction, frame 2531/native 330 differs by 1,437 pixels out of 57,344 (2.5059%) and the frame-2557 handoff differs by 2,334 pixels (4.0702%); complete clock logic, collision/steal branches, exact dynamic OAM ordering, and the rest of the match remain future slices.
 
 ### Opening CPU decision slice
 
@@ -389,6 +389,29 @@ The routine reads camera byte `$0043`. Values below `$78` select the pointer at 
 The live Ghidra MCP bridge was not listening during this pass, so the evidence was produced with Ghidra 11.3 headless using the checked-in script rather than by guessing from a static hex dump. FCEUX supplied the runtime branch and frame/PC correlation; Ghidra supplied the dispatcher and call-flow interpretation.
 
 `tests/dd_gameplay_cpu_test.c` loads the generated asset pack and verifies the original target data, alternating 30 Hz team updates, `$001A` phase progression, user B-jump and next-frame winner override, carrier targets `$70/$6C/$85`, shot states `$04-$07`, recovery, dead-ball/inbound states, pass reception, a synthetic CPU pass decision, and distinct left/right court CHR streams. `build.ps1` compiles and executes these checks on every asset-pack build.
+
+### Post-inbound scheduler, HUD split, and live audio correction
+
+The longer no-input capture through original frame 4200 disproved the previous native post-inbound route. At original frame 3572, immediately after pass state `$02` completes, player object slots `$02-$0B` contain actions `$0F,$20,$20,$22,$20,$40,$25,$37,$3C,$3E` and packed targets `$E8,$48,$CC,$B5,$79,$21,$A6,$D7,$A9,$8C`. At frame 3600 the receiver (original slot `$08`, native player 6) has advanced to action `$27` with ball action `$04`. It holds near court coordinate `$006A/$58` during those 28 frames; it does not replay the opening `$70->$6C->$85` carrier route and pass again.
+
+The freeze had a concrete native cause: inbound setup assigned all ten players action `$36`, but pass completion replaced only the receiver and switched back to LIVE. The native dispatcher had no `$36` case, so the other nine retained zero-use movement states. The repaired handoff restores the complete captured action/target table. State `$25` uses a distinct post-inbound route marker, holds for fourteen 30 Hz CPU evaluations, and then calls the native possession decision at the captured shooting coordinate. Off-ball states update on their original alternating-team cadence.
+
+| ASM/Ghidra evidence | Recovered behavior | Native C |
+| --- | --- | --- |
+| action table `$89C0`; state `$22` -> `$8A98` | zeroes both velocity axes, follows its paired object's facing/animation, and may return to `$20` | `DD_PLAYER_LIVE_PAIRED_DEFENDER` |
+| state `$36` -> `$904D` -> fixed `$D978` | approaches packed target; on zero/arrival stores action `$37` | `DD_PLAYER_INBOUND_FORMATION` target mover |
+| state `$37` -> `$9094` -> fixed `$D990` | stationary target/render continuation | `DD_PLAYER_LIVE_SET` |
+| state `$25` -> `$8B5A`; later `$26/$27` -> `$8D1F/$8D57` | carrier-specific route/decision and shot-gather transition | separate opening and post-inbound route steps |
+
+ROM provenance for these selected-bank-0 addresses is `$89C0->$09D0`, `$8A98->$0AA8`, `$904D->$105D`, and `$9094->$10A4`. `ExportGameplayLoopEvidence.java` forces these anchors and the generated `gameplay-bank-00.txt` report shows `$904D` calling `$D978`, storing `$37` on arrival, and `$9094` jumping to `$D990`.
+
+`1ST PERIOD START` is not erased from the nametable at tip completion. FCEUX PPU snapshots before/after the boundary remain effectively unchanged. Instead, fixed-bank `$D350-$D3D5` resets `$2005` at `$D368`, waits for the sprite-zero raster condition, then writes camera `$0043` and vertical scroll zero at `$D3C1-$D3C9`. The native renderer changes the fixed-HUD boundary from 64 to 48 at the award frame and exposes the blank raster band in place of the third HUD row. Fixed-bank ROM offsets include `$D350->$1D360`, `$D368->$1D378`, and `$D3C4->$1D3D4`.
+
+The extended APU trace also establishes that ordinary gameplay has no continuously running background song in this branch. At original frame 2565 fixed `$CD24` installs bank-1 stream pointers `$8653/$8664/$866B`; frames 2566-2579 write a pulse/triangle/noise gesture, and a new cycle begins around frame 2584. Square 2 remains silent. During long dead-ball/non-dribble intervals the channels go silent instead of maintaining a score. The fixed driver loads stream pointer bytes into `$88/$8D`, initializes channel state, and clears the corresponding `$4000` register before the bank-1 sequencer services it.
+
+DDAP v11 adds `gameplay.audio`: twenty normalized events over eighteen frames, with provenance bank 1 `$8653` (ROM file offset `$4663`, bounded source span `$40`). Win32 loops the synthesized gesture only while gameplay is LIVE and ball action is dribble `$01`; pass, shot, rebound, and dead-ball states stop it. `--dump-gameplay-wav` exports the generated pack-only WAV. This is the audio actually observed in FCEUX, rather than an invented gameplay BGM.
+
+The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the v11 audio event count. The original-frame-3572/native-1371 screenshot comparison differs by 2,570 pixels out of 57,344 (4.4817%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
 
 ### Next implementation slice
 

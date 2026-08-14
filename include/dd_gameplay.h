@@ -42,11 +42,13 @@ typedef enum DDPlayerAction {
     DD_PLAYER_FORMATION_USER = 0x10,
     DD_PLAYER_TIP_USER_AIRBORNE = 0x11,
     DD_PLAYER_LIVE_TEAMMATE = 0x20,
+    DD_PLAYER_LIVE_PAIRED_DEFENDER = 0x22,
     DD_PLAYER_LIVE_CARRIER = 0x25,
     DD_PLAYER_LIVE_CARRIER_ROUTE = 0x26,
     DD_PLAYER_LIVE_CARRIER_DECIDE = 0x27,
     DD_PLAYER_LIVE_SHOOTER_RECOVER = 0x28,
     DD_PLAYER_LIVE_SHOOTER_RESET = 0x29,
+    DD_PLAYER_REBOUND_CHASE = 0x2D,
     DD_PLAYER_TIP_CPU = 0x2A,
     DD_PLAYER_TIP_CPU_AIRBORNE = 0x2B,
     DD_PLAYER_INBOUND_HOLD = 0x30,
@@ -58,6 +60,7 @@ typedef enum DDPlayerAction {
     DD_PLAYER_LIVE_CPU_CUT_RUN = 0x3D,
     DD_PLAYER_LIVE_CPU_ROUTE = 0x3E,
     DD_PLAYER_INBOUND_FORMATION = 0x36,
+    DD_PLAYER_LIVE_SET = 0x37,
     DD_PLAYER_LIVE_CPU = 0x40,
     DD_PLAYER_INBOUNDER = 0x41
 } DDPlayerAction;
@@ -112,6 +115,7 @@ typedef struct DDGameplayState {
     uint8_t possession_direction;
     uint8_t possession_count;
     uint8_t camera_chr_side;
+    uint8_t hud_split_y;
     uint8_t tip_winner;
     uint16_t inbound_age;
     uint32_t tip_user_jump_frame;

@@ -48,6 +48,22 @@ static const uint8_t DD_INBOUND_TARGET[DD_GAMEPLAY_PLAYER_COUNT] = {
     0x4Fu, 0x48u, 0xCCu, 0xB5u, 0x79u,
     0x6Fu, 0x54u, 0xD7u, 0xA9u, 0x44u
 };
+/* Original frame 3572, immediately after the inbound pass reaches object $08.
+   Object slots $02-$0B map directly to native players 0-9. */
+static const uint8_t DD_POST_INBOUND_ACTION[DD_GAMEPLAY_PLAYER_COUNT] = {
+    0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Cu, 0x3Eu
+};
+static const uint8_t DD_POST_INBOUND_TARGET[DD_GAMEPLAY_PLAYER_COUNT] = {
+    0xE8u, 0x48u, 0xCCu, 0xB5u, 0x79u, 0x21u, 0xA6u, 0xD7u, 0xA9u, 0x8Cu
+};
+static const int32_t DD_POST_INBOUND_X[DD_GAMEPLAY_PLAYER_COUNT] = {
+    0x008200, 0x006F00, 0x00AA00, 0x015700, 0x017900,
+    0x001800, 0x006A00, 0x017900, 0x009600, 0x004B00
+};
+static const int32_t DD_POST_INBOUND_DEPTH[DD_GAMEPLAY_PLAYER_COUNT] = {
+    0x007700, 0x002F00, 0x005D00, 0x006300, 0x003F00,
+    0x009800, 0x005800, 0x006800, 0x005800, 0x002800
+};
 
 static uint8_t dd_animation_for_facing(uint8_t facing, uint32_t phase) {
     static const uint8_t base[8] = {0x1Bu, 0x12u, 0x06u, 0x0Cu, 0x15u, 0x09u, 0x03u, 0x0Fu};
@@ -243,7 +259,17 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
     switch (player->action) {
         case DD_PLAYER_LIVE_CARRIER:
             speed = 0x0320;
-            if (player->route_step == 0u) {
+            if (player->route_step == 4u) {
+                /* At original frame 3572 state $25 holds the inbound receiver in
+                   place; state $27/ball state $04 begin 28 frames later. */
+                speed = 0;
+                if (player->action_age >= 14u && state->ball.action == DD_BALL_DRIBBLE &&
+                    state->carrier == player_index) {
+                    player->action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+                    player->action_age = 0u;
+                    dd_cpu_decide_possession(state, player_index);
+                }
+            } else if (player->route_step == 0u) {
                 dd_set_cpu_target(player, 0x70u);
                 player->route_step = 1u;
             } else if (player->route_step == 1u && player->action_age >= 12u &&
@@ -296,6 +322,17 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             player->target_zone = dd_pack_cpu_position(player);
             break;
         }
+        case DD_PLAYER_LIVE_PAIRED_DEFENDER: {
+            uint32_t opponent = player_index < 5u ? player_index + 5u : player_index - 5u;
+            speed = 0;
+            player->target_x = player->court_x;
+            player->target_depth = player->court_depth;
+            player->velocity_x = 0;
+            player->velocity_depth = 0;
+            player->facing = state->players[opponent].facing;
+            player->animation = state->players[opponent].animation;
+            break;
+        }
         case DD_PLAYER_LIVE_CPU:
             speed = 0x0500;
             if ((state->cpu_global_frame & 0x70u) == 0u || dd_cpu_at_target(player, speed)) {
@@ -330,6 +367,22 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_LIVE_CPU_CUT_RUN:
             speed = 0x0230;
+            break;
+        case DD_PLAYER_INBOUND_FORMATION:
+            /* Bank 0 $904D calls fixed target mover $D978 and advances to
+               stationary state $37 only after the packed target is reached. */
+            speed = 0x0200;
+            if (dd_cpu_at_target(player, speed)) {
+                player->action = DD_PLAYER_LIVE_SET;
+                player->action_age = 0u;
+            }
+            break;
+        case DD_PLAYER_LIVE_SET:
+            speed = 0;
+            player->target_x = player->court_x;
+            player->target_depth = player->court_depth;
+            player->velocity_x = 0;
+            player->velocity_depth = 0;
             break;
         default:
             break;
@@ -378,6 +431,7 @@ static void dd_begin_live(DDGameplayState *state, uint32_t winner) {
     /* The original handoff retains the centered $7F camera for this frame. */
     state->camera_x = 0x7F00;
     state->camera_chr_side = 1u;
+    state->hud_split_y = 48u;
 }
 
 void dd_gameplay_reset(DDGameplayState *state) {
@@ -400,6 +454,7 @@ void dd_gameplay_reset(DDGameplayState *state) {
     state->tip_user_jump_frame = UINT_MAX;
     state->live_start_frame = DD_LIVE_FRAME;
     state->camera_chr_side = 1u;
+    state->hud_split_y = 64u;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         DDPlayerState *object = &state->players[player];
         object->court_x = (int32_t)DD_INITIAL_X[player] << 8;
@@ -538,6 +593,27 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     }
 }
 
+static void dd_restore_post_inbound(DDGameplayState *state) {
+    uint32_t player;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        DDPlayerState *object = &state->players[player];
+        object->court_x = DD_POST_INBOUND_X[player];
+        object->court_depth = DD_POST_INBOUND_DEPTH[player];
+        object->height = 0x1000;
+        object->action = DD_POST_INBOUND_ACTION[player];
+        object->action_age = 0u;
+        object->route_step = player == 6u ? 4u : 0u;
+        dd_set_cpu_target(object, DD_POST_INBOUND_TARGET[player]);
+    }
+    state->carrier = 6u;
+    state->ball.owner = 6u;
+    state->ball.receiver = DD_NO_OWNER;
+    state->ball.action = DD_BALL_DRIBBLE;
+    state->ball.action_age = 0u;
+    state->possession_direction = 0u;
+    state->phase = DD_GAMEPLAY_LIVE;
+}
+
 static void dd_begin_inbound(DDGameplayState *state) {
     uint32_t player;
     state->phase = DD_GAMEPLAY_INBOUND;
@@ -580,7 +656,10 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
         state->players[5].action = DD_PLAYER_INBOUND_READY;
     } else if (state->inbound_age > 229u && state->ball.action == DD_BALL_PASS) {
         dd_step_ball(assets, state);
-        if (state->ball.action == DD_BALL_DRIBBLE) state->phase = DD_GAMEPLAY_LIVE;
+        if (state->ball.action == DD_BALL_DRIBBLE) {
+            dd_restore_post_inbound(state);
+            dd_step_dribble(assets, state);
+        }
     } else if (state->ball.action == DD_BALL_DRIBBLE) {
         dd_step_dribble(assets, state);
     }
@@ -698,6 +777,7 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
         }
     }
     if (state->scene_frame == DD_AWARD_FRAME) {
+        state->hud_split_y = 48u;
         state->phase = DD_GAMEPLAY_AWARD;
         state->carrier = 5u;
         state->tip_winner = 5u;

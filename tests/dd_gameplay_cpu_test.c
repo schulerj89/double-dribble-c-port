@@ -24,6 +24,12 @@ static void check_checkpoint(const DDGameplayState *state, uint32_t live_frame,
 }
 
 int main(int argc, char **argv) {
+    static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
+        0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Cu, 0x3Eu
+    };
+    static const uint8_t post_inbound_target[DD_GAMEPLAY_PLAYER_COUNT] = {
+        0xE8u, 0x48u, 0xCCu, 0xB5u, 0x79u, 0x21u, 0xA6u, 0xD7u, 0xA9u, 0x8Cu
+    };
     DDAssetPack pack;
     DDGameplayState state;
     DDGameplayState jump_state;
@@ -45,6 +51,8 @@ int main(int argc, char **argv) {
     check(memcmp(assets->court_chr_left, assets->court_chr_right,
                  sizeof(assets->court_chr_left)) != 0,
           "asset pack exposes distinct camera-triggered left and right court CHR streams");
+    check(pack.tipoff_meta.gameplay_audio_frames == 18u && pack.gameplay_audio_count == 20u,
+          "asset pack exposes the observed 18-frame live dribble APU sequence");
 
     memset(&jump_state, 0, sizeof(jump_state));
     check(dd_gameplay_advance_to(&pack, &jump_state, 300u, 0u),
@@ -55,6 +63,8 @@ int main(int argc, char **argv) {
           "native B timing reproduces original frame 2502 state $10->$11");
     check(dd_gameplay_advance_to(&pack, &jump_state, 330u, 0u), "advance to CPU contact");
     check(jump_state.carrier == 5u, "CPU slot wins the first contact frame");
+    check(jump_state.hud_split_y == 48u,
+          "tip contact changes the raster split so 1ST PERIOD START leaves the fixed HUD");
     check(dd_gameplay_advance_to(&pack, &jump_state, 331u, 0u), "advance to user contact override");
     check(jump_state.carrier == 0u && jump_state.tip_winner == 0u,
           "well-timed user jump overrides possession on the next contact frame");
@@ -149,6 +159,22 @@ int main(int argc, char **argv) {
     check(state.live_frame == 1015u && state.phase == DD_GAMEPLAY_LIVE &&
           state.ball.action == DD_BALL_DRIBBLE && state.carrier == 6u,
           "live 1015 completes the inbound and resumes CPU possession decisions");
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        check_checkpoint(&state, 1015u, player,
+                         post_inbound_action[player], post_inbound_target[player]);
+        live_start_x[player] = state.players[player].court_x;
+        live_start_depth[player] = state.players[player].court_depth;
+    }
+    check(dd_gameplay_advance_to(&pack, &state, 1399u, 0u),
+          "advance 28 frames through the original post-inbound decision window");
+    check(state.ball.action == DD_BALL_SHOT_GATHER && state.carrier == 6u,
+          "post-inbound state $25 reaches $27/ball state $04 instead of replaying the basket run");
+    check(state.players[1].court_x != live_start_x[1] ||
+          state.players[1].court_depth != live_start_depth[1],
+          "off-ball state $20 continues moving after the inbound reception");
+    check(state.players[8].court_x != live_start_x[8] ||
+          state.players[8].court_depth != live_start_depth[8],
+          "off-ball cut state $3C continues moving after the inbound reception");
 
     memset(&pass_state, 0, sizeof(pass_state));
     check(dd_gameplay_advance_to(&pack, &pass_state, 356u, 0u), "prepare far-court pass decision");
@@ -167,6 +193,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, "%d CPU gameplay regression check(s) failed.\n", failures);
         return 1;
     }
-    puts("Gameplay regression checks passed: tip jump, camera CHR, moving CPU players, pass/shot states, rebound, and inbound reception.");
+    puts("Gameplay regression checks passed: tip jump, HUD split, camera CHR, moving off-ball players, pass/shot states, rebound, inbound reception, and live audio data.");
     return 0;
 }

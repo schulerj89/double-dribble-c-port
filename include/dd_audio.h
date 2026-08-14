@@ -12,6 +12,7 @@ int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t
 int dd_build_select_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 int dd_build_config_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 int dd_build_end_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
+int dd_build_gameplay_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 int dd_build_tipoff_dmc_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 
 #endif

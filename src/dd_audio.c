@@ -208,6 +208,13 @@ int dd_build_end_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *
                               pack->tipoff_meta.end_music_frames, 20u, 0u, wav_data, wav_size);
 }
 
+int dd_build_gameplay_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->gameplay_audio, pack->gameplay_audio_count,
+                              pack->tipoff_meta.gameplay_audio_frames, 2u, 0u,
+                              wav_data, wav_size);
+}
+
 int dd_build_tipoff_dmc_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     static const uint16_t periods[16] = {428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 85, 72, 54};
     const uint32_t sample_rate = 44100u;

@@ -56,6 +56,12 @@ local writes = assert(io.open(join_path(capture_root, "tipoff-writes.csv"), "w")
 writes:write("frame,phase,address,value,pc,bank\n")
 local ppu_writes = assert(io.open(join_path(capture_root, "tipoff-ppu-writes.csv"), "w"))
 ppu_writes:write("frame,register,value,pc,bank\n")
+local apu_writes = assert(io.open(join_path(capture_root, "gameplay-apu-writes.csv"), "w"))
+apu_writes:write("frame,address,value,pc,bank\n")
+local audio_state = assert(io.open(join_path(capture_root, "gameplay-audio-state.csv"), "w"))
+audio_state:write("frame,square1_period,square1_volume,square1_duty,square2_period,square2_volume,square2_duty,triangle_period,triangle_volume,noise_period,noise_volume,noise_short\n")
+local audio_ram = assert(io.open(join_path(capture_root, "gameplay-audio-ram-writes.csv"), "w"))
+audio_ram:write("frame,address,value,pc,bank\n")
 local states = assert(io.open(join_path(capture_root, "tipoff-state.bin"), "wb"))
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 
@@ -72,10 +78,31 @@ memory.registerwrite(0x0030, 0x40, record_write)
 memory.registerwrite(0x0340, 0x380, record_write)
 memory.registerwrite(0x0700, 0xE0, record_write)
 memory.registerwrite(0x07E0, 0x20, record_write)
-memory.registerwrite(0x2006, 2, function(address, size, value)
+memory.registerwrite(0x2000, 1, function(address, size, value)
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end then
         ppu_writes:write(string.format("%d,%04X,%02X,%04X,%d\n",
+            frame, address, value, memory.getregister("pc"), current_switch_bank()))
+    end
+end)
+memory.registerwrite(0x2005, 3, function(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end then
+        ppu_writes:write(string.format("%d,%04X,%02X,%04X,%d\n",
+            frame, address, value, memory.getregister("pc"), current_switch_bank()))
+    end
+end)
+memory.registerwrite(0x4000, 0x18, function(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end then
+        apu_writes:write(string.format("%d,%04X,%02X,%04X,%d\n",
+            frame, address, value, memory.getregister("pc"), current_switch_bank()))
+    end
+end)
+memory.registerwrite(0x0079, 0x60, function(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end then
+        audio_ram:write(string.format("%d,%04X,%02X,%04X,%d\n",
             frame, address, value, memory.getregister("pc"), current_switch_bank()))
     end
 end)
@@ -94,7 +121,8 @@ local capture_frames = {
     [2600]=true,[2620]=true,[2640]=true,
     [2660]=true,[2680]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,
     [2770]=true,[2783]=true,[2929]=true,[2944]=true,[3004]=true,[3324]=true,
-    [3501]=true,[3545]=true,[3553]=true,[3572]=true
+    [3501]=true,[3545]=true,[3553]=true,[3572]=true,[3600]=true,[3640]=true,
+    [3680]=true,[3720]=true,[3800]=true,[3900]=true,[4000]=true,[4100]=true,[4200]=true
 }
 
 local function write_state(frame)
@@ -117,7 +145,16 @@ while emu.framecount() < final_frame do
     joypad.set(1, input)
     emu.frameadvance()
     local frame = emu.framecount()
-    if frame >= trace_start and frame <= trace_end then write_state(frame) end
+    if frame >= trace_start and frame <= trace_end then
+        local snd = sound.get().rp2a03
+        write_state(frame)
+        audio_state:write(string.format("%d,%d,%.6f,%d,%d,%.6f,%d,%d,%.6f,%d,%.6f,%s\n",
+            frame,
+            snd.square1.regs.frequency, snd.square1.volume, snd.square1.duty,
+            snd.square2.regs.frequency, snd.square2.volume, snd.square2.duty,
+            snd.triangle.regs.frequency, snd.triangle.volume,
+            snd.noise.regs.frequency, snd.noise.volume, tostring(snd.noise.short)))
+    end
     if capture_frames[frame] then
         gui.savescreenshotas(join_path(capture_root, string.format("frame-%04d.png", frame)))
         write_file(join_path(capture_root, string.format("frame-%04d-ppu.bin", frame)),
@@ -127,6 +164,9 @@ end
 
 writes:close()
 ppu_writes:close()
+apu_writes:close()
+audio_state:close()
+audio_ram:close()
 states:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")

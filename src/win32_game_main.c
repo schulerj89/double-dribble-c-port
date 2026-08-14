@@ -32,6 +32,8 @@ static uint8_t *g_end_wav;
 static size_t g_end_wav_size;
 static uint8_t *g_tipoff_wav;
 static size_t g_tipoff_wav_size;
+static uint8_t *g_gameplay_wav;
+static size_t g_gameplay_wav_size;
 static BITMAPINFO g_bitmap_info;
 static uint32_t g_selection;
 static uint32_t g_config_selection;
@@ -47,6 +49,7 @@ static ULONGLONG g_start_tick;
 static int g_started;
 static int g_intro_music_started;
 static int g_config_music_started;
+static int g_gameplay_audio_active;
 
 static uint32_t dd_gameplay_key(WPARAM key) {
     if (key == VK_LEFT) return DD_INPUT_LEFT;
@@ -150,6 +153,19 @@ static int dd_render_current_frame(void) {
                                  g_pack.config_meta.width, g_pack.config_meta.height);
 }
 
+static void dd_update_gameplay_audio(void) {
+    int desired = g_config_boundary_reached && g_gameplay.initialized &&
+        g_gameplay.phase == DD_GAMEPLAY_LIVE && g_gameplay.ball.action == DD_BALL_DRIBBLE;
+    if (desired && !g_gameplay_audio_active && g_gameplay_wav != NULL) {
+        PlaySoundA((LPCSTR)g_gameplay_wav, NULL,
+                   SND_MEMORY | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
+        g_gameplay_audio_active = 1;
+    } else if (!desired && g_gameplay_audio_active) {
+        PlaySoundW(NULL, NULL, 0);
+        g_gameplay_audio_active = 0;
+    }
+}
+
 static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     (void)wparam;
     (void)lparam;
@@ -238,6 +254,7 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
             RECT client;
             HDC dc = BeginPaint(window, &paint);
             dd_render_current_frame();
+            dd_update_gameplay_audio();
             GetClientRect(window, &client);
             SetStretchBltMode(dc, COLORONCOLOR);
             StretchDIBits(dc, 0, 0, client.right, client.bottom,
@@ -283,6 +300,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         !dd_build_select_music_wav(&g_pack, &g_select_wav, &g_select_wav_size) ||
         !dd_build_config_music_wav(&g_pack, &g_config_wav, &g_config_wav_size) ||
         !dd_build_end_music_wav(&g_pack, &g_end_wav, &g_end_wav_size) ||
+        !dd_build_gameplay_audio_wav(&g_pack, &g_gameplay_wav, &g_gameplay_wav_size) ||
         !dd_build_tipoff_dmc_wav(&g_pack, &g_tipoff_wav, &g_tipoff_wav_size)) {
         dd_asset_pack_unload(&g_pack);
         free(g_pixels);
@@ -292,6 +310,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         free(g_config_wav);
         free(g_end_wav);
         free(g_tipoff_wav);
+        free(g_gameplay_wav);
         return 1;
     }
     ZeroMemory(&g_bitmap_info, sizeof(g_bitmap_info));
@@ -328,6 +347,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     free(g_config_wav);
     free(g_end_wav);
     free(g_tipoff_wav);
+    free(g_gameplay_wav);
     dd_asset_pack_unload(&g_pack);
     return 0;
 }
