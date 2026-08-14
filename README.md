@@ -12,7 +12,7 @@ The native Win32 program renders the title screen, plays the spoken "Double Drib
 .\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
 ```
 
-Every build requires the supported ROM and produces `build\double-dribble.assetpack`. No ROM-derived outputs are tracked by Git.
+Every build requires the supported ROM, produces `build\double-dribble.assetpack`, runs gameplay regressions, and prints the validated Ghidra-to-C gameplay coverage. No ROM-derived outputs are tracked by Git.
 
 Run the native port:
 
@@ -50,3 +50,4 @@ Reproduce the reference and native captures:
 ```
 
 See `PORTING.md` for source addresses, Ghidra evidence, asset-pack boundaries, and fidelity status.
+See `GAMEPLAY_COVERAGE.md` for the reproducible dispatcher counts, weighted translation percentage, missing states, and next coverage targets.

@@ -413,6 +413,38 @@ DDAP v11 adds `gameplay.audio`: twenty normalized events over eighteen frames, w
 
 The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the v11 audio event count. The original-frame-3572/native-1371 screenshot comparison differs by 2,570 pixels out of 57,344 (4.4817%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
 
+### Complete dispatcher inventory slice
+
+The headless exporter now reads the dispatch words themselves rather than relying on a hand-maintained subset. Bank 0 `$89C0` contains 34 player targets for states `$20-$41`; `$AC91` contains 13 ball targets for `$00-$0C`. Native enums and switches now contain an explicit case for every one of those entries. This closes the prior **missing-handler inventory**, but it does not make every state verified: handlers without an observed FCEUX runtime branch remain partial until their important helper branches can be compared dynamically.
+
+The previously missing player entries resolve as follows in the regenerated `build/ghidra-reports/gameplay-bank-00.txt`:
+
+| State(s) | Ghidra target | Recovered control flow expressed in native C |
+| --- | ---: | --- |
+| `$21` | `$8A3A` | `$D978` target movement; arrival returns to `$20` |
+| `$23->$24` | `$8AF4/$8B12` | initialize the signed height script, test loose-ball contact through `$A6C3`, then choose carrier or recovery on landing |
+| `$2C,$33,$34` | `$8BC5` | shared `$D98A` movement/animation continuation |
+| `$2D->$2E->$2F` | `$8E71/$8E88/$8EBF` | reach rebound point, exclude airborne/score ball `$05/$06`, claim possession, install return target `$BD/$A1`, then enter hold `$30` |
+| `$38->$39` | `$8195/$81A2` | select a spacing target, move, and branch into `$32/$3C/$3E/$38` by role and court region |
+| `$3A` | `$8266` | companion regional route feeding `$32/$3C/$38` |
+| `$3B` | `$8297` | literal `RTS`; explicit stable no-op |
+| `$3F` | `$8460` | `$B503` plus the common render/animation continuation |
+
+Selected-bank ROM offsets are `$8A3A->$0A4A`, `$8AF4->$0B04`, `$8B12->$0B22`, `$8BC5->$0BD5`, `$8E71->$0E81`, `$8E88->$0E98`, `$8EBF->$0ECF`, `$8195->$01A5`, `$81A2->$01B2`, `$8266->$0276`, `$8297->$02A7`, and `$8460->$0470`.
+
+The four previously missing ball entries are likewise explicit:
+
+| State | Ghidra target | Recovered control flow expressed in native C |
+| --- | ---: | --- |
+| `$03` | `$ADF2` | hoop/contact check followed by longitudinal, depth, and common ball-physics integration |
+| `$08` | `$AF72` | clear ownership, seed height/velocity, queue original SFX `$14`, and advance to `$09` |
+| `$09` | `$AFDD` | integrate both court axes and height, then enter rebound `$07` at the recovered threshold |
+| `$0C` | `$ACAB` | share state `$0B`'s zero-height projection handler |
+
+Their ROM offsets are `$ADF2->$2E02`, `$AF72->$2F82`, `$AFDD->$2FED`, and `$ACAB->$2CBB`. State `$0A` at `$B017` was also made explicit: the routine seeds its launch fields and writes ball state `$05` before returning.
+
+`tests/dd_gameplay_cpu_test.c` now isolates the added target-arrival, jump/landing, rebound-claim, route, no-op, inbounder, bounce-pass, loose-ball, launch, and hidden-ball paths. These checks prove that the native dispatcher is total and that its bounded transitions are deterministic. Coverage therefore promotes the 14 missing player entries and four missing ball entries from **M** to **P**, not **V**: player coverage rises from 45.6% to 66.2%, ball coverage from 57.7% to 73.1%, and the weighted gameplay-loop headline from 51.8% to 61.8%.
+
 ### Next implementation slice
 
 1. Trace the next possession beyond the first inbound, including the full `$D99A` obstacle/search decisions and pass-lane rejection.
@@ -420,6 +452,8 @@ The regression executable verifies all ten frame-3572 actions/targets, movement 
 3. Port game-clock/HUD updates and the remaining defensive action states.
 
 ## Open research questions
+
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **62% Ghidra-to-C gameplay-loop coverage** and approximately **30% end-to-end match completeness**; these are intentionally separate measures.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

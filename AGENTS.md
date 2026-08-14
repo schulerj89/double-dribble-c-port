@@ -19,6 +19,7 @@ These instructions apply to every contributor and agent working in this reposito
 4. Record CPU address, active UxROM bank, ROM file offset, inputs, outputs, and confidence in `PORTING.md` or a focused document.
 5. Implement the behavior as native C and extract only the required data into the asset pack.
 6. Capture the native frame under ignored `captures/native/` and compare it against the reference at the NES logical resolution of 256 x 240.
+7. Update `GAMEPLAY_COVERAGE.md` and `tools/Measure-GameplayCoverage.ps1` whenever a gameplay state or subsystem moves between missing, partial, and verified.
 
 Do not infer a ROM offset from a CPU address without recording the active bank. For this Rev 1 ROM, `$C000-$FFFF` is fixed to the final 16 KiB PRG bank and `$8000-$BFFF` is mapper-selected.
 

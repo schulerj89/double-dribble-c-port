@@ -67,6 +67,11 @@ if ($LASTEXITCODE -ne 0) {
     throw 'CPU gameplay regression failed.'
 }
 
+& (Join-Path $root 'tools\Measure-GameplayCoverage.ps1')
+if ($LASTEXITCODE -ne 0) {
+    throw 'Gameplay coverage validation failed.'
+}
+
 Write-Host 'Build complete:' -ForegroundColor Green
 Write-Host "  CLI:       $cli"
 Write-Host "  Game:      $game"

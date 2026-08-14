@@ -23,6 +23,18 @@ static void check_checkpoint(const DDGameplayState *state, uint32_t live_frame,
     check(state->players[player].target_zone == target, message);
 }
 
+static void run_cpu_dispatch(const DDAssetPack *pack, DDGameplayState *state,
+                             uint32_t player) {
+    uint32_t before = state->players[player].cpu_updates;
+    uint32_t attempts;
+    for (attempts = 0u; attempts < 3u && state->players[player].cpu_updates == before;
+         ++attempts) {
+        check(dd_gameplay_step(pack, state, 0u), "step isolated CPU dispatcher state");
+    }
+    check(state->players[player].cpu_updates != before,
+          "isolated CPU dispatcher state receives its scheduled update");
+}
+
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
         0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Cu, 0x3Eu
@@ -34,6 +46,8 @@ int main(int argc, char **argv) {
     DDGameplayState state;
     DDGameplayState jump_state;
     DDGameplayState pass_state;
+    DDGameplayState dispatch_base;
+    DDGameplayState dispatch_state;
     const DDTipoffAssetsHeader *assets;
     int32_t live_start_x[DD_GAMEPLAY_PLAYER_COUNT];
     int32_t live_start_depth[DD_GAMEPLAY_PLAYER_COUNT];
@@ -188,11 +202,188 @@ int main(int argc, char **argv) {
           pass_state.ball.receiver < DD_GAMEPLAY_PLAYER_COUNT,
           "carrier decision selects a teammate pass outside the shooting region");
 
+    memset(&dispatch_base, 0, sizeof(dispatch_base));
+    check(dd_gameplay_advance_to(&pack, &dispatch_base, 356u, 0u),
+          "prepare isolated dispatcher checks");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_FOLLOW_TARGET;
+    dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
+    dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE,
+          "player state $21 returns to $20 on target arrival");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_JUMP_START;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_JUMP_CONTEST &&
+          dispatch_state.players[5].velocity_height > 0,
+          "player state $23 installs the jump and advances to $24");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_JUMP_CONTEST;
+    dispatch_state.players[5].action_age = 3u;
+    dispatch_state.players[5].height = 0x1000;
+    dispatch_state.players[5].velocity_height = -0x0100;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.court_x = 0x001000;
+    dispatch_state.ball.court_depth = 0x0400;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_SHOOTER_RECOVER &&
+          dispatch_state.players[5].height == 0x1000,
+          "player state $24 lands into recovery when no loose ball is contacted");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CONTINUE;
+    dispatch_state.players[5].target_x += 0x2000;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].velocity_x != 0,
+          "shared movement state $2C executes the $8BC5 continuation");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_REBOUND_CHASE;
+    dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
+    dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_REBOUND_CLAIM,
+          "player state $2D advances to rebound claim $2E at its target");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_REBOUND_CLAIM;
+    dispatch_state.ball.action = DD_BALL_REBOUND;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_REBOUND_RETURN &&
+          dispatch_state.ball.action == DD_BALL_DRIBBLE && dispatch_state.ball.owner == 5u,
+          "player state $2E claims a non-shot ball and advances to $2F");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_REBOUND_RETURN;
+    dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
+    dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD,
+          "player state $2F advances to held state $30 at its return point");
+
+    for (player = DD_PLAYER_LIVE_CONTINUE_33; player <= DD_PLAYER_LIVE_CONTINUE_34; ++player) {
+        dispatch_state = dispatch_base;
+        dispatch_state.players[5].action = (uint8_t)player;
+        dispatch_state.players[5].target_x += 0x2000;
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+        check(dispatch_state.players[5].velocity_x != 0,
+              "shared movement states $33/$34 execute the $8BC5 continuation");
+    }
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_FORMATION_CPU;
+    dispatch_state.players[5].target_x += 0x2000;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].velocity_x != 0,
+          "player formation state $35 has an explicit movement continuation");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_ROUTE_INIT;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_ROUTE_APPROACH,
+          "player state $38 selects a spacing target and advances to $39");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_ROUTE_APPROACH;
+    dispatch_state.players[5].role = 0u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_CPU_SETUP,
+          "player state $39 routes role zero to state $32");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_ROUTE_ADJUST;
+    dispatch_state.players[5].role = 1u;
+    dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
+    dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action != DD_PLAYER_ROUTE_ADJUST,
+          "player state $3A advances into the regional route family");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_ROUTE_WAIT;
+    dispatch_state.players[5].velocity_x = 0;
+    live_start_x[5] = dispatch_state.players[5].court_x;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_ROUTE_WAIT &&
+          dispatch_state.players[5].court_x == live_start_x[5],
+          "player state $3B preserves the original RTS no-op behavior");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_RENDER_ONLY;
+    live_start_x[5] = dispatch_state.players[5].court_x;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_RENDER_ONLY &&
+          dispatch_state.players[5].court_x == live_start_x[5],
+          "player state $3F executes only its render/animation continuation");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_INBOUNDER;
+    dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
+    dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD &&
+          dispatch_state.ball.owner == 5u,
+          "player state $41 claims the inbound ball and advances to $30");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_PASS_BOUNCE;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.receiver = 5u;
+    dispatch_state.ball.action_age = 5u;
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.ball.height = 0x1000;
+    dispatch_state.ball.velocity_x = 0;
+    dispatch_state.ball.velocity_depth = 0;
+    dispatch_state.ball.velocity_height = 0;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step ball bounce-pass state $03");
+    check(dispatch_state.ball.action == DD_BALL_DRIBBLE && dispatch_state.ball.owner == 5u,
+          "ball state $03 completes a nearby bounce-pass reception");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_LOOSE_LAUNCH;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step loose-ball launch state $08");
+    check(dispatch_state.ball.action == DD_BALL_LOOSE_AIRBORNE &&
+          dispatch_state.ball.owner == 0xFFu,
+          "ball state $08 initializes velocity and advances to $09");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_LOOSE_AIRBORNE;
+    dispatch_state.ball.action_age = 5u;
+    dispatch_state.ball.height = 0x1000;
+    dispatch_state.ball.velocity_height = -0x0100;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step loose-ball airborne state $09");
+    check(dispatch_state.ball.action == DD_BALL_REBOUND,
+          "ball state $09 reaches rebound state $07 at the floor threshold");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_SHOT_LAUNCH;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step shot initializer state $0A");
+    check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.ball.velocity_height == 0x0500,
+          "ball state $0A initializes and advances to airborne state $05");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_HIDDEN;
+    dispatch_state.ball.height = 0x2200;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step hidden ball state $0C");
+    check(dispatch_state.ball.action == DD_BALL_HIDDEN && dispatch_state.ball.height == 0,
+          "ball state $0C shares the original $ACAB zero-height handler");
+
     dd_asset_pack_unload(&pack);
     if (failures != 0) {
         fprintf(stderr, "%d CPU gameplay regression check(s) failed.\n", failures);
         return 1;
     }
-    puts("Gameplay regression checks passed: tip jump, HUD split, camera CHR, moving off-ball players, pass/shot states, rebound, inbound reception, and live audio data.");
+    puts("Gameplay regression checks passed: tip jump, dispatcher states, camera CHR, moving off-ball players, pass/shot states, rebound, inbound reception, and live audio data.");
     return 0;
 }

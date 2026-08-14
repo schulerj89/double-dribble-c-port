@@ -15,11 +15,13 @@ import ghidra.program.model.symbol.Reference;
 
 public class ExportGameplayLoopEvidence extends GhidraScript {
     private static final long[] BANK0_ANCHORS = {
-        0x89B2L, 0x8A98L, 0x8B5AL, 0x8D1FL, 0x8D57L, 0x8D9CL,
-        0x8EBFL, 0x904DL, 0x9094L,
+        0x8195L, 0x81A2L, 0x8266L, 0x8297L, 0x829EL, 0x8371L, 0x83C5L, 0x8460L,
+        0x89B2L, 0x8A16L, 0x8A3AL, 0x8A98L, 0x8AF4L, 0x8B12L, 0x8B5AL, 0x8BC5L,
+        0x8C6BL, 0x8D1FL, 0x8D57L, 0x8D9CL, 0x8DABL, 0x8DD2L, 0x8DF7L,
+        0x8E71L, 0x8E88L, 0x8EBFL, 0x8EE2L, 0x8FE0L, 0x904DL, 0x9094L,
         0x91A6L, 0x92BDL, 0x9395L, 0x9583L, 0x9645L,
         0xA61FL, 0xA68AL,
-        0x993AL, 0x9E70L, 0xAC83L, 0xACB6L, 0xACD6L,
+        0x993AL, 0x9E70L, 0xAC83L, 0xACABL, 0xACB6L, 0xACD6L,
         0xAD41L, 0xADF2L, 0xAE0CL, 0xAE25L, 0xAEDEL,
         0xAF46L, 0xAF72L, 0xAFDDL, 0xB017L, 0xB377L,
         0xB473L, 0xB51DL
@@ -29,6 +31,17 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
         0xD368L, 0xD3C4L, 0xD3D5L, 0xD6FDL, 0xD759L, 0xD772L,
         0xD8DAL, 0xD978L, 0xD99AL, 0xDB0EL
     };
+
+    private void printDispatchTable(PrintWriter report, String name, long tableAddress,
+                                    int firstState, int stateCount) throws Exception {
+        report.printf("==== %s dispatcher table at $%04X ====%n", name, tableAddress);
+        for (int index = 0; index < stateCount; ++index) {
+            int low = currentProgram.getMemory().getByte(toAddr(tableAddress + index * 2L)) & 0xff;
+            int high = currentProgram.getMemory().getByte(toAddr(tableAddress + index * 2L + 1L)) & 0xff;
+            report.printf("state $%02X -> $%04X%n", firstState + index, low | (high << 8));
+        }
+        report.println();
+    }
 
     @Override
     public void run() throws Exception {
@@ -50,6 +63,10 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
         decompiler.openProgram(currentProgram);
         try (PrintWriter report = new PrintWriter(output, "UTF-8")) {
             report.printf("Double Dribble Rev 1 - %s gameplay call graph evidence%n", getScriptArgs()[0]);
+            if (!"fixed".equals(getScriptArgs()[0])) {
+                printDispatchTable(report, "player", 0x89C0L, 0x20, 34);
+                printDispatchTable(report, "ball", 0xAC91L, 0x00, 13);
+            }
             for (long value : anchors) {
                 Address address = toAddr(value);
                 Function function = getFunctionContaining(address);
