@@ -6,6 +6,9 @@ local rom_path = os.getenv("DD_ROM_PATH") or ""
 local final_frame = tonumber(os.getenv("DD_CAPTURE_FINAL_FRAME") or "2760")
 local trace_start = tonumber(os.getenv("DD_TRACE_START") or "2320")
 local trace_end = tonumber(os.getenv("DD_TRACE_END") or "2760")
+local jump_start = tonumber(os.getenv("DD_TIP_JUMP_START") or "-1")
+local jump_end = tonumber(os.getenv("DD_TIP_JUMP_END") or "-1")
+local jump_button = os.getenv("DD_TIP_JUMP_BUTTON") or "A"
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -18,6 +21,12 @@ local function read_file(path)
     local data = file:read("*all")
     file:close()
     return data
+end
+
+local function write_file(path, data)
+    local file = assert(io.open(path, "wb"))
+    file:write(data)
+    file:close()
 end
 
 local rom_data = read_file(rom_path)
@@ -45,6 +54,8 @@ end
 
 local writes = assert(io.open(join_path(capture_root, "tipoff-writes.csv"), "w"))
 writes:write("frame,phase,address,value,pc,bank\n")
+local ppu_writes = assert(io.open(join_path(capture_root, "tipoff-ppu-writes.csv"), "w"))
+ppu_writes:write("frame,register,value,pc,bank\n")
 local states = assert(io.open(join_path(capture_root, "tipoff-state.bin"), "wb"))
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 
@@ -59,7 +70,15 @@ end
 
 memory.registerwrite(0x0030, 0x40, record_write)
 memory.registerwrite(0x0340, 0x380, record_write)
+memory.registerwrite(0x0700, 0xE0, record_write)
 memory.registerwrite(0x07E0, 0x20, record_write)
+memory.registerwrite(0x2006, 2, function(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end then
+        ppu_writes:write(string.format("%d,%04X,%02X,%04X,%d\n",
+            frame, address, value, memory.getregister("pc"), current_switch_bank()))
+    end
+end)
 memory.registerexecute(0x8000, 0x4000, function(address, size, value)
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
@@ -73,7 +92,9 @@ local capture_frames = {
     [2460]=true,[2480]=true,[2500]=true,[2519]=true,[2520]=true,[2530]=true,[2531]=true,
     [2540]=true,[2550]=true,[2557]=true,[2560]=true,[2570]=true,[2580]=true,[2590]=true,
     [2600]=true,[2620]=true,[2640]=true,
-    [2660]=true,[2680]=true,[2700]=true,[2730]=true,[2760]=true
+    [2660]=true,[2680]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,
+    [2770]=true,[2783]=true,[2929]=true,[2944]=true,[3004]=true,[3324]=true,
+    [3501]=true,[3545]=true,[3553]=true,[3572]=true
 }
 
 local function write_state(frame)
@@ -90,16 +111,22 @@ while emu.framecount() < final_frame do
     input.start = next_frame == 75 or next_frame == 76
     input.down = next_frame == 2105 or next_frame == 2107 or next_frame == 2109
     input.A = next_frame == 2112 or next_frame == 2113
+    if next_frame >= jump_start and next_frame <= jump_end then
+        input[jump_button] = true
+    end
     joypad.set(1, input)
     emu.frameadvance()
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end then write_state(frame) end
     if capture_frames[frame] then
         gui.savescreenshotas(join_path(capture_root, string.format("frame-%04d.png", frame)))
+        write_file(join_path(capture_root, string.format("frame-%04d-ppu.bin", frame)),
+                   ppu.readbyterange(0, 0x4000))
     end
 end
 
 writes:close()
+ppu_writes:close()
 states:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")

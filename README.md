@@ -4,7 +4,7 @@ Source-only native C port of **Double Dribble (USA) (Rev 1)** for NES. The runti
 
 ## Current milestone
 
-The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue and 1P-confirm music, plays the complete 1P city/road introduction, implements the original shooting-driven configuration screen with its looping four-channel music, and follows END through the opening toss, CPU possession handoff, and first live-control state. Stable title, intro, configuration, and pre-jump tip-off checkpoints match local FCEUX references exactly; the live handoff checkpoint currently differs in 3.4912% of pixels while dynamic sprite ordering and the remaining gameplay states are ported.
+The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue and 1P-confirm music, plays the complete 1P city/road introduction, implements the original shooting-driven configuration screen with its looping four-channel music, and follows END through tip-off, the opening CPU shot/rebound sequence, dead-ball formation, inbound pass, and resumed possession. B can contest the tip; native CPU carriers now choose a pass or shot and all players continue updating on the original alternating 30 Hz team cadence. DDAP v10 also carries the original camera-selected court CHR streams, fixing the corrupted goal while scrolling. Stable title, intro, configuration, and pre-jump tip-off checkpoints match local FCEUX references exactly; later gameplay remains a bounded port rather than a complete match. Every build runs deterministic gameplay regressions against the generated asset pack.
 
 ## Build
 
@@ -20,7 +20,7 @@ Run the native port:
 .\build\double_dribble_game.exe .\build\double-dribble.assetpack
 ```
 
-Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro; the selected words continue flashing at the original eight-frame cadence until the scene changes. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot, plays its acceptance cue, and advances through the opening tip. Once possession is awarded, the user-controlled 1UP player flashes between team palettes and moves with the arrow keys. X/Z are wired as NES A/B inputs, but pass and shot actions are intentionally outside this slice. Escape exits.
+Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro; the selected words continue flashing at the original eight-frame cadence until the scene changes. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot, plays its acceptance cue, and advances through the opening tip. Press Z (NES B) to jump for the tip. Once live, the flashing 1UP player moves with the arrow keys; Z shoots and X (NES A) passes while that player carries the ball. Escape exits.
 
 Reproduce the reference and native captures:
 
@@ -37,6 +37,8 @@ Reproduce the reference and native captures:
 .\tools\Capture-NativeTipoff.ps1
 .\tools\Compare-TipoffCaptures.ps1
 .\tools\fceux\Capture-TipoffGameplay.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -CaptureName original-tipoff-jump-b-2502 -JumpStart 2502 -JumpEnd 2503 -JumpButton B -FinalFrame 2580
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
 .\tools\Capture-NativeGameplay.ps1
 .\tools\Compare-GameplayCaptures.ps1
 # Render the same live frame while holding Right (input mask 2).

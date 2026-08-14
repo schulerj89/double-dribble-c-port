@@ -254,7 +254,7 @@ Status: **bounded native slice implemented through first live control**. `Captur
 | 2557 | The jump phase ends. Slot 7 becomes the active carrier (`$0048=$07`), possession/direction becomes `$0050=$08`, ball state becomes held/dribble `$01`, and all ten player states are reassigned for live play. | `$8E35-$9380`, `$AD0E-$AD40`. |
 | 2558 onward | Regular player AI, movement, camera following, held-ball animation, projection, and rendering run without a separate tip-off scene loop. | `$89B2`, `$994C`, `$9E90-$A014`, `$A84C-$AA74`, `$B035-$B400`. |
 
-The no-input trace therefore establishes one deterministic branch, CPU possession in slot 7. It does not yet establish the player-controlled jump timing or the alternate slot-2 win branch; that needs a second FCEUX input sweep before the native result logic is finalized.
+The no-input trace establishes the deterministic CPU-possession branch in original slot 7. The later A/B sweep documented below establishes B as jump and proves the alternate original-slot-2 win branch at the frame-2502 timing.
 
 ### Recovered object/game loop
 
@@ -310,22 +310,96 @@ The native implementation should use explicit `Player`, `Ball`, `Possession`, an
 
 ### Native implementation boundary
 
-DDAP v8 adds `tipoff.assets`, a bounded, checksummed entry containing the 42 bank-2 gameplay metasprites, the 48-byte held-ball offset table at bank 0 `$B07B`, and the 32-byte height-script region at bank 0 `$9B29`. The runtime receives normalized offsets and signed deltas only; it does not receive ROM banks, 6502 state, or an instruction stream.
+DDAP v10 carries the bounded, checksummed `tipoff.assets` entry containing the 42 bank-2 gameplay metasprites, the 48-byte held-ball offset table at bank 0 `$B07B`, the 32-byte height-script region at bank 0 `$9B29`, the 20-byte role target table at fixed bank 7 `$D745`, the 14-byte spacing table at bank 0 `$8452`, and two 672-byte court CHR streams. The left stream begins at bank 0 `$B59E`; the right stream begins at `$B83E`. The runtime receives normalized graphics, offsets, signed deltas, and packed court targets only; it does not receive ROM banks, 6502 state, or an instruction stream.
 
-`dd_gameplay.c` expresses the recovered sequence as native `Player`, `Ball`, `Camera`, and possession state. It reproduces the opening ball parabola, the CPU jumper's table-driven rise/landing, the deterministic no-input award to original slot 7, owner-relative ball attachment, the first dribble cycle, camera follow, and the initial live action assignments. Arrow keys update the native 1UP player after the possession handoff. Its palette attribute follows the observed two-frames-on/two-frames-off pattern, so the player flashes without disappearing.
+`dd_gameplay.c` expresses the recovered sequence as native `Player`, `Ball`, `Camera`, possession, and inbound state. It reproduces the opening ball parabola, both jumpers' table-driven height, CPU and well-timed user tip results, owner-relative ball attachment, the first CPU decision, shot states `$04-$07`, pass state `$02`, the observed dead-ball/inbound sequence, and resumed CPU possession. Arrow keys update the native 1UP player. Z (NES B) jumps during the tip and shoots while carrying; X (NES A) passes while carrying. The controlled player's palette follows the observed two-frames-on/two-frames-off flash without hiding its sprite.
 
-`Capture-NativeGameplay.ps1` renders toss, award, handoff, and adjacent flash frames without launching the Win32 window. `Compare-GameplayCaptures.ps1` compares transition frame 356 with original frame 2557 after cropping the native overscan rows. The current result is 2,002 differing pixels out of 57,344 (3.4912%); the pre-jump formation regression remains pixel exact. The remaining handoff difference is primarily dynamic metasprite/OAM ordering plus the not-yet-ported game clock.
+`Capture-NativeGameplay.ps1` renders any gameplay checkpoint without launching the Win32 window. `Compare-GameplayCaptures.ps1` compares native and FCEUX frames after cropping native overscan. The frame-2557 handoff baseline remains 2,002 differing pixels out of 57,344 (3.4912%); complete clock logic, collision/steal branches, exact dynamic OAM ordering, and the rest of the match remain future slices.
+
+### Opening CPU decision slice
+
+The live player scheduler is split across bank 0 `$993A-$9976` and `$9E70-$9EA4`. The two five-player teams alternate on the low bit of `$001A`, so each team is evaluated at 30 Hz. `$004D` rotates through the opposing five-player range and identifies the one slot that receives the more expensive target/vector refresh. The native scheduler preserves this alternating cadence and initializes its phase to the observed `$001A=$DC` at original frame 2557.
+
+The CPU uses packed court coordinates rather than independent hard-coded X/Y destinations. Bank 0 `$AB72` packs the longitudinal and depth axes into `$05B0/$05C0`; `$ABAB-$ABCC` expands `$05D0/$05E0` targets back to world coordinates. `$AC2A-$AC57` divides that packed value into seven court regions. The native helpers implement those transformations directly with named `Player` target fields.
+
+The first native CPU slice translates these observed handlers:
+
+| Original routine | Action | Native behavior |
+| --- | --- | --- |
+| fixed bank 7 `$D6FD-$D742` | state `$40` | role/team/half-court target selection from `$D745`, periodic and arrival-driven retargeting |
+| bank 0 `$829E-$836E` | state `$3C` | opening cutter route with an occupancy-safe transition to `$3D` |
+| bank 0 `$83C5-$842C` | state `$3E` | seven-region spacing choice using `$8452`, rejecting an occupied first choice |
+| bank 0 `$8B5A-$8BC5` plus fixed bank 7 `$D772-$DA39` | state `$25` | opening carrier route, arrival gates, and the observed `$25->$32->$26->$27` decision handoff; the full `$D99A` obstacle search remains follow-up work |
+
+### Tip input, possession, and ball dispatcher trace
+
+`Capture-TipoffGameplay.ps1` now accepts an explicit A/B press interval and the Lua trace covers gameplay RAM `$0700-$07DF`, PPU snapshots, and `$2006/$2007` writes. The A/B sweep established that B is the jump button. Pressing B on original frame 2502 (native transition frame 301) changes original player slot 2 from state `$10` to `$11` at bank 0 `$A61F`. The CPU is provisionally selected at frame 2531, then the successful user-contact branch changes `$005B` from original slot 7 to slot 2 at `$A68A` on frame 2532. Native player indices remove the two non-player object slots, so original slots 2 and 7 are native players 0 and 5.
+
+The player dispatcher at bank 0 `$89B2` passes the action index to the fixed-bank indirect jump helper at `$C41C`. Its relevant opening chain is state `$25` at `$8B5A`, state `$26` at `$8D1F`, and state `$27` at `$8D57`. `$8D1F` changes the player to `$27`, selects ball state `$04`, installs the signed height/action data, and clears the flight velocities. `$8D57` continues the decision/shot path and calls the shared movement, collision, and decision helpers.
+
+The ball dispatcher begins at bank 0 `$AC83` and uses the same `$C41C` helper. Its table resolves states `$00-$0A` to `$ACB6`, `$ACD6`, `$AD41`, `$ADF2`, `$AE0C`, `$AE25`, `$AEDE`, `$AF46`, `$AF72`, `$AFDD`, and `$B017`; states `$0B/$0C` take the dead-ball return at `$ACAB`. In the observed opening shot, `$AE0C` is the gather/owner-attachment handler and `$AE25` advances flight and calls the rim, score, world-motion, and rebound helpers including `$B377`, `$B473`, `$9CA0`, `$9CF6`, and `$9B84`.
+
+The no-input FCEUX trace gives the following deterministic checkpoints. “Live” is counted from original frame 2557, the first regular-play frame.
+
+| Original frame | Live | Observed state |
+| ---: | ---: | --- |
+| 2721 | 164 | CPU carrier enters player state `$26`. |
+| 2723 | 166 | Carrier enters `$27`; ball enters shot-gather state `$04`. |
+| 2749 | 192 | Ball enters airborne state `$05`. |
+| 2770 | 213 | Ball enters score/rim state `$06`. |
+| 2783 | 226 | Ball enters rebound state `$07`. |
+| 2944 | 387 | Ball returns to held/dribble `$01` with original slot 2. |
+| 3004 | 447 | Ball becomes released/awarded `$00`. |
+| 3324 | 767 | `$9583->$9645` starts the dead-ball formation: ball `$0B`, players `$36`, inbounder `$41`. |
+| 3501 | 944 | Original slot 7 holds the inbound in player state `$30`, ball `$01`. |
+| 3545 | 988 | Inbounder advances to state `$31`, ball `$00`. |
+| 3553 | 996 | Inbound pass begins in ball state `$02`. |
+| 3572 | 1015 | Original slot 8 receives in state `$25`; ball resumes `$01`. |
+
+The native CPU decision is intentionally bounded to what this trace proves. A carrier in the recovered shooting region chooses the `$04` shot chain; a carrier outside that region selects the most advanced same-team receiver and enters pass state `$02`. It does not yet claim to reproduce every branch of fixed-bank `$D759-$D8B0`, `$D978`, or `$D99A`.
+
+### Camera CHR stream and moving-goal fix
+
+The moving goal was not a geometry or scroll error. This mapper-2 game uses CHR RAM, and the pre-tip PPU snapshot contained the wrong pattern bytes once the camera approached a basket. FCEUX recorded the original camera stream beginning during original frames 2600-2620: fixed-bank `$CBB7/$CBBE` wrote 32 bytes per frame through `$2007` while bank 0 `$B51D-$B59D` queued the source data.
+
+The routine reads camera byte `$0043`. Values below `$78` select the pointer at `$B516` (`$B59E`, left court); values at or above `$88` select the pointer at `$B518` (`$B83E`, right court); `$78-$87` is a deadband that preserves the current side. It streams 21 chunks of 32 bytes, exactly 672 bytes, into PPU `$1B00-$1D9F`. A byte comparison confirmed that bank-0 `$B59E..$B83D` exactly matches that destination in the original frame-2700 PPU dump. DDAP v10 packages the two bounded streams, and the native renderer applies one when the recovered camera thresholds select it. Native transition frame 439 now renders the complete left backboard and rim where the prior build displayed corrupt tiles.
+
+### Reproducible Ghidra provenance
+
+`tools/ghidra/Run-GameplayLoopAnalysis.ps1` imports bank 0 at `$8000` and fixed bank 7 at `$C000`, then runs `ExportGameplayLoopEvidence.java` to force-disassemble the recorded anchors and emit instruction/decompiler reports under ignored `build/ghidra-reports/`. The most useful mappings for this slice are:
+
+| Behavior | CPU address | PRG bank | ROM file offset |
+| --- | ---: | ---: | ---: |
+| User jumper enters state `$11` | `$A61F` | 0 | `$262F` |
+| User contact overrides tip winner | `$A68A` | 0 | `$269A` |
+| Player action dispatcher | `$89B2` | 0 | `$09C2` |
+| State `$26` starts shot gather | `$8D1F` | 0 | `$0D2F` |
+| State `$27` decision/continuation | `$8D57` | 0 | `$0D67` |
+| Ball action dispatcher | `$AC83` | 0 | `$2C93` |
+| Ball `$04` gather | `$AE0C` | 0 | `$2E1C` |
+| Ball `$05` flight/rim logic | `$AE25` | 0 | `$2E35` |
+| Inbound/out-of-bounds root | `$9583` | 0 | `$1593` |
+| Inbound formation initializer | `$9645` | 0 | `$1655` |
+| Camera CHR streamer | `$B51D` | 0 | `$352D` |
+| Left/right court CHR sources | `$B59E` / `$B83E` | 0 | `$35AE` / `$384E` |
+| Shared indirect dispatcher | `$C41C` | fixed 7 | `$1C42C` |
+| CPU decision root | `$D759` | fixed 7 | `$1D769` |
+| CPU obstacle/search helper | `$D99A` | fixed 7 | `$1D9AA` |
+
+The live Ghidra MCP bridge was not listening during this pass, so the evidence was produced with Ghidra 11.3 headless using the checked-in script rather than by guessing from a static hex dump. FCEUX supplied the runtime branch and frame/PC correlation; Ghidra supplied the dispatcher and call-flow interpretation.
+
+`tests/dd_gameplay_cpu_test.c` loads the generated asset pack and verifies the original target data, alternating 30 Hz team updates, `$001A` phase progression, user B-jump and next-frame winner override, carrier targets `$70/$6C/$85`, shot states `$04-$07`, recovery, dead-ball/inbound states, pass reception, a synthetic CPU pass decision, and distinct left/right court CHR streams. `build.ps1` compiles and executes these checks on every asset-pack build.
 
 ### Next implementation slice
 
-1. Capture an FCEUX A/B timing sweep to determine the controllable slot-2 win path before locking jump controls.
-2. Translate the live offensive and defensive action dispatchers closely enough to replace the provisional formation targets.
-3. Port game-clock/HUD updates, then name and translate pass, shot, rebound, steal, and out-of-bounds ball states.
+1. Trace the next possession beyond the first inbound, including the full `$D99A` obstacle/search decisions and pass-lane rejection.
+2. Name and translate steal, block, missed-shot, and non-scripted out-of-bounds branches.
+3. Port game-clock/HUD updates and the remaining defensive action states.
 
 ## Open research questions
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
-- Determine the exact A/B timing window and alternate possession result for the human jump-ball branch.
-- Name and translate the pass, shot, rebound, steal, and out-of-bounds ball states after the initial live-control slice.
+- Determine the full successful B timing window around the proven original-frame-2502 user jump.
+- Name and translate the steal, block, missed-shot, and remaining out-of-bounds branches after the initial inbound slice.

@@ -687,6 +687,7 @@ static uint32_t dd_gameplay_emit(const DDAssetPack *pack, const DDTipoffAssetsHe
 int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
                        uint32_t *pixels, uint32_t width, uint32_t height) {
     const DDTipoffAssetsHeader *assets;
+    uint8_t ppu[DD_PPU_SIZE];
     uint8_t oam[256];
     uint32_t sprite = 1u;
     uint32_t player;
@@ -697,6 +698,12 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
         width != pack->tipoff_meta.width || height != pack->tipoff_meta.height) return 0;
     if (state->scene_frame < 270u) return dd_render_tipoff(pack, pixels, width, height);
     assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
+    memcpy(ppu, pack->tipoff_ppu, sizeof(ppu));
+    if (state->camera_chr_side == 0u) {
+        memcpy(ppu + 0x1B00u, assets->court_chr_left, sizeof(assets->court_chr_left));
+    } else if (state->camera_chr_side == 2u) {
+        memcpy(ppu + 0x1B00u, assets->court_chr_right, sizeof(assets->court_chr_right));
+    }
     memset(oam, 0, sizeof(oam));
     for (player = 0u; player < 64u; ++player) oam[player * 4u] = 0xF4u;
     oam[0] = 0x38u; oam[1] = 0xFEu; oam[2] = 0x30u; oam[3] = 0x20u;
@@ -719,7 +726,7 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
         oam[sprite * 4u] = 0xF4u;
         ++sprite;
     }
-    return dd_render_scrolled_scene(pack->tipoff_ppu, pack->tipoff_ppu_size,
+    return dd_render_scrolled_scene(ppu, sizeof(ppu),
                                     oam, sizeof(oam), pack->tipoff_meta.background_pattern_base,
                                     pack->tipoff_meta.nametable_base, pack->tipoff_meta.ppu_control,
                                     64u, (uint32_t)camera, pixels, width, height);

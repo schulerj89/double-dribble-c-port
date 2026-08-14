@@ -7,6 +7,7 @@
 #define DD_TITLE_PPU_SIZE 0x4000u
 #define DD_PPU_SIZE DD_TITLE_PPU_SIZE
 #define DD_GAMEPLAY_METASPRITE_COUNT 42u
+#define DD_COURT_CHR_STREAM_SIZE 672u
 
 typedef struct DDTitleMeta {
     uint32_t width;
@@ -92,6 +93,10 @@ typedef struct DDTipoffAssetsHeader {
     uint32_t metasprite_size[DD_GAMEPLAY_METASPRITE_COUNT];
     int8_t held_ball_offsets[48];
     int8_t height_scripts[32];
+    uint8_t cpu_role_targets[20];
+    uint8_t cpu_spacing_targets[14];
+    uint8_t court_chr_left[DD_COURT_CHR_STREAM_SIZE];
+    uint8_t court_chr_right[DD_COURT_CHR_STREAM_SIZE];
 } DDTipoffAssetsHeader;
 #pragma pack(pop)
 
