@@ -54,16 +54,16 @@ static uint8_t dd_animation_for_facing(uint8_t facing, uint32_t phase) {
 static uint8_t dd_facing_from_velocity(int32_t x, int32_t depth, uint8_t fallback) {
     if (x == 0 && depth == 0) return fallback;
     if (x > 0) {
-        if (depth < 0) return 7u;
-        if (depth > 0) return 1u;
+        if (depth > 0) return 7u;
+        if (depth < 0) return 1u;
         return 0u;
     }
     if (x < 0) {
-        if (depth < 0) return 5u;
-        if (depth > 0) return 3u;
+        if (depth > 0) return 5u;
+        if (depth < 0) return 3u;
         return 4u;
     }
-    return depth < 0 ? 6u : 2u;
+    return depth > 0 ? 6u : 2u;
 }
 
 static int32_t dd_approach(int32_t value, int32_t target, int32_t speed) {
@@ -165,8 +165,8 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     int32_t input_depth = 0;
     if ((input_mask & DD_INPUT_LEFT) != 0u) input_x -= 0x0140;
     if ((input_mask & DD_INPUT_RIGHT) != 0u) input_x += 0x0140;
-    if ((input_mask & DD_INPUT_UP) != 0u) input_depth -= 0x0140;
-    if ((input_mask & DD_INPUT_DOWN) != 0u) input_depth += 0x0140;
+    if ((input_mask & DD_INPUT_UP) != 0u) input_depth += 0x0140;
+    if ((input_mask & DD_INPUT_DOWN) != 0u) input_depth -= 0x0140;
     controlled->velocity_x = input_x;
     controlled->velocity_depth = input_depth;
     controlled->court_x = dd_clamp(controlled->court_x + input_x, 0x001000, 0x01F000);
