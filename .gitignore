@@ -1,0 +1,23 @@
+# Build products and local reverse-engineering output
+/build/
+/captures/
+/ghidra-projects/
+/.vs/
+
+# User-owned game data must never enter version control
+*.nes
+*.rom
+*.assetpack
+*.sav
+*.fcs
+*.fm2
+*.wav
+*.avi
+
+# Local tooling state
+*.user
+*.suo
+*.VC.db
+__pycache__/
+*.pyc
+

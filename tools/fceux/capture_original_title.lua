@@ -1,0 +1,151 @@
+-- Reproducible FCEUX reference capture for the Double Dribble title milestone.
+--
+-- Outputs are reverse-engineering evidence and must remain under the ignored
+-- captures/ directory. Set DD_CAPTURE_ROOT and DD_ROM_PATH before launching.
+
+local capture_root = os.getenv("DD_CAPTURE_ROOT") or "."
+local rom_path = os.getenv("DD_ROM_PATH") or ""
+local final_frame = tonumber(os.getenv("DD_CAPTURE_FINAL_FRAME") or "600")
+
+local capture_frames = {
+    [30] = true,
+    [60] = true,
+    [90] = true,
+    [120] = true,
+    [150] = true,
+    [180] = true,
+    [210] = true,
+    [240] = true,
+    [300] = true,
+    [360] = true,
+    [420] = true,
+    [480] = true,
+    [540] = true,
+    [600] = true,
+}
+
+local function join_path(left, right)
+    local suffix = string.sub(left, -1)
+    if suffix == "\\" or suffix == "/" then
+        return left .. right
+    end
+    return left .. "\\" .. right
+end
+
+local function read_file(path)
+    local file = assert(io.open(path, "rb"))
+    local data = file:read("*all")
+    file:close()
+    return data
+end
+
+local rom_data = nil
+if rom_path ~= "" then
+    rom_data = read_file(rom_path)
+end
+
+local function current_switch_bank()
+    if rom_data == nil or string.len(rom_data) < 16 + (8 * 0x4000) then
+        return -1
+    end
+
+    for bank = 0, 7 do
+        local matched = true
+        local bank_start = 16 + (bank * 0x4000)
+        for index = 0, 15 do
+            local cpu_value = memory.readbyte(0x8000 + index)
+            local rom_value = string.byte(rom_data, bank_start + index + 1)
+            if cpu_value ~= rom_value then
+                matched = false
+                break
+            end
+        end
+        if matched then
+            return bank
+        end
+    end
+    return -1
+end
+
+local log_path = join_path(capture_root, "trace.csv")
+local log_file = assert(io.open(log_path, "w"))
+log_file:write("frame,event,address,value,pc,bank,a,x,y,p,zp00,zp01,zp02\n")
+
+local function log_event(event_name, address, value)
+    log_file:write(string.format(
+        "%d,%s,%04X,%02X,%04X,%d,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+        emu.framecount(),
+        event_name,
+        address,
+        value,
+        memory.getregister("pc"),
+        current_switch_bank(),
+        memory.getregister("a"),
+        memory.getregister("x"),
+        memory.getregister("y"),
+        memory.getregister("p"),
+        memory.readbyte(0x0000),
+        memory.readbyte(0x0001),
+        memory.readbyte(0x0002)
+    ))
+    log_file:flush()
+end
+
+local function on_apu_write(address, size, value)
+    log_event("apu-write", address, value)
+end
+
+local function on_mapper_write(address, size, value)
+    log_event("mapper-write", address, value)
+end
+
+local function on_ppu_register_write(address, size, value)
+    -- Register only the control/address/data path used by screen loaders. This
+    -- remains diagnostic evidence; no PPU write log is a runtime dependency.
+    log_event("ppu-write", address, value)
+end
+
+memory.registerwrite(0x4000, 0x16, on_apu_write)
+memory.registerwrite(0x8000, 0x8000, on_mapper_write)
+memory.registerwrite(0x2000, 0x08, on_ppu_register_write)
+memory.registerexecute(0xC566, function(address, size, value)
+    log_event("stream-entry", address, value)
+end)
+memory.registerexecute(0xC5C3, function(address, size, value)
+    log_event("stream-exit", address, value)
+end)
+memory.registerexecute(0xCD70, function(address, size, value)
+    log_event("dmc-entry", address, value)
+end)
+
+local function write_binary(path, bytes)
+    local file = assert(io.open(path, "wb"))
+    file:write(bytes)
+    file:close()
+end
+
+local function capture(frame)
+    local stem = string.format("frame-%04d", frame)
+    gui.savescreenshotas(join_path(capture_root, stem .. ".png"))
+    write_binary(join_path(capture_root, stem .. "-ppu.bin"), ppu.readbyterange(0, 0x4000))
+
+    local ram = {}
+    for address = 0, 0x07FF do
+        ram[#ram + 1] = string.char(memory.readbyte(address))
+    end
+    write_binary(join_path(capture_root, stem .. "-ram.bin"), table.concat(ram))
+
+    log_event("capture", 0, 0)
+end
+
+emu.poweron()
+while emu.framecount() < final_frame do
+    emu.frameadvance()
+    local frame = emu.framecount()
+    if capture_frames[frame] then
+        capture(frame)
+    end
+end
+
+log_file:close()
+emu.exit()
