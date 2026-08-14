@@ -33,6 +33,17 @@ typedef struct DDIntroMeta {
     uint32_t music_frames;
 } DDIntroMeta;
 
+typedef struct DDConfigMeta {
+    uint32_t width;
+    uint32_t height;
+    uint32_t background_pattern_base;
+    uint32_t nametable_base;
+    uint32_t ppu_control;
+    uint32_t sprite_count;
+    uint32_t option_count;
+    uint32_t original_visible_frame;
+} DDConfigMeta;
+
 #pragma pack(push, 1)
 typedef struct DDMusicNote {
     uint32_t frame;
@@ -59,8 +70,13 @@ typedef struct DDAssetPack {
     size_t intro_updates_size;
     DDMusicNote *intro_music;
     size_t intro_music_count;
+    uint8_t *config_ppu;
+    size_t config_ppu_size;
+    uint8_t *config_oam;
+    size_t config_oam_size;
     DDTitleMeta meta;
     DDIntroMeta intro_meta;
+    DDConfigMeta config_meta;
 } DDAssetPack;
 
 int dd_build_asset_pack(const char *rom_path, const char *output_path);

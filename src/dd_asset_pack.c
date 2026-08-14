@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 3u
+#define DD_PACK_VERSION 4u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -16,7 +16,8 @@
 #define DD_ENTRY_INTRO_META 5u
 #define DD_ENTRY_UPDATES 6u
 #define DD_ENTRY_MUSIC 7u
-#define DD_ENTRY_COUNT 9u
+#define DD_ENTRY_CONFIG_META 8u
+#define DD_ENTRY_COUNT 12u
 #define DD_ROM_SIZE 131088u
 #define DD_INTRO_SPRITE_ASSET_SIZE 141u
 
@@ -373,6 +374,50 @@ static void dd_build_intro_oam(uint8_t oam[256]) {
     }
 }
 
+static int dd_build_config_oam(const uint8_t *rom, size_t rom_size, uint8_t oam[256]) {
+    const size_t object_table = dd_bank_file_offset(1u, 0xA2DBu);
+    const size_t bank2_end = 16u + 3u * 0x4000u;
+    uint32_t sprite = 1u;
+    uint32_t object;
+    memset(oam, 0, 256u);
+    for (object = 0u; object < 64u; ++object) oam[object * 4u] = 0xF4u;
+    oam[0] = 0x38u; oam[1] = 0xFEu; oam[2] = 0x30u; oam[3] = 0x20u;
+    if (object_table + 44u > rom_size || bank2_end > rom_size) return 0;
+    for (object = 0u; object < 11u; ++object) {
+        uint8_t animation = rom[object_table + object * 4u];
+        uint8_t base_attributes = rom[object_table + object * 4u + 1u];
+        uint8_t base_x = rom[object_table + object * 4u + 2u];
+        uint8_t base_y = rom[object_table + object * 4u + 3u];
+        uint16_t address = dd_read_bank_u16(rom, 2u, 0x828Du + animation * 2u);
+        size_t position = dd_bank_file_offset(2u, address);
+        uint8_t attributes = base_attributes;
+        uint8_t record_count;
+        uint32_t record;
+        if (address < 0x8000u || address >= 0xC000u || position >= bank2_end) return 0;
+        record_count = rom[position++];
+        for (record = 0u; record < record_count; ++record) {
+            uint8_t lead;
+            uint8_t y_offset;
+            uint8_t tile;
+            if (position + 3u > bank2_end || sprite >= 64u) return 0;
+            lead = rom[position++];
+            y_offset = (uint8_t)((lead >> 1u) | (lead & 0x80u));
+            tile = rom[position++];
+            if ((lead & 1u) == 0u) {
+                if (position >= bank2_end) return 0;
+                attributes = (uint8_t)((base_attributes | rom[position++]) & 0xE3u);
+            }
+            if (position >= bank2_end) return 0;
+            oam[sprite * 4u] = (uint8_t)(base_y + y_offset);
+            oam[sprite * 4u + 1u] = tile;
+            oam[sprite * 4u + 2u] = attributes;
+            oam[sprite * 4u + 3u] = (uint8_t)(base_x + (int8_t)rom[position++]);
+            ++sprite;
+        }
+    }
+    return sprite == 48u;
+}
+
 static int dd_build_intro_updates(const uint8_t *rom, size_t rom_size,
                                   uint8_t **output_data, size_t *output_size,
                                   uint32_t *output_count) {
@@ -475,19 +520,24 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
     uint8_t digest[32];
     uint8_t ppu[DD_TITLE_PPU_SIZE] = {0};
     uint8_t intro_ppu[DD_PPU_SIZE] = {0};
+    uint8_t config_ppu[DD_PPU_SIZE] = {0};
     uint8_t oam[256];
     uint8_t intro_oam[256];
+    uint8_t config_oam[256];
     uint8_t *intro_updates = NULL;
     size_t intro_updates_size = 0u;
     uint32_t intro_update_count = 0u;
     uint32_t consumed[3] = {0};
     uint32_t intro_consumed[3] = {0};
+    uint32_t config_consumed[3] = {0};
     const uint32_t dmc_file_offset = 0x1EAD0u;
     const uint32_t dmc_size = 3073u;
     const uint32_t title_palette_file_offset = 0x1C956u;
     const uint32_t intro_palette_file_offset = 0x1C9A8u;
+    const uint32_t config_palette_file_offset = 0x1C97Fu;
     DDTitleMeta meta = {256u, 240u, 0x1000u, 0x2000u, 10u, 15u, 0u, 0xEAC0u, 3073u, 0xB0u, 20u};
     DDIntroMeta intro_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 64u, 5u, 0u, 1920u};
+    DDConfigMeta config_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 48u, 4u, 2097u};
     DDPackHeader header;
     DDPackEntry entries[DD_ENTRY_COUNT];
     uint64_t payload_offset = sizeof(header) + sizeof(entries);
@@ -509,16 +559,22 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
         !dd_decode_stream(rom, rom_size, 5u, 0xB196u, intro_ppu, &intro_consumed[0]) ||
         !dd_decode_stream(rom, rom_size, 2u, 0xAD67u, intro_ppu, &intro_consumed[1]) ||
         !dd_decode_stream(rom, rom_size, 1u, 0xA030u, intro_ppu, &intro_consumed[2]) ||
+        !dd_decode_stream(rom, rom_size, 4u, 0xB0B4u, config_ppu, &config_consumed[0]) ||
+        !dd_decode_stream(rom, rom_size, 4u, 0xA74Bu, config_ppu, &config_consumed[1]) ||
+        !dd_decode_stream(rom, rom_size, 1u, 0xA7FDu, config_ppu, &config_consumed[2]) ||
         !dd_build_intro_updates(rom, rom_size, &intro_updates, &intro_updates_size, &intro_update_count) ||
+        !dd_build_config_oam(rom, rom_size, config_oam) ||
         title_palette_file_offset + 32u > rom_size || intro_palette_file_offset + 32u > rom_size ||
+        config_palette_file_offset + 32u > rom_size ||
         dmc_file_offset + dmc_size > rom_size) {
-        fprintf(stderr, "The title or intro asset streams were malformed.\n");
+        fprintf(stderr, "The title, intro, or configuration asset streams were malformed.\n");
         free(intro_updates);
         free(rom);
         return 0;
     }
     memcpy(ppu + 0x3F00u, rom + title_palette_file_offset, 32u);
     memcpy(intro_ppu + 0x3F00u, rom + intro_palette_file_offset, 32u);
+    memcpy(config_ppu + 0x3F00u, rom + config_palette_file_offset, 32u);
     dd_build_title_oam(oam);
     dd_build_intro_oam(intro_oam);
     intro_meta.update_count = intro_update_count;
@@ -566,6 +622,18 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
                  sizeof(DD_INTRO_MUSIC), dd_crc32((const uint8_t *)DD_INTRO_MUSIC, sizeof(DD_INTRO_MUSIC)),
                  1u, (uint32_t)dd_bank_file_offset(1u, 0x8000u), 0x04A1u, 5u);
     payload_offset += sizeof(DD_INTRO_MUSIC);
+    dd_set_entry(&entries[9], "config.meta", DD_ENTRY_CONFIG_META, payload_offset,
+                 sizeof(config_meta), dd_crc32((const uint8_t *)&config_meta, sizeof(config_meta)),
+                 1u, (uint32_t)dd_bank_file_offset(1u, 0xA25Bu), 0xACu, 0u);
+    payload_offset += sizeof(config_meta);
+    dd_set_entry(&entries[10], "config.ppu", DD_ENTRY_PPU, payload_offset,
+                 sizeof(config_ppu), dd_crc32(config_ppu, sizeof(config_ppu)),
+                 0xFFFFFFFFu, 0u, config_consumed[0] + config_consumed[1] + config_consumed[2], 1u);
+    payload_offset += sizeof(config_ppu);
+    dd_set_entry(&entries[11], "config.oam", DD_ENTRY_OAM, payload_offset,
+                 sizeof(config_oam), dd_crc32(config_oam, sizeof(config_oam)),
+                 2u, (uint32_t)dd_bank_file_offset(2u, 0x828Du), 0x758u, 6u);
+    payload_offset += sizeof(config_oam);
     header.directory_crc32 = dd_crc32((const uint8_t *)entries, sizeof(entries));
     header.total_size = payload_offset;
 
@@ -580,7 +648,10 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
         fwrite(intro_ppu, 1, sizeof(intro_ppu), output) != sizeof(intro_ppu) ||
         fwrite(intro_oam, 1, sizeof(intro_oam), output) != sizeof(intro_oam) ||
         fwrite(intro_updates, 1, intro_updates_size, output) != intro_updates_size ||
-        fwrite(DD_INTRO_MUSIC, 1, sizeof(DD_INTRO_MUSIC), output) != sizeof(DD_INTRO_MUSIC)) {
+        fwrite(DD_INTRO_MUSIC, 1, sizeof(DD_INTRO_MUSIC), output) != sizeof(DD_INTRO_MUSIC) ||
+        fwrite(&config_meta, 1, sizeof(config_meta), output) != sizeof(config_meta) ||
+        fwrite(config_ppu, 1, sizeof(config_ppu), output) != sizeof(config_ppu) ||
+        fwrite(config_oam, 1, sizeof(config_oam), output) != sizeof(config_oam)) {
         if (output != NULL) {
             fclose(output);
         }
@@ -591,9 +662,10 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
     fclose(output);
     free(intro_updates);
     free(rom);
-    printf("Built %s (title streams: %u/%u/%u, intro streams: %u/%u/%u, %u updates).\n",
+    printf("Built %s (title streams: %u/%u/%u, intro streams: %u/%u/%u, %u updates; config streams: %u/%u/%u).\n",
            output_path, consumed[0], consumed[1], consumed[2],
-           intro_consumed[0], intro_consumed[1], intro_consumed[2], intro_update_count);
+           intro_consumed[0], intro_consumed[1], intro_consumed[2], intro_update_count,
+           config_consumed[0], config_consumed[1], config_consumed[2]);
     return 1;
 }
 
@@ -626,6 +698,9 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     const DDPackEntry *intro_oam_entry;
     const DDPackEntry *intro_updates_entry;
     const DDPackEntry *intro_music_entry;
+    const DDPackEntry *config_meta_entry;
+    const DDPackEntry *config_ppu_entry;
+    const DDPackEntry *config_oam_entry;
     memset(pack, 0, sizeof(*pack));
     if (!dd_read_file(path, &file_data, &file_size) || file_size < sizeof(DDPackHeader) + sizeof(DDPackEntry) * DD_ENTRY_COUNT) {
         free(file_data);
@@ -649,19 +724,27 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     intro_oam_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_OAM, "intro.oam");
     intro_updates_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_UPDATES, "intro.updates");
     intro_music_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_MUSIC, "intro.music");
+    config_meta_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_CONFIG_META, "config.meta");
+    config_ppu_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_PPU, "config.ppu");
+    config_oam_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_OAM, "config.oam");
     if (meta_entry == NULL || ppu_entry == NULL || dmc_entry == NULL || oam_entry == NULL ||
         intro_meta_entry == NULL || intro_ppu_entry == NULL || intro_oam_entry == NULL ||
-        intro_updates_entry == NULL || intro_music_entry == NULL ||
+        intro_updates_entry == NULL || intro_music_entry == NULL || config_meta_entry == NULL ||
+        config_ppu_entry == NULL || config_oam_entry == NULL ||
         meta_entry->size != sizeof(DDTitleMeta) || ppu_entry->size != DD_TITLE_PPU_SIZE ||
         dmc_entry->size != 3073u || oam_entry->size != 256u ||
         intro_meta_entry->size != sizeof(DDIntroMeta) || intro_ppu_entry->size != DD_PPU_SIZE ||
         intro_oam_entry->size != 256u || intro_updates_entry->size < 4u ||
         intro_music_entry->size == 0u || intro_music_entry->size % sizeof(DDMusicNote) != 0u ||
+        config_meta_entry->size != sizeof(DDConfigMeta) || config_ppu_entry->size != DD_PPU_SIZE ||
+        config_oam_entry->size != 256u ||
         !dd_entry_in_bounds(meta_entry, file_size) || !dd_entry_in_bounds(ppu_entry, file_size) ||
         !dd_entry_in_bounds(dmc_entry, file_size) || !dd_entry_in_bounds(oam_entry, file_size) ||
         !dd_entry_in_bounds(intro_meta_entry, file_size) || !dd_entry_in_bounds(intro_ppu_entry, file_size) ||
         !dd_entry_in_bounds(intro_oam_entry, file_size) || !dd_entry_in_bounds(intro_updates_entry, file_size) ||
         !dd_entry_in_bounds(intro_music_entry, file_size) ||
+        !dd_entry_in_bounds(config_meta_entry, file_size) || !dd_entry_in_bounds(config_ppu_entry, file_size) ||
+        !dd_entry_in_bounds(config_oam_entry, file_size) ||
         meta_entry->crc32 != dd_crc32(file_data + meta_entry->offset, (size_t)meta_entry->size) ||
         ppu_entry->crc32 != dd_crc32(file_data + ppu_entry->offset, (size_t)ppu_entry->size) ||
         dmc_entry->crc32 != dd_crc32(file_data + dmc_entry->offset, (size_t)dmc_entry->size) ||
@@ -670,17 +753,25 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         intro_ppu_entry->crc32 != dd_crc32(file_data + intro_ppu_entry->offset, (size_t)intro_ppu_entry->size) ||
         intro_oam_entry->crc32 != dd_crc32(file_data + intro_oam_entry->offset, (size_t)intro_oam_entry->size) ||
         intro_updates_entry->crc32 != dd_crc32(file_data + intro_updates_entry->offset, (size_t)intro_updates_entry->size) ||
-        intro_music_entry->crc32 != dd_crc32(file_data + intro_music_entry->offset, (size_t)intro_music_entry->size)) {
+        intro_music_entry->crc32 != dd_crc32(file_data + intro_music_entry->offset, (size_t)intro_music_entry->size) ||
+        config_meta_entry->crc32 != dd_crc32(file_data + config_meta_entry->offset, (size_t)config_meta_entry->size) ||
+        config_ppu_entry->crc32 != dd_crc32(file_data + config_ppu_entry->offset, (size_t)config_ppu_entry->size) ||
+        config_oam_entry->crc32 != dd_crc32(file_data + config_oam_entry->offset, (size_t)config_oam_entry->size)) {
         free(file_data);
         return 0;
     }
     memcpy(&pack->meta, file_data + meta_entry->offset, sizeof(pack->meta));
     memcpy(&pack->intro_meta, file_data + intro_meta_entry->offset, sizeof(pack->intro_meta));
+    memcpy(&pack->config_meta, file_data + config_meta_entry->offset, sizeof(pack->config_meta));
     if (pack->meta.width != 256u || pack->meta.height != 240u ||
         pack->meta.background_pattern_base != 0x1000u || pack->meta.nametable_base != 0x2000u ||
         pack->intro_meta.width != 256u || pack->intro_meta.height != 240u ||
         pack->intro_meta.background_pattern_base != 0x1000u || pack->intro_meta.nametable_base != 0x2000u ||
         pack->intro_meta.sprite_count > 64u || pack->intro_meta.music_frames == 0u ||
+        pack->config_meta.width != 256u || pack->config_meta.height != 240u ||
+        pack->config_meta.background_pattern_base != 0x1000u || pack->config_meta.nametable_base != 0x2000u ||
+        pack->config_meta.sprite_count > 64u || pack->config_meta.option_count != 4u ||
+        pack->config_meta.original_visible_frame != 2097u ||
         dd_read_blob_u32(file_data + intro_updates_entry->offset) != pack->intro_meta.update_count) {
         free(file_data);
         memset(pack, 0, sizeof(*pack));
@@ -693,9 +784,12 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     pack->intro_oam = (uint8_t *)malloc((size_t)intro_oam_entry->size);
     pack->intro_updates = (uint8_t *)malloc((size_t)intro_updates_entry->size);
     pack->intro_music = (DDMusicNote *)malloc((size_t)intro_music_entry->size);
+    pack->config_ppu = (uint8_t *)malloc((size_t)config_ppu_entry->size);
+    pack->config_oam = (uint8_t *)malloc((size_t)config_oam_entry->size);
     if (pack->ppu == NULL || pack->dmc == NULL || pack->oam == NULL ||
         pack->intro_ppu == NULL || pack->intro_oam == NULL ||
-        pack->intro_updates == NULL || pack->intro_music == NULL) {
+        pack->intro_updates == NULL || pack->intro_music == NULL ||
+        pack->config_ppu == NULL || pack->config_oam == NULL) {
         dd_asset_pack_unload(pack);
         free(file_data);
         return 0;
@@ -707,6 +801,8 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     memcpy(pack->intro_oam, file_data + intro_oam_entry->offset, (size_t)intro_oam_entry->size);
     memcpy(pack->intro_updates, file_data + intro_updates_entry->offset, (size_t)intro_updates_entry->size);
     memcpy(pack->intro_music, file_data + intro_music_entry->offset, (size_t)intro_music_entry->size);
+    memcpy(pack->config_ppu, file_data + config_ppu_entry->offset, (size_t)config_ppu_entry->size);
+    memcpy(pack->config_oam, file_data + config_oam_entry->offset, (size_t)config_oam_entry->size);
     pack->ppu_size = (size_t)ppu_entry->size;
     pack->dmc_size = (size_t)dmc_entry->size;
     pack->oam_size = (size_t)oam_entry->size;
@@ -714,6 +810,8 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     pack->intro_oam_size = (size_t)intro_oam_entry->size;
     pack->intro_updates_size = (size_t)intro_updates_entry->size;
     pack->intro_music_count = (size_t)intro_music_entry->size / sizeof(DDMusicNote);
+    pack->config_ppu_size = (size_t)config_ppu_entry->size;
+    pack->config_oam_size = (size_t)config_oam_entry->size;
     {
         size_t note_index;
         uint32_t previous_frame = 0u;
@@ -741,6 +839,8 @@ void dd_asset_pack_unload(DDAssetPack *pack) {
     free(pack->intro_oam);
     free(pack->intro_updates);
     free(pack->intro_music);
+    free(pack->config_ppu);
+    free(pack->config_oam);
     memset(pack, 0, sizeof(*pack));
 }
 
@@ -750,9 +850,9 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v3: %ux%u title, %zu DMC bytes; intro has %u updates and %zu music notes.\n",
+    printf("Valid DDAP v4: %ux%u title, %zu DMC bytes; intro has %u updates and %zu music notes; config has %u options.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
-           pack.intro_meta.update_count, pack.intro_music_count);
+           pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count);
     dd_asset_pack_unload(&pack);
     return 1;
 }

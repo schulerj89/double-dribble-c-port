@@ -40,7 +40,7 @@ Do not infer a ROM offset from a CPU address without recording the active bank. 
 
 ## Current milestone
 
-Preserve the completed title/voice and full native 1P introduction while moving into game configuration. The completed acceptance baseline includes:
+Preserve the completed title/voice, full native 1P introduction, and initial game-configuration screen while moving into configuration values and confirmation. The completed acceptance baseline includes:
 
 - an FCEUX reference screenshot and timing note;
 - a Ghidra/FCEUX-backed trace of title initialization and DMC playback;
@@ -50,3 +50,5 @@ Preserve the completed title/voice and full native 1P introduction while moving 
 - keyboard-selectable 1P and original transition timing;
 - the road-intro PPU streams, compact update state machine, blimp motion, balloon flights, flag rise/wave, and complete native music synthesis;
 - exact comparisons at stable road, balloon, and flag checkpoints through original frame 2084.
+- the cyan/black configuration loading transition and pixel-exact first visible frame at original frame 2097;
+- native Up/Down navigation across the four configuration rows.

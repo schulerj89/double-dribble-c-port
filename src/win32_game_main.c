@@ -14,6 +14,9 @@
 #pragma comment(lib, "winmm.lib")
 
 #define IDI_APP_ICON 101
+#define DD_CONFIG_LOAD_FRAME 2010u
+#define DD_CONFIG_BLACK_FRAME 2017u
+#define DD_CONFIG_VISIBLE_FRAME 2022u
 
 static DDAssetPack g_pack;
 static uint32_t *g_pixels;
@@ -23,6 +26,7 @@ static uint8_t *g_intro_wav;
 static size_t g_intro_wav_size;
 static BITMAPINFO g_bitmap_info;
 static uint32_t g_selection;
+static uint32_t g_config_selection;
 static ULONGLONG g_start_tick;
 static int g_started;
 static int g_intro_music_started;
@@ -57,8 +61,20 @@ static int dd_render_current_frame(void) {
         dd_fill_frame(0x0000EBDBu);
         return 1;
     }
-    return dd_render_intro(&g_pack, frame - 90u, g_pixels,
-                           g_pack.intro_meta.width, g_pack.intro_meta.height);
+    if (frame < DD_CONFIG_LOAD_FRAME) {
+        return dd_render_intro(&g_pack, frame - 90u, g_pixels,
+                               g_pack.intro_meta.width, g_pack.intro_meta.height);
+    }
+    if (frame < DD_CONFIG_BLACK_FRAME) {
+        dd_fill_frame(0x0000EBDBu);
+        return 1;
+    }
+    if (frame < DD_CONFIG_VISIBLE_FRAME) {
+        dd_fill_frame(0x00000000u);
+        return 1;
+    }
+    return dd_render_config(&g_pack, g_config_selection, g_pixels,
+                            g_pack.config_meta.width, g_pack.config_meta.height);
 }
 
 static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
@@ -93,6 +109,13 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
                 PlaySoundW(NULL, NULL, 0);
                 g_started = 1;
                 g_start_tick = GetTickCount64();
+                InvalidateRect(window, NULL, FALSE);
+            } else if (g_started && dd_elapsed_frames() >= DD_CONFIG_VISIBLE_FRAME && wparam == VK_UP) {
+                g_config_selection = (g_config_selection + g_pack.config_meta.option_count - 1u) %
+                                     g_pack.config_meta.option_count;
+                InvalidateRect(window, NULL, FALSE);
+            } else if (g_started && dd_elapsed_frames() >= DD_CONFIG_VISIBLE_FRAME && wparam == VK_DOWN) {
+                g_config_selection = (g_config_selection + 1u) % g_pack.config_meta.option_count;
                 InvalidateRect(window, NULL, FALSE);
             }
             return 0;

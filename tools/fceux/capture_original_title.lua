@@ -51,6 +51,19 @@ local capture_frames = {
     [1380] = true,
     [1440] = true,
     [1500] = true,
+    [2084] = true,
+    [2085] = true,
+    [2088] = true,
+    [2091] = true,
+    [2092] = true,
+    [2093] = true,
+    [2094] = true,
+    [2095] = true,
+    [2096] = true,
+    [2097] = true,
+    [2098] = true,
+    [2099] = true,
+    [2100] = true,
 }
 
 local function join_path(left, right)

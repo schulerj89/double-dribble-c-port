@@ -79,7 +79,7 @@ The first asset-pack version will use a small directory-based binary container w
 - per-entry length and checksum;
 - sanitized source provenance (bank/offset/transform), not copied source bytes beyond the entry payload itself.
 
-Asset-pack v2 entries:
+Asset-pack v4 entries:
 
 - decoded title pattern data required by the native renderer;
 - title nametable/attribute data;
@@ -89,6 +89,8 @@ Asset-pack v2 entries:
 - decoded road-intro pattern/nametable state and palette;
 - normalized road-update commands with ROM pointers removed;
 - procedural intro OAM metadata and a native three-channel note score.
+- decoded game-configuration pattern/nametable state and palette;
+- importer-expanded configuration metasprites and configuration metadata.
 
 The asset pack is always local and ignored by Git.
 
@@ -179,9 +181,26 @@ The checked-in capture tools compare original frames against native logical fram
 
 The supplied application art is committed only as `resources/double_dribble.ico`. It is embedded as Windows branding and is never part of the generated game-content asset pack.
 
+## Milestone 3: initial game-configuration screen
+
+Status: **transition, initial screen, and row navigation implemented**. Original frame 2084 is the last flag frame. Frames 2085-2091 show the cyan loading field, frames 2092-2096 are black, and frame 2097 is the first visible configuration frame. The native timeline preserves those boundaries.
+
+| Behavior | Source evidence | Native counterpart |
+|---|---|---|
+| Configuration initializer | bank 1 `$A25B-$A2D8` | native scene entry and configuration metadata |
+| Object initialization table | bank 1 `$A2DB-$A306`, 11 records | importer-expanded `config.oam` |
+| Pattern stream | bank 4 `$B0B4`, 3,010 encoded bytes | decoded `config.ppu` data at `$1000` |
+| Pattern/scene stream | bank 4 `$A74B`, 2,409 encoded bytes | decoded configuration PPU state |
+| Nametable stream | bank 1 `$A7FD`, 496 encoded bytes | decoded `config.ppu` data at `$2000` |
+| Palette | fixed bank `$C96F`, 32 bytes | asset-pack configuration palette |
+| Metasprite pointer table/builder | bank 2 `$828D`, `$80E8-$8151` | bounded importer-side metasprite expansion |
+| Row navigation | bank 1 `$A307-$A363`, positions `$A364-$A367` | wrapping native Up/Down selection |
+
+Original and native frame 2097 report **0 differing pixels out of 57,344**. `Capture-NativeConfig.ps1` and `Compare-ConfigCaptures.ps1` reproduce the configuration screenshot check without storing any game assets in the repository.
+
 ## Open research questions
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
-- Port the game-configuration scene that starts streaming at original frame 2085.
+- Port TIME/TEAM/LEVEL value changes and END confirmation from the configuration handler.

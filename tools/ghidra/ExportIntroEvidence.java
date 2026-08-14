@@ -19,7 +19,8 @@ public class ExportIntroEvidence extends GhidraScript {
         0x8241L, 0x82C3L, 0x82D5L, 0x83AAL, 0x847DL, 0x8493L,
         0x9329L, 0x9348L, 0x9357L, 0x937FL, 0x938DL, 0x9396L, 0x939DL,
         0x93A3L, 0x93ABL, 0x93B8L, 0x942FL, 0x944CL, 0x9472L,
-        0x9495L, 0x94A5L, 0x94B2L, 0x94BCL, 0x94C6L, 0x94D2L, 0x94DEL
+        0x9495L, 0x94A5L, 0x94B2L, 0x94BCL, 0x94C6L, 0x94D2L, 0x94DEL,
+        0xA25BL, 0xA263L, 0xA2A1L, 0xA2CCL, 0xA307L, 0xA32DL
     };
 
     @Override
@@ -37,8 +38,10 @@ public class ExportIntroEvidence extends GhidraScript {
         PseudoDisassembler pseudo = new PseudoDisassembler(currentProgram);
         for (long value : ANCHORS) {
             Address address = toAddr(value);
-            if (getInstructionAt(address) == null && pseudo.isValidSubroutine(address, true)) {
-                disassemble(address);
+            if (getInstructionAt(address) == null) {
+                if (pseudo.isValidSubroutine(address, true) || value >= 0xA25BL) {
+                    disassemble(address);
+                }
             }
             if (getFunctionContaining(address) == null && getInstructionAt(address) != null) {
                 createFunction(address, String.format("intro_%04X", value));

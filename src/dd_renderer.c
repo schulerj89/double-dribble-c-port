@@ -9,13 +9,13 @@ static uint32_t dd_nes_color(uint8_t index) {
         0x008C0074u, 0x00AA0010u, 0x00A60000u, 0x007D0800u,
         0x00402C00u, 0x00004500u, 0x00005100u, 0x00003C14u,
         0x00183C5Du, 0x00000000u, 0x00000000u, 0x00000000u,
-        0x00BEBEBEu, 0x000071EFu, 0x002038ECu, 0x008200F3u,
-        0x00BC00BCu, 0x00E70059u, 0x00DB2800u, 0x00CA4C0Du,
+        0x00BEBEBEu, 0x000071EFu, 0x002038EFu, 0x008200F3u,
+        0x00BC00BCu, 0x00E70059u, 0x00DB2800u, 0x00CB4D0Cu,
         0x00887000u, 0x00009400u, 0x0000AA00u, 0x00009038u,
         0x00008088u, 0x00000000u, 0x00000000u, 0x00000000u,
         0x00FFFFFFu, 0x003CBCFCu, 0x005C94FCu, 0x00CC88FCu,
-        0x00F478FCu, 0x00FC74B4u, 0x00FF7561u, 0x00FF9A3Au,
-        0x00F0BC3Cu, 0x0080D010u, 0x004CDC48u, 0x0058F898u,
+        0x00F478FCu, 0x00FC74B4u, 0x00FF7561u, 0x00FF9A38u,
+        0x00F0BC3Cu, 0x0082D310u, 0x004CDC48u, 0x0058F898u,
         0x0000EBDBu, 0x00787878u, 0x00000000u, 0x00000000u,
         0x00FFFFFFu, 0x00AAE7FFu, 0x00C4D4FCu, 0x00D4C8FCu,
         0x00FCC4FCu, 0x00FCC4D8u, 0x00FFBEB2u, 0x00FFDBAAu,
@@ -316,6 +316,24 @@ int dd_render_intro(const DDAssetPack *pack, uint32_t intro_frame,
     return dd_render_scene(ppu, sizeof(ppu), oam, sizeof(oam),
                            pack->intro_meta.background_pattern_base, pack->intro_meta.nametable_base,
                            pack->intro_meta.ppu_control, pack->intro_meta.sprite_count,
+                           pixels, width, height);
+}
+
+int dd_render_config(const DDAssetPack *pack, uint32_t selection,
+                     uint32_t *pixels, uint32_t width, uint32_t height) {
+    uint8_t oam[256];
+    uint8_t cursor_y;
+    if (pack == NULL || pack->config_ppu == NULL || pack->config_ppu_size != DD_PPU_SIZE ||
+        pack->config_oam == NULL || pack->config_oam_size != sizeof(oam) ||
+        selection >= pack->config_meta.option_count || width != pack->config_meta.width ||
+        height != pack->config_meta.height) return 0;
+    memcpy(oam, pack->config_oam, sizeof(oam));
+    cursor_y = (uint8_t)(0x17u + selection * 0x20u);
+    oam[46u * 4u] = cursor_y;
+    oam[47u * 4u] = cursor_y;
+    return dd_render_scene(pack->config_ppu, pack->config_ppu_size, oam, sizeof(oam),
+                           pack->config_meta.background_pattern_base, pack->config_meta.nametable_base,
+                           pack->config_meta.ppu_control, pack->config_meta.sprite_count,
                            pixels, width, height);
 }
 

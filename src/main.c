@@ -12,6 +12,7 @@ static void dd_usage(void) {
     puts("  --inspect-assetpack <input.assetpack>");
     puts("  --render-title <input.assetpack> <output.bmp>");
     puts("  --render-intro <input.assetpack> <frame> <output.bmp>");
+    puts("  --render-config <input.assetpack> <selection> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
 }
@@ -70,6 +71,22 @@ int main(int argc, char **argv) {
             if (file != NULL) fclose(file);
             free(wav);
         }
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-config") == 0) {
+        uint32_t *pixels;
+        unsigned long selection;
+        char *end;
+        int ok;
+        selection = strtoul(argv[3], &end, 10);
+        if (*argv[3] == '\0' || *end != '\0' || selection > UINT32_MAX ||
+            !dd_asset_pack_load(argv[2], &pack)) return 1;
+        pixels = (uint32_t *)malloc((size_t)pack.config_meta.width * pack.config_meta.height * sizeof(uint32_t));
+        ok = pixels != NULL && dd_render_config(&pack, (uint32_t)selection, pixels,
+                                                pack.config_meta.width, pack.config_meta.height) &&
+             dd_write_bmp(argv[4], pixels, pack.config_meta.width, pack.config_meta.height);
+        free(pixels);
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;
     }
