@@ -8,6 +8,8 @@ local rom_path = os.getenv("DD_ROM_PATH") or ""
 local final_frame = tonumber(os.getenv("DD_CAPTURE_FINAL_FRAME") or "600")
 local start_frame = tonumber(os.getenv("DD_START_FRAME") or "-1")
 local intro_trace = os.getenv("DD_INTRO_TRACE") == "1"
+local trace_start = tonumber(os.getenv("DD_TRACE_START") or "166")
+local trace_end = tonumber(os.getenv("DD_TRACE_END") or "240")
 
 local capture_frames = {
     [30] = true,
@@ -147,15 +149,15 @@ memory.registerexecute(0xCD70, function(address, size, value)
 end)
 
 if intro_trace then
-    memory.registerwrite(0x0300, 0x0500, function(address, size, value)
+    memory.registerwrite(0x0200, 0x0600, function(address, size, value)
         local frame = emu.framecount()
-        if (frame >= 166 and frame <= 240) then
+        if frame >= trace_start and frame <= trace_end then
             log_event("intro-ram-write", address, value)
         end
     end)
     memory.registerexecute(0x8000, 0x4000, function(address, size, value)
         local frame = emu.framecount()
-        if frame >= 166 and frame <= 240 and current_switch_bank() == 1 then
+        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 1 then
             intro_pc_counts[address] = (intro_pc_counts[address] or 0) + 1
         end
     end)
@@ -187,7 +189,7 @@ while emu.framecount() < final_frame do
     joypad.set(1, { start = next_frame == start_frame or next_frame == start_frame + 1 })
     emu.frameadvance()
     local frame = emu.framecount()
-    if capture_frames[frame] then
+    if capture_frames[frame] or (frame > 1500 and frame % 60 == 0) then
         capture(frame)
     end
 end

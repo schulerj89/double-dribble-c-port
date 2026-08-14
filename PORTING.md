@@ -139,9 +139,9 @@ captures/diff/title-diff.png
 
 The native framebuffer is 256 x 240. This workstation's FCEUX configuration captures visible scanlines 8 through 231 as a 256 x 224 PNG, so `Compare-TitleCaptures.ps1` compares it to native rows 8 through 231 without scaling or tolerance. Current result: **0 differing pixels out of 57,344**. Audio is exported as mono 44.1 kHz, 16-bit PCM from the recovered DMC bitstream.
 
-## Milestone 2: 1P road intro and music
+## Milestone 2: complete 1P introduction and music
 
-Status: **selectable 1P and the complete road-approach phase are implemented**. The balloon/stadium follow-on that begins after the road phase is the next slice.
+Status: **complete**. Selectable 1P now runs from the original transition through the road approach, two-pass balloon object sequence, rising/waving U.S. flag, and the end of the music cue. Original frame 2085 begins loading the separate game-configuration screen and is the next scene boundary.
 
 ### Original input and timing
 
@@ -160,6 +160,10 @@ Status: **selectable 1P and the complete road-approach phase are implemented**. 
 | Phase pointer table | bank 1 `$9504-$952D` | resolved by importer; no ROM pointers at runtime |
 | NMI update consumer | fixed bank `$CB63-$CBAF`, RAM buffer `$0700` | native PPU-state command application |
 | Blimp OAM | frame-170 RAM/OAM observation, 16 8x16 sprites | procedural OAM plus one-pixel-per-eight-frame motion |
+| Balloon/flag controller | bank 1 `$9329`, `$942F-$9501` | native eight-object timing, re-route, completion, flag-rise, and wave state |
+| Balloon tables | bank 1 `$9417-$942E` | asset-pack delays, animation IDs, and X routes |
+| Metasprite builder | bank 2 `$8154-$81C2` | native variable-record metasprite expansion to OAM |
+| Balloon/flag metasprites | bank 2 pointer table `$828D`, IDs `$6F`, `$74`, `$7A` | bounded asset-pack records resolved by the importer |
 
 Ghidra recovered `$0471` as the 21-phase index, `$0472` as the update index inside a phase, and `$0473` as the countdown. Each phase's first update waits 48 frames; its remaining row updates execute on consecutive frames. The importer resolves the source pointer tables into 170 bounded records containing only delay, size, PPU address, and tile values. The native runtime advances those records as a scene state machine; it does not execute 6502 code or replay an emulator log.
 
@@ -167,11 +171,11 @@ Ghidra recovered `$0471` as the 21-phase index, `$0472` as the update index insi
 
 FCEUX observed the active music driver in switch bank 1. Ghidra anchors `$80ED-$83AA` cover channel sequencing, envelope/control updates, and timer writes to `$4000-$400B`. The importer emits a normalized native score for two pulse voices and one triangle voice, with provenance pointing to the bank-1 driver/data region. `dd_build_intro_music_wav` synthesizes those voices directly at 44.1 kHz; there is no APU emulator and no per-frame APU-write log in the asset pack.
 
-The current score covers a 720-frame phrase and loops while the road intro runs. Envelope and nonlinear-mixer matching remain audio-fidelity work; the melody, channel periods, duty choices, and entry timing come from the traced bank-1 driver.
+The score contains 219 normalized note events, covers the complete 1,920-frame scene window, and stops instead of looping. Its final timer events occur at native frame 1,781, followed by the original musical tail/silence while the flag remains on screen. Envelope and nonlinear-mixer matching remain audio-fidelity work; the melody, channel periods, duty choices, and entry timing come from the traced bank-1 driver.
 
 ### Screenshot fidelity
 
-The checked-in capture tools compare original frames against native logical frames (`original - 165`). Stable original checkpoints 170, 180, 240, 300, 360, 600, 1200, and 1260 currently report **0 differing pixels out of 57,344**. Frames captured during an NMI row update can contain a partial scanline from the old/new tile state and are intentionally not used as stable regression checkpoints.
+The checked-in capture tools compare original frames against native logical frames (`original - 165`). Stable road checkpoints 170, 180, 240, 300, 360, 600, 1200, and 1260 plus balloon/flag checkpoints 1320, 1500, 1680, 1800, 1920, and 2040 report **0 differing pixels out of 57,344**. Frames captured during an NMI row update can contain a partial scanline from the old/new tile state and are intentionally not used as stable regression checkpoints.
 
 The supplied application art is committed only as `resources/double_dribble.ico`. It is embedded as Windows branding and is never part of the generated game-content asset pack.
 
@@ -180,4 +184,4 @@ The supplied application art is committed only as `resources/double_dribble.ico`
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
-- Port the balloon/stadium sprite phase that follows road-update phase 21 (original frame approximately 1276 onward).
+- Port the game-configuration scene that starts streaming at original frame 2085.

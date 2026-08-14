@@ -3,7 +3,9 @@ param(
     [string]$RomPath = 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes',
     [string]$FceuxPath = 'C:\Users\joshs\Games\fceux-2.6.6-win32\fceux.exe',
     [int]$StartFrame = 75,
-    [int]$FinalFrame = 900
+    [int]$FinalFrame = 900,
+    [int]$TraceStart = 166,
+    [int]$TraceEnd = 240
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,6 +28,8 @@ $env:DD_ROM_PATH = [System.IO.Path]::GetFullPath($RomPath)
 $env:DD_CAPTURE_FINAL_FRAME = $FinalFrame.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 $env:DD_START_FRAME = $StartFrame.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INTRO_TRACE = '1'
+$env:DD_TRACE_START = $TraceStart.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+$env:DD_TRACE_END = $TraceEnd.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 
 Write-Host "Capturing the original 1P path (Start at frame $StartFrame) through frame $FinalFrame..."
 $process = Start-Process -FilePath $FceuxPath `

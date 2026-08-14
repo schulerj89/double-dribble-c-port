@@ -4,7 +4,7 @@ Source-only native C port of **Double Dribble (USA) (Rev 1)** for NES. The runti
 
 ## Current milestone
 
-The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue, accepts keyboard selection, and starts the 1P city/road intro with music. The title and stable road-intro checkpoints match local FCEUX references exactly.
+The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue, accepts keyboard selection, and plays the complete 1P city/road introduction through its balloon flights, rising U.S. flag, and full music cue. Stable checkpoints match local FCEUX references exactly.
 
 ## Build
 
@@ -28,9 +28,9 @@ Reproduce the reference and native captures:
 .\tools\fceux\Capture-OriginalTitle.ps1 -FinalFrame 30
 .\tools\Capture-NativeTitle.ps1
 .\tools\Compare-TitleCaptures.ps1
-.\tools\fceux\Capture-Original1PIntro.ps1 -StartFrame 75 -FinalFrame 1500
-.\tools\Capture-NativeIntro.ps1 -OriginalFrame 180
-.\tools\Compare-IntroCaptures.ps1 -OriginalFrame 180
+.\tools\fceux\Capture-Original1PIntro.ps1 -StartFrame 75 -FinalFrame 2084 -TraceStart 1260 -TraceEnd 2084
+.\tools\Capture-NativeIntro.ps1 -OriginalFrame 2040
+.\tools\Compare-IntroCaptures.ps1 -OriginalFrame 2040
 ```
 
 See `PORTING.md` for source addresses, Ghidra evidence, asset-pack boundaries, and fidelity status.

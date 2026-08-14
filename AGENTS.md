@@ -40,7 +40,7 @@ Do not infer a ROM offset from a CPU address without recording the active bank. 
 
 ## Current milestone
 
-Reproduce the title/voice milestone and the first native 1P intro slice. Acceptance requires:
+Preserve the completed title/voice and full native 1P introduction while moving into game configuration. The completed acceptance baseline includes:
 
 - an FCEUX reference screenshot and timing note;
 - a Ghidra/FCEUX-backed trace of title initialization and DMC playback;
@@ -48,5 +48,5 @@ Reproduce the title/voice milestone and the first native 1P intro slice. Accepta
 - an assetpack-only native executable;
 - native screenshot and audio evidence plus a documented comparison.
 - keyboard-selectable 1P and original transition timing;
-- the road-intro PPU streams, compact update state machine, blimp motion, and native music synthesis;
-- exact comparisons at stable road-intro checkpoints.
+- the road-intro PPU streams, compact update state machine, blimp motion, balloon flights, flag rise/wave, and complete native music synthesis;
+- exact comparisons at stable road, balloon, and flag checkpoints through original frame 2084.

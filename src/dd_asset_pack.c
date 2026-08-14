@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 2u
+#define DD_PACK_VERSION 3u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -18,6 +18,7 @@
 #define DD_ENTRY_MUSIC 7u
 #define DD_ENTRY_COUNT 9u
 #define DD_ROM_SIZE 131088u
+#define DD_INTRO_SPRITE_ASSET_SIZE 141u
 
 #pragma pack(push, 1)
 typedef struct DDPackHeader {
@@ -84,10 +85,61 @@ static const DDMusicNote DD_INTRO_MUSIC[] = {
     {529u, 428u, 0u, 3u, 15u, 0u}, {529u, 339u, 1u, 1u, 15u, 0u}, {529u, 571u, 2u, 0u, 12u, 0u},
     {553u, 572u, 0u, 3u, 15u, 0u}, {553u, 427u, 1u, 1u, 15u, 0u}, {553u, 855u, 2u, 0u, 12u, 0u},
     {577u, 428u, 0u, 3u, 15u, 0u}, {577u, 339u, 1u, 1u, 15u, 0u},
+    {593u, 428u, 0u, 3u, 15u, 0u}, {593u, 339u, 1u, 1u, 15u, 0u},
     {601u, 428u, 0u, 3u, 15u, 0u}, {601u, 339u, 1u, 1u, 15u, 0u}, {601u, 855u, 2u, 0u, 12u, 0u},
     {625u, 382u, 0u, 3u, 15u, 0u}, {625u, 320u, 1u, 1u, 15u, 0u},
     {649u, 340u, 0u, 3u, 15u, 0u}, {649u, 285u, 1u, 1u, 15u, 0u},
-    {673u, 340u, 0u, 3u, 15u, 0u}, {673u, 285u, 1u, 1u, 15u, 0u}, {673u, 855u, 2u, 0u, 12u, 0u}
+    {673u, 340u, 0u, 3u, 15u, 0u}, {673u, 285u, 1u, 1u, 15u, 0u}, {673u, 855u, 2u, 0u, 12u, 0u},
+    {721u, 382u, 0u, 3u, 15u, 0u}, {721u, 320u, 1u, 1u, 15u, 0u},
+    {737u, 428u, 0u, 3u, 15u, 0u}, {737u, 339u, 1u, 1u, 15u, 0u},
+    {745u, 454u, 0u, 3u, 15u, 0u}, {745u, 381u, 1u, 1u, 15u, 0u}, {745u, 571u, 2u, 0u, 12u, 0u},
+    {769u, 428u, 0u, 3u, 15u, 0u}, {769u, 339u, 1u, 1u, 15u, 0u},
+    {793u, 382u, 0u, 3u, 15u, 0u}, {793u, 320u, 1u, 1u, 15u, 0u},
+    {817u, 382u, 0u, 3u, 15u, 0u}, {817u, 320u, 1u, 1u, 15u, 0u}, {817u, 571u, 2u, 0u, 12u, 0u},
+    {865u, 382u, 0u, 3u, 15u, 0u}, {865u, 320u, 1u, 1u, 15u, 0u}, {865u, 571u, 2u, 0u, 12u, 0u},
+    {881u, 382u, 0u, 3u, 15u, 0u}, {881u, 320u, 1u, 1u, 15u, 0u},
+    {889u, 428u, 0u, 3u, 15u, 0u}, {889u, 339u, 1u, 1u, 15u, 0u}, {889u, 427u, 2u, 0u, 12u, 0u},
+    {929u, 454u, 0u, 3u, 15u, 0u}, {929u, 381u, 1u, 1u, 15u, 0u}, {929u, 381u, 2u, 0u, 12u, 0u},
+    {937u, 509u, 0u, 3u, 15u, 0u}, {937u, 427u, 1u, 1u, 15u, 0u}, {937u, 339u, 2u, 0u, 12u, 0u},
+    {961u, 572u, 0u, 3u, 15u, 0u}, {961u, 453u, 1u, 1u, 15u, 0u}, {961u, 285u, 2u, 0u, 12u, 0u},
+    {1009u, 321u, 0u, 3u, 15u, 0u}, {1009u, 508u, 1u, 1u, 15u, 0u}, {1009u, 320u, 2u, 0u, 12u, 0u},
+    {1025u, 453u, 1u, 1u, 15u, 0u},
+    {1033u, 340u, 0u, 3u, 15u, 0u}, {1033u, 427u, 1u, 1u, 15u, 0u}, {1033u, 339u, 2u, 0u, 12u, 0u},
+    {1057u, 428u, 0u, 3u, 15u, 0u}, {1057u, 679u, 1u, 1u, 15u, 0u}, {1057u, 254u, 2u, 0u, 12u, 0u},
+    {1081u, 382u, 0u, 3u, 15u, 0u}, {1081u, 604u, 1u, 1u, 15u, 0u}, {1081u, 381u, 2u, 0u, 12u, 0u},
+    {1105u, 454u, 0u, 3u, 15u, 0u}, {1105u, 571u, 1u, 1u, 15u, 0u}, {1105u, 571u, 2u, 0u, 12u, 0u},
+    {1153u, 340u, 0u, 3u, 15u, 0u}, {1153u, 571u, 1u, 1u, 15u, 0u},
+    {1169u, 382u, 0u, 3u, 15u, 0u}, {1169u, 571u, 1u, 1u, 15u, 0u},
+    {1177u, 340u, 0u, 3u, 15u, 0u}, {1177u, 427u, 1u, 1u, 15u, 0u}, {1177u, 339u, 2u, 0u, 12u, 0u},
+    {1201u, 321u, 0u, 3u, 15u, 0u}, {1201u, 427u, 1u, 1u, 15u, 0u}, {1201u, 320u, 2u, 0u, 12u, 0u},
+    {1225u, 286u, 0u, 3u, 15u, 0u}, {1225u, 427u, 1u, 1u, 15u, 0u}, {1225u, 285u, 2u, 0u, 12u, 0u},
+    {1241u, 453u, 1u, 1u, 15u, 0u},
+    {1249u, 255u, 0u, 3u, 15u, 0u}, {1249u, 508u, 1u, 1u, 15u, 0u}, {1249u, 320u, 2u, 0u, 12u, 0u},
+    {1273u, 255u, 0u, 3u, 15u, 0u}, {1273u, 508u, 1u, 1u, 15u, 0u}, {1273u, 320u, 2u, 0u, 12u, 0u},
+    {1285u, 285u, 2u, 0u, 12u, 0u},
+    {1297u, 255u, 0u, 3u, 15u, 0u}, {1297u, 508u, 1u, 1u, 15u, 0u}, {1297u, 320u, 2u, 0u, 12u, 0u},
+    {1309u, 320u, 2u, 0u, 12u, 0u},
+    {1321u, 321u, 0u, 3u, 15u, 0u}, {1321u, 381u, 1u, 1u, 15u, 0u}, {1321u, 381u, 2u, 0u, 12u, 0u},
+    {1333u, 339u, 1u, 1u, 15u, 0u},
+    {1345u, 255u, 0u, 3u, 15u, 0u}, {1345u, 320u, 1u, 1u, 15u, 0u}, {1345u, 381u, 2u, 0u, 12u, 0u},
+    {1357u, 255u, 0u, 3u, 15u, 0u}, {1357u, 339u, 1u, 1u, 15u, 0u}, {1357u, 339u, 2u, 0u, 12u, 0u},
+    {1369u, 255u, 0u, 3u, 15u, 0u}, {1369u, 381u, 1u, 1u, 15u, 0u}, {1369u, 320u, 2u, 0u, 12u, 0u},
+    {1381u, 255u, 0u, 3u, 15u, 0u}, {1381u, 427u, 1u, 1u, 15u, 0u}, {1381u, 302u, 2u, 0u, 12u, 0u},
+    {1393u, 286u, 0u, 3u, 15u, 0u}, {1393u, 427u, 1u, 1u, 15u, 0u}, {1393u, 285u, 2u, 0u, 12u, 0u},
+    {1417u, 286u, 0u, 3u, 15u, 0u}, {1417u, 453u, 1u, 1u, 15u, 0u}, {1417u, 285u, 2u, 0u, 12u, 0u},
+    {1487u, 286u, 0u, 3u, 15u, 0u}, {1487u, 571u, 1u, 1u, 15u, 0u}, {1487u, 285u, 2u, 0u, 12u, 0u},
+    {1501u, 321u, 0u, 3u, 15u, 0u}, {1501u, 571u, 1u, 1u, 15u, 0u}, {1501u, 320u, 2u, 0u, 12u, 0u},
+    {1515u, 340u, 0u, 3u, 15u, 0u}, {1515u, 427u, 1u, 1u, 15u, 0u}, {1515u, 339u, 2u, 0u, 12u, 0u},
+    {1557u, 286u, 0u, 3u, 15u, 0u}, {1557u, 381u, 1u, 1u, 15u, 0u}, {1557u, 453u, 2u, 0u, 12u, 0u},
+    {1571u, 214u, 0u, 3u, 15u, 0u}, {1571u, 339u, 1u, 1u, 15u, 0u}, {1571u, 427u, 2u, 0u, 12u, 0u},
+    {1585u, 191u, 0u, 3u, 15u, 0u}, {1585u, 320u, 1u, 1u, 15u, 0u}, {1585u, 381u, 2u, 0u, 12u, 0u},
+    {1599u, 170u, 0u, 3u, 15u, 0u}, {1599u, 285u, 1u, 1u, 15u, 0u}, {1599u, 339u, 2u, 0u, 12u, 0u},
+    {1669u, 161u, 0u, 3u, 15u, 0u}, {1669u, 427u, 1u, 1u, 15u, 0u}, {1669u, 254u, 2u, 0u, 12u, 0u},
+    {1683u, 191u, 0u, 3u, 15u, 0u}, {1683u, 381u, 1u, 1u, 15u, 0u}, {1683u, 320u, 2u, 0u, 12u, 0u},
+    {1697u, 170u, 0u, 3u, 15u, 0u}, {1697u, 339u, 1u, 1u, 15u, 0u}, {1697u, 285u, 2u, 0u, 12u, 0u},
+    {1725u, 161u, 0u, 3u, 15u, 0u}, {1725u, 320u, 1u, 1u, 15u, 0u}, {1725u, 285u, 2u, 0u, 12u, 0u},
+    {1753u, 227u, 0u, 3u, 15u, 0u}, {1753u, 381u, 1u, 1u, 15u, 0u}, {1753u, 453u, 2u, 0u, 12u, 0u},
+    {1781u, 214u, 0u, 3u, 15u, 0u}, {1781u, 427u, 1u, 1u, 15u, 0u}, {1781u, 427u, 2u, 0u, 12u, 0u}
 };
 
 static uint32_t dd_crc32(const uint8_t *data, size_t size) {
@@ -375,6 +427,41 @@ static int dd_build_intro_updates(const uint8_t *rom, size_t rom_size,
             ++count;
         }
     }
+    {
+        static const uint8_t metasprite_ids[3] = {0x6Fu, 0x74u, 0x7Au};
+        static const size_t expected_sizes[3] = {5u, 56u, 56u};
+        uint32_t metasprite;
+        size_t tables = dd_bank_file_offset(1u, 0x9417u);
+        if (position + DD_INTRO_SPRITE_ASSET_SIZE > capacity || tables + 24u > rom_size) {
+            free(data);
+            return 0;
+        }
+        memcpy(data + position, rom + tables, 24u);
+        position += 24u;
+        for (metasprite = 0u; metasprite < 3u; ++metasprite) {
+            uint16_t address = dd_read_bank_u16(rom, 2u, 0x828Du + metasprite_ids[metasprite] * 2u);
+            size_t source = dd_bank_file_offset(2u, address);
+            size_t cursor = source + 1u;
+            uint32_t record;
+            if (address < 0x8000u || address >= 0xC000u || source >= rom_size) {
+                free(data);
+                return 0;
+            }
+            for (record = 0u; record < rom[source]; ++record) {
+                if (cursor >= rom_size) {
+                    free(data);
+                    return 0;
+                }
+                cursor += (rom[cursor] & 1u) != 0u ? 3u : 4u;
+            }
+            if (cursor > rom_size || cursor - source != expected_sizes[metasprite]) {
+                free(data);
+                return 0;
+            }
+            memcpy(data + position, rom + source, expected_sizes[metasprite]);
+            position += expected_sizes[metasprite];
+        }
+    }
     dd_write_blob_u32(data, count);
     *output_data = data;
     *output_size = position;
@@ -400,7 +487,7 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
     const uint32_t title_palette_file_offset = 0x1C956u;
     const uint32_t intro_palette_file_offset = 0x1C9A8u;
     DDTitleMeta meta = {256u, 240u, 0x1000u, 0x2000u, 10u, 15u, 0u, 0xEAC0u, 3073u, 0xB0u, 20u};
-    DDIntroMeta intro_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 17u, 5u, 0u, 720u};
+    DDIntroMeta intro_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 64u, 5u, 0u, 1920u};
     DDPackHeader header;
     DDPackEntry entries[DD_ENTRY_COUNT];
     uint64_t payload_offset = sizeof(header) + sizeof(entries);
@@ -663,7 +750,7 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v2: %ux%u title, %zu DMC bytes; intro has %u updates and %zu music notes.\n",
+    printf("Valid DDAP v3: %ux%u title, %zu DMC bytes; intro has %u updates and %zu music notes.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
            pack.intro_meta.update_count, pack.intro_music_count);
     dd_asset_pack_unload(&pack);

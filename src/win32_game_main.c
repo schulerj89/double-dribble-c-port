@@ -75,7 +75,7 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
                 if (g_started && !g_intro_music_started && dd_elapsed_frames() >= 91u && g_intro_wav != NULL) {
                     g_intro_music_started = 1;
                     PlaySoundA((LPCSTR)g_intro_wav, NULL,
-                               SND_MEMORY | SND_ASYNC | SND_NODEFAULT | SND_LOOP);
+                               SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
                 }
                 InvalidateRect(window, NULL, FALSE);
             }

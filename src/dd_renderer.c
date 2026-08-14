@@ -18,7 +18,7 @@ static uint32_t dd_nes_color(uint8_t index) {
         0x00F0BC3Cu, 0x0080D010u, 0x004CDC48u, 0x0058F898u,
         0x0000EBDBu, 0x00787878u, 0x00000000u, 0x00000000u,
         0x00FFFFFFu, 0x00AAE7FFu, 0x00C4D4FCu, 0x00D4C8FCu,
-        0x00FCC4FCu, 0x00FCC4D8u, 0x00FFBEB0u, 0x00FFDBAAu,
+        0x00FCC4FCu, 0x00FCC4D8u, 0x00FFBEB2u, 0x00FFDBAAu,
         0x00FCE4A0u, 0x00E0FCA0u, 0x00A8F0BCu, 0x00B0FCCCu,
         0x009CFCF0u, 0x00C4C4C4u, 0x00000000u, 0x00000000u
     };
@@ -152,6 +152,128 @@ int dd_render_title(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, u
     return dd_render_title_selection(pack, 0u, 1, pixels, width, height);
 }
 
+#define DD_INTRO_BALLOON_FRAME 1110u
+#define DD_INTRO_SPRITE_ASSET_SIZE 141u
+
+typedef struct DDIntroObjectState {
+    uint8_t state[8];
+    uint8_t delay[8];
+    uint8_t pass[8];
+    uint8_t animation[8];
+    uint8_t x[8];
+    uint8_t y[8];
+    uint8_t complete_count;
+    uint8_t flag_started;
+    uint8_t flag_animation;
+    uint8_t flag_y;
+} DDIntroObjectState;
+
+static void dd_intro_init_objects(DDIntroObjectState *state, const uint8_t *assets) {
+    uint32_t object;
+    memset(state, 0, sizeof(*state));
+    for (object = 0u; object < 8u; ++object) {
+        state->state[object] = 0xFEu;
+        state->delay[object] = assets[object];
+        state->animation[object] = assets[8u + object];
+        state->x[object] = assets[16u + object];
+        state->y[object] = 0x6Cu;
+    }
+}
+
+static void dd_intro_step_objects(DDIntroObjectState *state, const uint8_t *assets,
+                                  uint8_t frame_counter) {
+    int object;
+    for (object = 7; object >= 0; --object) {
+        if (state->state[object] == 0xFFu) {
+            if ((frame_counter & 1u) == 0u) {
+                --state->y[object];
+                if (state->y[object] < 8u) {
+                    ++state->pass[object];
+                    if (state->pass[object] < 2u) {
+                        uint8_t route = (uint8_t)(((frame_counter >> 2u) + frame_counter +
+                                                  ((frame_counter >> 1u) & 1u)) & 7u);
+                        --state->state[object];
+                        state->delay[object] = assets[route];
+                        state->animation[object] = assets[8u + route];
+                        state->x[object] = assets[16u + route];
+                        state->y[object] = 0x6Cu;
+                    } else {
+                        state->y[object] = 0xFDu;
+                        state->state[object] = 0xFDu;
+                        ++state->complete_count;
+                    }
+                }
+            }
+        } else if (state->state[object] != 0xFDu) {
+            --state->delay[object];
+            if (state->delay[object] == 0u) ++state->state[object];
+        }
+    }
+    if (state->flag_started == 0u) {
+        if (state->complete_count != 0u) {
+            state->flag_started = 1u;
+            state->flag_animation = 0x74u;
+            state->flag_y = 0x78u;
+        }
+    } else {
+        if ((frame_counter & 0x0Fu) == 0u) state->flag_animation ^= 0x0Eu;
+        if ((frame_counter & 3u) == 0u && state->flag_y != 0x2Cu) --state->flag_y;
+    }
+}
+
+static uint32_t dd_intro_emit_metasprite(uint8_t oam[256], uint32_t sprite,
+                                         const uint8_t *metasprite, uint8_t base_x,
+                                         uint8_t base_y, uint8_t base_attributes) {
+    uint32_t record;
+    size_t position = 1u;
+    uint8_t attributes = base_attributes;
+    for (record = 0u; record < metasprite[0] && sprite < 64u; ++record) {
+        uint8_t lead = metasprite[position++];
+        int8_t y_offset = (int8_t)lead;
+        uint8_t tile = metasprite[position++];
+        y_offset >>= 1;
+        if ((lead & 1u) == 0u) attributes = (uint8_t)((base_attributes | metasprite[position++]) & 0xE3u);
+        oam[sprite * 4u] = (uint8_t)(base_y + y_offset);
+        oam[sprite * 4u + 1u] = tile;
+        oam[sprite * 4u + 2u] = attributes;
+        oam[sprite * 4u + 3u] = (uint8_t)(base_x + (int8_t)metasprite[position++]);
+        ++sprite;
+    }
+    return sprite;
+}
+
+static void dd_intro_render_objects(uint8_t oam[256], uint32_t intro_frame,
+                                    const uint8_t *assets) {
+    const uint8_t *balloon = assets + 24u;
+    const uint8_t *flag_a = balloon + 5u;
+    const uint8_t *flag_b = flag_a + 56u;
+    DDIntroObjectState state;
+    uint32_t frame;
+    uint32_t sprite = 1u;
+    uint32_t object;
+    uint32_t group;
+    dd_intro_init_objects(&state, assets);
+    for (frame = DD_INTRO_BALLOON_FRAME + 1u; frame < intro_frame; ++frame) {
+        dd_intro_step_objects(&state, assets, (uint8_t)(frame + 149u));
+    }
+    /* Bank 2 splits objects at the signed-X boundary before building OAM. */
+    for (group = 0u; group < 2u; ++group) {
+        for (object = 0u; object < 8u; ++object) {
+            if (((state.x[object] & 0x80u) != 0u) != (group != 0u)) continue;
+            sprite = dd_intro_emit_metasprite(oam, sprite, balloon, state.x[object],
+                                              state.y[object], 0u);
+        }
+    }
+    if (state.flag_started != 0u) {
+        const uint8_t *flag = state.flag_animation == 0x74u ? flag_a : flag_b;
+        sprite = dd_intro_emit_metasprite(oam, sprite, flag, 0x80u, state.flag_y, 0u);
+    }
+    while (sprite < 64u) {
+        oam[sprite * 4u] = 0xF4u;
+        ++sprite;
+    }
+}
+
 int dd_render_intro(const DDAssetPack *pack, uint32_t intro_frame,
                     uint32_t *pixels, uint32_t width, uint32_t height) {
     uint8_t ppu[DD_PPU_SIZE];
@@ -180,8 +302,8 @@ int dd_render_intro(const DDAssetPack *pack, uint32_t intro_frame,
         if (event_frame <= intro_frame && !dd_apply_intro_command(ppu, pack->intro_updates + position, command_size)) return 0;
         position += command_size;
     }
-    if (position != pack->intro_updates_size) return 0;
-    if (intro_frame < 1111u) {
+    if (position + DD_INTRO_SPRITE_ASSET_SIZE != pack->intro_updates_size) return 0;
+    if (intro_frame <= DD_INTRO_BALLOON_FRAME) {
         uint32_t shift = (intro_frame + 3u) / 8u;
         uint32_t sprite;
         for (sprite = 1u; sprite <= 16u; ++sprite) {
@@ -189,8 +311,7 @@ int dd_render_intro(const DDAssetPack *pack, uint32_t intro_frame,
             oam[sprite * 4u + 3u] = shift > base_x ? 0u : (uint8_t)(base_x - shift);
         }
     } else {
-        uint32_t sprite;
-        for (sprite = 1u; sprite <= 16u; ++sprite) oam[sprite * 4u] = 0xF4u;
+        dd_intro_render_objects(oam, intro_frame, pack->intro_updates + position);
     }
     return dd_render_scene(ppu, sizeof(ppu), oam, sizeof(oam),
                            pack->intro_meta.background_pattern_base, pack->intro_meta.nametable_base,
