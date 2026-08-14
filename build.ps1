@@ -29,6 +29,7 @@ $assetPack = Join-Path $buildDir 'double-dribble.assetpack'
 $include = Join-Path $root 'include'
 $commonSources = @(
     (Join-Path $root 'src\dd_asset_pack.c'),
+    (Join-Path $root 'src\dd_gameplay.c'),
     (Join-Path $root 'src\dd_renderer.c'),
     (Join-Path $root 'src\dd_audio.c')
 )

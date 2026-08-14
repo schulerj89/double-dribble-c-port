@@ -40,7 +40,7 @@ Do not infer a ROM offset from a CPU address without recording the active bank. 
 
 ## Current milestone
 
-Preserve the completed title/voice, 1P-confirm sound, full native 1P introduction, shooting-driven game-configuration screen, END audio/handoff, and opening tip-off formation while moving toward live gameplay. The completed acceptance baseline includes:
+Preserve the completed title/voice, 1P-confirm sound, full native 1P introduction, shooting-driven game-configuration screen, END audio/handoff, opening tip-off formation, and first live-control slice while moving toward full gameplay. The completed acceptance baseline includes:
 
 - an FCEUX reference screenshot and timing note;
 - a Ghidra/FCEUX-backed trace of title initialization and DMC playback;
@@ -48,9 +48,14 @@ Preserve the completed title/voice, 1P-confirm sound, full native 1P introductio
 - an assetpack-only native executable;
 - native screenshot and audio evidence plus a documented comparison.
 - keyboard-selectable 1P and original transition timing;
+- the 1P confirmation flash blanks the selected words while leaving the red cursor visible;
 - the road-intro PPU streams, compact update state machine, blimp motion, balloon flights, flag rise/wave, and complete native music synthesis;
 - exact comparisons at stable road, balloon, and flag checkpoints through original frame 2084.
 - the cyan/black configuration loading transition and pixel-exact first visible frame at original frame 2097;
 - native Up/Down navigation across the four configuration rows.
 - native X/Z (NES A/B) basket shots, the four TIME values, three selectable 1P teams, three LEVEL values, and the END handoff boundary.
+- the bank-1 configuration song, including its 896-frame pulse/triangle/noise loop beginning four frames before the screen appears.
 - the END acceptance score, original black/blue transition timing, tip-off DPCM cue, split-scroll court renderer, sprite-overflow behavior, and exact pre-jump formation comparison.
+- the recovered opening-ball parabola, jumper height script, deterministic CPU possession handoff, held-ball attachment, and first dribble cycle;
+- a palette-flashing user-controlled 1UP player with native arrow-key movement after the handoff;
+- a DDAP v8 gameplay entry containing only bounded metasprites and recovered data tables, with no runtime ROM dependency.

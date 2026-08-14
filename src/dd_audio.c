@@ -89,18 +89,25 @@ int dd_write_title_wav(const DDAssetPack *pack, const char *path) {
 }
 
 static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
-                              uint32_t music_frames, uint8_t **wav_data, size_t *wav_size) {
+                              uint32_t music_frames, uint32_t pulse_envelope_frames,
+                              uint32_t triangle_gate_frames,
+                              uint8_t **wav_data, size_t *wav_size) {
+    static const uint16_t noise_periods[16] = {
+        4u, 8u, 16u, 32u, 64u, 96u, 128u, 160u,
+        202u, 254u, 380u, 508u, 762u, 1016u, 2034u, 4068u
+    };
     const uint32_t sample_rate = 44100u;
     const double cpu_clock = 1789773.0;
     const double duty_cycles[4] = {0.125, 0.25, 0.5, 0.75};
     uint32_t sample_count;
     uint32_t sample;
     size_t next_note = 0u;
-    const DDMusicNote *active[3] = {NULL, NULL, NULL};
-    uint32_t note_start[3] = {0u, 0u, 0u};
-    double phase[3] = {0.0, 0.0, 0.0};
+    const DDMusicNote *active[4] = {NULL, NULL, NULL, NULL};
+    uint32_t note_start[4] = {0u, 0u, 0u, 0u};
+    double phase[4] = {0.0, 0.0, 0.0, 0.0};
+    uint16_t noise_shift = 1u;
     uint8_t *wav;
-    if (notes == NULL || note_count == 0u || music_frames == 0u ||
+    if (notes == NULL || note_count == 0u || music_frames == 0u || pulse_envelope_frames == 0u ||
         wav_data == NULL || wav_size == NULL) return 0;
     sample_count = (uint32_t)(((uint64_t)music_frames * sample_rate) / 60u);
     if (sample_count > (UINT32_MAX - 44u) / 2u) return 0;
@@ -124,7 +131,8 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
         uint32_t channel;
         while (next_note < note_count && notes[next_note].frame <= frame) {
             const DDMusicNote *note = &notes[next_note++];
-            if (note->channel >= 3u || note->period > 0x07FFu || note->volume > 15u || note->duty > 3u) {
+            if (note->channel >= 4u || note->period > 0x07FFu || note->volume > 15u || note->duty > 3u ||
+                (note->channel == 3u && note->period >= 16u)) {
                 free(wav);
                 return 0;
             }
@@ -132,21 +140,36 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
             note_start[note->channel] = note->frame;
             phase[note->channel] = 0.0;
         }
-        for (channel = 0; channel < 3u; ++channel) {
+        for (channel = 0; channel < 4u; ++channel) {
             const DDMusicNote *note = active[channel];
             double frequency;
             double wave;
             double amplitude;
             if (note == NULL) continue;
-            frequency = cpu_clock / ((channel == 2u ? 32.0 : 16.0) * ((double)note->period + 1.0));
+            frequency = channel == 3u
+                ? cpu_clock / (2.0 * noise_periods[note->period])
+                : cpu_clock / ((channel == 2u ? 32.0 : 16.0) * ((double)note->period + 1.0));
             phase[channel] += frequency / sample_rate;
-            if (phase[channel] >= 1.0) phase[channel] -= (uint32_t)phase[channel];
-            if (channel == 2u) {
+            if (channel == 3u) {
+                double age = (double)(frame - note_start[channel]);
+                double envelope = age >= 4.0 ? 0.0 : (4.0 - age) / 4.0;
+                while (phase[channel] >= 1.0) {
+                    uint16_t feedback = (uint16_t)((noise_shift ^ (noise_shift >> 1)) & 1u);
+                    noise_shift = (uint16_t)((noise_shift >> 1) | (feedback << 14));
+                    phase[channel] -= 1.0;
+                }
+                wave = (noise_shift & 1u) != 0u ? -1.0 : 1.0;
+                amplitude = ((double)note->volume / 15.0) * envelope * 0.12;
+            } else if (channel == 2u) {
+                double age = (double)(frame - note_start[channel]);
+                if (phase[channel] >= 1.0) phase[channel] -= (uint32_t)phase[channel];
                 wave = phase[channel] < 0.5 ? phase[channel] * 4.0 - 1.0 : 3.0 - phase[channel] * 4.0;
-                amplitude = 0.24;
+                amplitude = triangle_gate_frames != 0u && age >= triangle_gate_frames ? 0.0 : 0.24;
             } else {
                 double age = (double)(frame - note_start[channel]);
-                double envelope = age >= 20.0 ? 0.0 : (20.0 - age) / 20.0;
+                double envelope = age >= pulse_envelope_frames
+                    ? 0.0 : ((double)pulse_envelope_frames - age) / pulse_envelope_frames;
+                if (phase[channel] >= 1.0) phase[channel] -= (uint32_t)phase[channel];
                 wave = phase[channel] < duty_cycles[note->duty] ? 1.0 : -1.0;
                 amplitude = ((double)note->volume / 15.0) * envelope * 0.20;
             }
@@ -164,19 +187,25 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
 int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->intro_music, pack->intro_music_count,
-                              pack->intro_meta.music_frames, wav_data, wav_size);
+                              pack->intro_meta.music_frames, 20u, 0u, wav_data, wav_size);
 }
 
 int dd_build_select_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->select_music, pack->select_music_count,
-                              pack->meta.select_music_frames, wav_data, wav_size);
+                              pack->meta.select_music_frames, 20u, 0u, wav_data, wav_size);
+}
+
+int dd_build_config_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->config_music, pack->config_music_count,
+                              pack->config_meta.music_loop_frames, 40u, 9u, wav_data, wav_size);
 }
 
 int dd_build_end_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->end_music, pack->end_music_count,
-                              pack->tipoff_meta.end_music_frames, wav_data, wav_size);
+                              pack->tipoff_meta.end_music_frames, 20u, 0u, wav_data, wav_size);
 }
 
 int dd_build_tipoff_dmc_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {

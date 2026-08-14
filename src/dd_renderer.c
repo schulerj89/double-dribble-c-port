@@ -214,14 +214,26 @@ static int dd_apply_intro_command(uint8_t ppu[DD_PPU_SIZE], const uint8_t *data,
     return 0;
 }
 
-int dd_render_title_selection(const DDAssetPack *pack, uint32_t selection, int indicator_visible,
+int dd_render_title_selection(const DDAssetPack *pack, uint32_t selection, int selection_visible,
                               uint32_t *pixels, uint32_t width, uint32_t height) {
+    uint8_t ppu[DD_PPU_SIZE];
     uint8_t oam[256];
     if (pack == NULL || width != pack->meta.width || height != pack->meta.height ||
+        selection >= 2u || pack->ppu == NULL || pack->ppu_size != sizeof(ppu) ||
         pack->oam == NULL || pack->oam_size != sizeof(oam)) return 0;
+    memcpy(ppu, pack->ppu, sizeof(ppu));
     memcpy(oam, pack->oam, sizeof(oam));
-    oam[4] = indicator_visible ? (uint8_t)(selection == 0u ? 0x87u : 0x97u) : 0xF4u;
-    return dd_render_scene(pack->ppu, pack->ppu_size, oam, sizeof(oam),
+    oam[4] = (uint8_t)(selection == 0u ? 0x87u : 0x97u);
+    if (!selection_visible) {
+        uint32_t column;
+        uint32_t row = selection == 0u ? 17u : 19u;
+        uint32_t first_column = 5u;
+        uint32_t tile_count = selection == 0u ? 2u : 8u;
+        for (column = 0u; column < tile_count; ++column) {
+            ppu[pack->meta.nametable_base + row * 32u + first_column + column] = 0xA2u;
+        }
+    }
+    return dd_render_scene(ppu, sizeof(ppu), oam, sizeof(oam),
                            pack->meta.background_pattern_base, pack->meta.nametable_base,
                            pack->meta.ppu_control, pack->meta.sprite_count,
                            pixels, width, height);
@@ -644,6 +656,62 @@ int dd_render_tipoff(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, 
                                     pack->tipoff_meta.sprite_count,
                                     pack->tipoff_meta.scroll_x,
                                     pixels, width, height);
+}
+
+static uint32_t dd_gameplay_emit(const DDAssetPack *pack, const DDTipoffAssetsHeader *assets,
+                                 uint8_t oam[256], uint32_t sprite, uint8_t animation,
+                                 int32_t screen_x, int32_t screen_y, uint8_t attributes) {
+    uint32_t offset;
+    uint32_t size;
+    if (animation >= DD_GAMEPLAY_METASPRITE_COUNT || screen_x < -32 || screen_x > 287 ||
+        screen_y < -32 || screen_y > 255) return sprite;
+    offset = assets->metasprite_offset[animation];
+    size = assets->metasprite_size[animation];
+    if (offset < sizeof(*assets) || offset > pack->tipoff_assets_size ||
+        size == 0u || size > pack->tipoff_assets_size - offset) return sprite;
+    return dd_intro_emit_metasprite(oam, sprite, pack->tipoff_assets + offset,
+                                    (uint8_t)screen_x, (uint8_t)screen_y, attributes);
+}
+
+int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
+                       uint32_t *pixels, uint32_t width, uint32_t height) {
+    const DDTipoffAssetsHeader *assets;
+    uint8_t oam[256];
+    uint32_t sprite = 1u;
+    uint32_t player;
+    int32_t camera;
+    if (pack == NULL || state == NULL || pack->tipoff_ppu == NULL ||
+        pack->tipoff_ppu_size != DD_PPU_SIZE || pack->tipoff_assets == NULL ||
+        pack->tipoff_assets_size < sizeof(DDTipoffAssetsHeader) ||
+        width != pack->tipoff_meta.width || height != pack->tipoff_meta.height) return 0;
+    if (state->scene_frame < 270u) return dd_render_tipoff(pack, pixels, width, height);
+    assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
+    memset(oam, 0, sizeof(oam));
+    for (player = 0u; player < 64u; ++player) oam[player * 4u] = 0xF4u;
+    oam[0] = 0x38u; oam[1] = 0xFEu; oam[2] = 0x30u; oam[3] = 0x20u;
+    camera = state->camera_x >> 8;
+    sprite = dd_gameplay_emit(pack, assets, oam, sprite, 2u,
+                              (state->ball.court_x >> 8) - camera,
+                              0xF0 - ((state->ball.court_depth >> 8) + 2), 0u);
+    sprite = dd_gameplay_emit(pack, assets, oam, sprite, state->ball.animation,
+                              (state->ball.court_x >> 8) - camera,
+                              0xF0 - (state->ball.court_depth >> 8) - (state->ball.height >> 8),
+                              state->ball.attributes);
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        const DDPlayerState *object = &state->players[player];
+        sprite = dd_gameplay_emit(pack, assets, oam, sprite, object->animation,
+                                  (object->court_x >> 8) - camera,
+                                  0xF0 - (object->court_depth >> 8) - (object->height >> 8),
+                                  object->attributes);
+    }
+    while (sprite < 64u) {
+        oam[sprite * 4u] = 0xF4u;
+        ++sprite;
+    }
+    return dd_render_scrolled_scene(pack->tipoff_ppu, pack->tipoff_ppu_size,
+                                    oam, sizeof(oam), pack->tipoff_meta.background_pattern_base,
+                                    pack->tipoff_meta.nametable_base, pack->tipoff_meta.ppu_control,
+                                    64u, (uint32_t)camera, pixels, width, height);
 }
 
 #pragma pack(push, 1)

@@ -6,6 +6,7 @@
 
 #define DD_TITLE_PPU_SIZE 0x4000u
 #define DD_PPU_SIZE DD_TITLE_PPU_SIZE
+#define DD_GAMEPLAY_METASPRITE_COUNT 42u
 
 typedef struct DDTitleMeta {
     uint32_t width;
@@ -43,6 +44,8 @@ typedef struct DDConfigMeta {
     uint32_t sprite_count;
     uint32_t option_count;
     uint32_t original_visible_frame;
+    uint32_t music_start_frame;
+    uint32_t music_loop_frames;
 } DDConfigMeta;
 
 typedef struct DDTipoffMeta {
@@ -84,6 +87,15 @@ typedef struct DDConfigAssetsHeader {
 #pragma pack(pop)
 
 #pragma pack(push, 1)
+typedef struct DDTipoffAssetsHeader {
+    uint32_t metasprite_offset[DD_GAMEPLAY_METASPRITE_COUNT];
+    uint32_t metasprite_size[DD_GAMEPLAY_METASPRITE_COUNT];
+    int8_t held_ball_offsets[48];
+    int8_t height_scripts[32];
+} DDTipoffAssetsHeader;
+#pragma pack(pop)
+
+#pragma pack(push, 1)
 typedef struct DDMusicNote {
     uint32_t frame;
     uint16_t period;
@@ -111,6 +123,8 @@ typedef struct DDAssetPack {
     size_t intro_music_count;
     DDMusicNote *select_music;
     size_t select_music_count;
+    DDMusicNote *config_music;
+    size_t config_music_count;
     uint8_t *config_ppu;
     size_t config_ppu_size;
     uint8_t *config_oam;
@@ -121,6 +135,8 @@ typedef struct DDAssetPack {
     size_t tipoff_ppu_size;
     uint8_t *tipoff_oam;
     size_t tipoff_oam_size;
+    uint8_t *tipoff_assets;
+    size_t tipoff_assets_size;
     uint8_t *tipoff_dmc;
     size_t tipoff_dmc_size;
     DDMusicNote *end_music;

@@ -26,6 +26,8 @@ static uint8_t *g_intro_wav;
 static size_t g_intro_wav_size;
 static uint8_t *g_select_wav;
 static size_t g_select_wav_size;
+static uint8_t *g_config_wav;
+static size_t g_config_wav_size;
 static uint8_t *g_end_wav;
 static size_t g_end_wav_size;
 static uint8_t *g_tipoff_wav;
@@ -38,10 +40,23 @@ static uint32_t g_config_action_start;
 static int g_config_action_applied;
 static int g_config_boundary_reached;
 static uint32_t g_tipoff_start_frame;
+static DDGameplayState g_gameplay;
+static uint32_t g_gameplay_input;
 static int g_tipoff_audio_started;
 static ULONGLONG g_start_tick;
 static int g_started;
 static int g_intro_music_started;
+static int g_config_music_started;
+
+static uint32_t dd_gameplay_key(WPARAM key) {
+    if (key == VK_LEFT) return DD_INPUT_LEFT;
+    if (key == VK_RIGHT) return DD_INPUT_RIGHT;
+    if (key == VK_UP) return DD_INPUT_UP;
+    if (key == VK_DOWN) return DD_INPUT_DOWN;
+    if (key == 'X') return DD_INPUT_A;
+    if (key == 'Z') return DD_INPUT_B;
+    return 0u;
+}
 
 static void dd_update_config(uint32_t frame) {
     int applied;
@@ -118,7 +133,9 @@ static int dd_render_current_frame(void) {
     if (g_config_boundary_reached) {
         uint32_t transition_frame = frame - g_tipoff_start_frame;
         if (transition_frame >= g_pack.tipoff_meta.visible_frame) {
-            return dd_render_tipoff(&g_pack, g_pixels, g_pack.tipoff_meta.width, g_pack.tipoff_meta.height);
+            if (!dd_gameplay_advance_to(&g_pack, &g_gameplay, transition_frame, g_gameplay_input)) return 0;
+            return dd_render_gameplay(&g_pack, &g_gameplay, g_pixels,
+                                      g_pack.tipoff_meta.width, g_pack.tipoff_meta.height);
         }
         if (transition_frame >= g_pack.tipoff_meta.blue_frame) {
             dd_fill_frame(0x000000A8u);
@@ -144,10 +161,18 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
                     PlaySoundA((LPCSTR)g_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
                 }
             } else if (wparam == 2u) {
+                uint32_t config_music_frame = DD_CONFIG_VISIBLE_FRAME -
+                    (g_pack.config_meta.original_visible_frame - g_pack.config_meta.music_start_frame);
                 if (g_started && !g_intro_music_started && dd_elapsed_frames() >= 91u && g_intro_wav != NULL) {
                     g_intro_music_started = 1;
                     PlaySoundA((LPCSTR)g_intro_wav, NULL,
                                SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+                }
+                if (g_started && !g_config_music_started && !g_config_boundary_reached &&
+                    dd_elapsed_frames() >= config_music_frame && g_config_wav != NULL) {
+                    g_config_music_started = 1;
+                    PlaySoundA((LPCSTR)g_config_wav, NULL,
+                               SND_MEMORY | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
                 }
                 if (g_config_boundary_reached && !g_tipoff_audio_started &&
                     dd_elapsed_frames() - g_tipoff_start_frame >= g_pack.tipoff_meta.dmc_frame &&
@@ -161,6 +186,9 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
         case WM_KEYDOWN:
             if (wparam == VK_ESCAPE) {
                 DestroyWindow(window);
+            } else if (g_config_boundary_reached) {
+                g_gameplay_input |= dd_gameplay_key(wparam);
+                InvalidateRect(window, NULL, FALSE);
             } else if (!g_started && wparam == VK_UP) {
                 g_selection = 0u;
                 InvalidateRect(window, NULL, FALSE);
@@ -196,6 +224,12 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
                 g_config_view.action_frame = 0u;
                 g_config_action_start = dd_elapsed_frames();
                 g_config_action_applied = 0;
+                InvalidateRect(window, NULL, FALSE);
+            }
+            return 0;
+        case WM_KEYUP:
+            if (g_config_boundary_reached) {
+                g_gameplay_input &= ~dd_gameplay_key(wparam);
                 InvalidateRect(window, NULL, FALSE);
             }
             return 0;
@@ -247,6 +281,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         !dd_build_title_wav(&g_pack, &g_wav, &g_wav_size) ||
         !dd_build_intro_music_wav(&g_pack, &g_intro_wav, &g_intro_wav_size) ||
         !dd_build_select_music_wav(&g_pack, &g_select_wav, &g_select_wav_size) ||
+        !dd_build_config_music_wav(&g_pack, &g_config_wav, &g_config_wav_size) ||
         !dd_build_end_music_wav(&g_pack, &g_end_wav, &g_end_wav_size) ||
         !dd_build_tipoff_dmc_wav(&g_pack, &g_tipoff_wav, &g_tipoff_wav_size)) {
         dd_asset_pack_unload(&g_pack);
@@ -254,6 +289,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         free(g_wav);
         free(g_intro_wav);
         free(g_select_wav);
+        free(g_config_wav);
         free(g_end_wav);
         free(g_tipoff_wav);
         return 1;
@@ -289,6 +325,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     free(g_wav);
     free(g_intro_wav);
     free(g_select_wav);
+    free(g_config_wav);
     free(g_end_wav);
     free(g_tipoff_wav);
     dd_asset_pack_unload(&g_pack);

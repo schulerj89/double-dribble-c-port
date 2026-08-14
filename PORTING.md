@@ -206,13 +206,19 @@ Status: **configuration sequence implemented through END**. Original frame 2084 
 
 The title-confirm sound was traced from original frames 76-138 through the bank-1 APU driver and normalized into the v5 asset pack as `select.music`. It plays immediately when 1P is accepted and ends before the road-intro score begins.
 
-The v6 pack retains `config.assets` and adds bounded tip-off PPU/OAM, END-score, and DPCM entries. The runtime still has no ROM access, bank switching, instruction interpretation, or frame-log playback.
+The confirmation flash affects the selected title text, not the cursor sprite. Original frames 76-89 keep the red cursor visible while the `1P` background tiles are blank; frame 90 restores the text. The native selected-text-off and selected-text-on renders both compare at **0 differing pixels out of 57,344** against original frames 76 and 90.
+
+The configuration song is selected while the screen is black and begins on original frame 2093, four frames before the visible configuration frame. A focused FCEUX trace records pulse-1 `$8A03`, pulse-2 `$89C5`, and triangle `$8A4A` channel pointers initialized at frame 2092; the complete channel state repeats at frame 2989, establishing an 896-frame loop. Ghidra anchors `$808A`, `$80ED`, `$813D`, `$8241`, `$82C3`, `$82D5`, `$83AA`, and `$847D` cover the bank-1 sequencer, envelope path, timer writes, and pointer progression. The v7 importer emits 213 normalized pulse, triangle, and noise events as `config.music`. The native mixer synthesizes one 14.933-second loop and Win32 repeats it until END acceptance replaces it with `end.music`.
+
+`tools/fceux/Capture-ConfigMusic.ps1` reproduces the channel-state, APU-write, music-RAM, screenshot, and executed-PC evidence under ignored `captures/original-config-music/`. `tools/ghidra/Run-ConfigMusicAnalysis.ps1` regenerates the ignored bank-1 driver/data report. `--dump-config-wav` exports the native loop for audio inspection without reading the ROM at runtime.
+
+The v7 pack retains `config.assets`, adds `config.music`, and carries the bounded tip-off PPU/OAM, END-score, and DPCM entries. The runtime still has no ROM access, bank switching, instruction interpretation, or frame-log playback.
 
 Original and native frames 2097/2100 report **0 differing pixels out of 57,344**. The TEAM shot launch, jump, basket, and settled Chicago checkpoints also compare exactly; original frame 2180 differs only in the 31 overlapping ball pixels (0.0541%). `Capture-NativeConfig.ps1` and `Compare-ConfigCaptures.ps1` reproduce the configuration screenshot check without storing any game assets in the repository.
 
 ## Milestone 4: END audio and opening tip-off formation
 
-Status: **pre-jump formation complete**. FCEUX presses Down on original frames 2105, 2107, and 2109, then A on 2112/2113. The basket acceptance reaches the END handler at frame 2201. The configuration remains visible for 126 more frames, frame 2327 contains the original partial clear, frame 2328 is black, frame 2336 switches to blue, and frame 2345 first displays the assembled court. This milestone intentionally freezes before the referee toss begins around frame 2520.
+Status: **pre-jump formation complete**. FCEUX presses Down on original frames 2105, 2107, and 2109, then A on 2112/2113. The basket acceptance reaches the END handler at frame 2201. The configuration remains visible for 126 more frames, frame 2327 contains the original partial clear, frame 2328 is black, frame 2336 switches to blue, and frame 2345 first displays the assembled court. This milestone intentionally freezes before the ball-launch state begins at frame 2471.
 
 | Behavior | Source evidence | Native counterpart |
 |---|---|---|
@@ -231,9 +237,95 @@ Status: **pre-jump formation complete**. FCEUX presses Down on original frames 2
 
 `Capture-NativeTipoff.ps1` exports the formation plus both native audio cues. `Compare-TipoffCaptures.ps1` compares original frame 2359 to native rows 8-231 and reports **0 differing pixels out of 57,344**. The generated `.wav`, screenshot, trace, Ghidra project/report, and asset pack all remain ignored local outputs.
 
+## Milestone 5 research: jump ball, possession, and gameplay loop
+
+Status: **bounded native slice implemented through first live control**. `Capture-TipoffGameplay.ps1` reproduces the END selection and records every original frame from 2320 through 2760 as a 2 KiB RAM snapshot. Its focused write log covers gameplay zero-page state, all object arrays at `$0340-$06BF`, and `$07E0-$07FF`; it also records executed bank-0 PCs and stable screenshots. `Run-TipoffAnalysis.ps1` regenerates the expanded Ghidra report from those dynamic anchors.
+
+### Observed transition
+
+| Original frame | Observed state | Bank-0 evidence |
+|---|---|---|
+| 2345 | Court, HUD, ten-player formation, and `1ST PERIOD START` are visible. | Existing formation initialization and renderer roots. |
+| 2470 | Ball slot 0 changes to launch-preparation state `$0A`. | Dynamic write to `$0340`. |
+| 2471 | Ball enters airborne state `$05`; elapsed flight is zero, gravity scale is `$0C`, and initial vertical term is `$0305`. | `$B017-$B034` initializes `$004A`, `$004C`, `$0430/$0440`, and `$0340`. |
+| 2505-2509 | The ball reaches its apex at height `$4D.xx`; jumper/contact arbitration becomes active. | `$9B84` height results and `$005E` writes through `$8DFE`. |
+| 2531 | The no-input run awards the ball to player slot 7. Ball state becomes `$00`, `$005B` changes from no-owner sentinel `$0E` to `$07`, and sound ID `$20` is queued. | `$8DFE-$8E34`. |
+| 2532-2556 | The ball is attached above the winning jumper while that player lands. | `$ACC7` sets ball height to owner height + `$18`; `$B035` supplies facing-dependent owner offsets. |
+| 2557 | The jump phase ends. Slot 7 becomes the active carrier (`$0048=$07`), possession/direction becomes `$0050=$08`, ball state becomes held/dribble `$01`, and all ten player states are reassigned for live play. | `$8E35-$9380`, `$AD0E-$AD40`. |
+| 2558 onward | Regular player AI, movement, camera following, held-ball animation, projection, and rendering run without a separate tip-off scene loop. | `$89B2`, `$994C`, `$9E90-$A014`, `$A84C-$AA74`, `$B035-$B400`. |
+
+The no-input trace therefore establishes one deterministic branch, CPU possession in slot 7. It does not yet establish the player-controlled jump timing or the alternate slot-2 win branch; that needs a second FCEUX input sweep before the native result logic is finalized.
+
+### Recovered object/game loop
+
+The gameplay objects use structure-of-arrays storage. Slot 0 is the ball, slot 1 follows the ball as its secondary visual, and slots 2-11 are the ten players. `$004B` is the current-object index.
+
+Each observed live frame performs these bounded passes:
+
+1. `$9E90-$9EA4` iterates player slots 2-6 and calls `$9EBD` for state, human/AI, movement, and animation work.
+2. `$994C-$9965` iterates player slots 7-11 and calls the corresponding `$89B2` state dispatcher.
+3. The ball dispatcher runs with `$004B=0`; its `$0340` state selects free-flight, attached, dribble, pass, shot, or rebound behavior.
+4. `$9CA0` and `$9CF6` integrate world position within court bounds. `$A85A-$A895` projects world coordinates through camera `$0043/$0044` to screen arrays `$0320/$0330` and rejects offscreen objects through `$0460`.
+5. `$A896-$A8E5` converts state, facing, and animation phase into a metasprite ID in `$0300`; the bank-2 metasprite builder then emits OAM.
+
+The current player state in `$0340 + slot` is a direct dispatcher index, not a bank number. Live initialization in the captured branch assigns ball state `$01`, slot 2 state `$0F`, slots 3-6 state `$20`, carrier slot 7 state `$25`, slots 8-9 state `$40`, slot 10 state `$3C`, and slot 11 state `$3E`. The native port should replace these numeric dispatch slots with a named enum while retaining the observed transitions.
+
+### Ball and movement fields
+
+| Original RAM | Recovered meaning | Confidence |
+|---|---|---|
+| `$0340 + slot` | Object action/state dispatcher index | high |
+| `$0350 + slot` | Eight-way facing/animation direction | high |
+| `$0360/$0370/$0380 + slot` | 24-bit fixed-point longitudinal world coordinate | high |
+| `$0390/$03A0 + slot` | Signed longitudinal velocity | high |
+| `$03B0/$03C0/$03D0 + slot` | Fixed-point court-depth coordinate | high |
+| `$03E0/$03F0 + slot` | Signed court-depth velocity | high |
+| `$0410/$0420 + slot` | 8.8 height above the court | high |
+| `$0430/$0440 + slot` | Base vertical term used by ballistic states | high |
+| `$0450 + slot` | Metasprite animation phase | high |
+| `$0460 + slot` | Offscreen/out-of-bounds result | high |
+| `$0480 + slot` | Quantized movement/target direction | medium-high |
+| `$04F0 + slot` | Direction/elapsed phase for height scripts; flight counter for ball slot 0 | high |
+| `$0500/$0510 + slot` | Pointer into signed height-delta animation data | high |
+| `$0580 + slot` | Logical roster/object mapping used by AI and control swaps | medium-high |
+| `$0670/$0680 + slot` | Current and edge controller/AI input masks | high |
+| `$0690 + slot` | Human/AI or team-control classification used by the player dispatchers | medium |
+| `$005B` | Ball owner slot; `$0E` is the observed no-owner sentinel | high |
+| `$0048` | Active ball carrier/camera-follow player | high |
+| `$0050` | Possession side and attack-direction bitfield (`$08`/`$40` tested independently) | high |
+
+### Ball physics and ownership
+
+There is deliberately no NES physics emulator to reproduce. The native model can express the recovered behavior directly:
+
+- **Airborne/free ball:** `$9B84` computes a 16-bit vertical delta from base vertical term `$0430/$0440` minus `elapsed * gravity_scale`, then adds it to height `$0410/$0420`. The tip-off launch uses base `$0305`, scale `$0C`, and increments elapsed `$004A` once per frame. The observed height rises from `$18.00` to approximately `$4D.40`, then falls to `$34.C0` before ownership is awarded.
+- **World motion:** `$9CA0` integrates the 24-bit longitudinal coordinate and zeros velocity at the recovered court limits; `$9CF6` does the same for court depth. Ball flight states call these explicitly, while ordinary object movement uses the shared `$A84C` integrator/projection path.
+- **Jump-ball contact:** `$A6C3` tests a 4-by-4 volume around the ball against a player point shifted six world units toward center and eight height units upward. `$9B42` is the shared rectangle/volume comparator. `$8DFE` combines that result with the jumper's signed height-delta script to select the owner.
+- **Held ball:** `$B035` indexes a facing-dependent offset table, then copies the owner's longitudinal and depth coordinates plus those offsets into ball slot 0. This is attachment, not integration.
+- **Landing/award:** `$ACC7` keeps the ball at `owner.height + 0x18` until the winner's jump script terminates. `$AD0E` then initializes held/dribble state `$01`, resets the ball height to `$10`, and attaches/projects it through `$B035/$B400`.
+- **Dribble height:** `$9ABD` consumes signed byte deltas through `$0500/$0510`; `$80` ends at height `$10` and `$81` reverses the read direction. This produces the bounce without a ballistic solver.
+- **Basket/free-ball collision:** `$B473` sweeps seven small collision samples near the hoop. A hit clears the owner, marks the collision in `$0490`, queues the rim sound, and negates longitudinal velocity. This routine was not reached during the opening-tip branch but is part of the same recovered ball framework.
+
+The native implementation should use explicit `Player`, `Ball`, `Possession`, and `Camera` structures, a named action enum, and fixed-point helpers with the recovered limits. Asset-pack entries may contain only the bounded facing-offset and height-delta tables plus their source provenance; runtime state and physics remain native C.
+
+### Native implementation boundary
+
+DDAP v8 adds `tipoff.assets`, a bounded, checksummed entry containing the 42 bank-2 gameplay metasprites, the 48-byte held-ball offset table at bank 0 `$B07B`, and the 32-byte height-script region at bank 0 `$9B29`. The runtime receives normalized offsets and signed deltas only; it does not receive ROM banks, 6502 state, or an instruction stream.
+
+`dd_gameplay.c` expresses the recovered sequence as native `Player`, `Ball`, `Camera`, and possession state. It reproduces the opening ball parabola, the CPU jumper's table-driven rise/landing, the deterministic no-input award to original slot 7, owner-relative ball attachment, the first dribble cycle, camera follow, and the initial live action assignments. Arrow keys update the native 1UP player after the possession handoff. Its palette attribute follows the observed two-frames-on/two-frames-off pattern, so the player flashes without disappearing.
+
+`Capture-NativeGameplay.ps1` renders toss, award, handoff, and adjacent flash frames without launching the Win32 window. `Compare-GameplayCaptures.ps1` compares transition frame 356 with original frame 2557 after cropping the native overscan rows. The current result is 2,002 differing pixels out of 57,344 (3.4912%); the pre-jump formation regression remains pixel exact. The remaining handoff difference is primarily dynamic metasprite/OAM ordering plus the not-yet-ported game clock.
+
+### Next implementation slice
+
+1. Capture an FCEUX A/B timing sweep to determine the controllable slot-2 win path before locking jump controls.
+2. Translate the live offensive and defensive action dispatchers closely enough to replace the provisional formation targets.
+3. Port game-clock/HUD updates, then name and translate pass, shot, rebound, steal, and out-of-bounds ball states.
+
 ## Open research questions
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
-- Trace the referee toss, jump-ball loop, possession result, and transition into live player control.
+- Determine the exact A/B timing window and alternate possession result for the human jump-ball branch.
+- Name and translate the pass, shot, rebound, steal, and out-of-bounds ball states after the initial live-control slice.
