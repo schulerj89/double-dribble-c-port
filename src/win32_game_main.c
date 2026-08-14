@@ -24,12 +24,43 @@ static uint8_t *g_wav;
 static size_t g_wav_size;
 static uint8_t *g_intro_wav;
 static size_t g_intro_wav_size;
+static uint8_t *g_select_wav;
+static size_t g_select_wav_size;
 static BITMAPINFO g_bitmap_info;
 static uint32_t g_selection;
 static uint32_t g_config_selection;
+static DDConfigView g_config_view;
+static uint32_t g_config_action_start;
+static int g_config_action_applied;
+static int g_config_boundary_reached;
 static ULONGLONG g_start_tick;
 static int g_started;
 static int g_intro_music_started;
+
+static void dd_update_config(uint32_t frame) {
+    int applied;
+    int complete;
+    if (!g_config_view.action_active || frame < g_config_action_start) return;
+    /* The NES builds OAM, then displays it on the following DMA frame. */
+    g_config_view.action_frame = frame == g_config_action_start ? 0u : frame - g_config_action_start - 1u;
+    if (!dd_config_action_status(&g_pack, g_config_view.action_row, g_config_view.action_frame,
+                                 &applied, &complete)) return;
+    if (applied && !g_config_action_applied) {
+        g_config_action_applied = 1;
+        if (g_config_view.action_row == 0u) {
+            g_config_view.time_index = (g_config_view.time_index + 1u) & 3u;
+        } else if (g_config_view.action_row == 1u) {
+            do {
+                g_config_view.team_index = (g_config_view.team_index + 1u) & 3u;
+            } while (g_config_view.team_index == 1u);
+        } else if (g_config_view.action_row == 2u) {
+            g_config_view.level_index = (g_config_view.level_index + 1u) % 3u;
+        } else {
+            g_config_boundary_reached = 1;
+        }
+    }
+    if (complete) g_config_view.action_active = 0;
+}
 
 static uint32_t dd_elapsed_frames(void) {
     if (!g_started) return 0u;
@@ -49,6 +80,7 @@ static int dd_render_current_frame(void) {
                                          g_pack.meta.width, g_pack.meta.height);
     }
     frame = dd_elapsed_frames();
+    if (frame >= DD_CONFIG_VISIBLE_FRAME) dd_update_config(frame);
     if (frame < 83u) {
         return dd_render_title_selection(&g_pack, 0u, frame == 0u || frame >= 15u, g_pixels,
                                          g_pack.meta.width, g_pack.meta.height);
@@ -73,8 +105,8 @@ static int dd_render_current_frame(void) {
         dd_fill_frame(0x00000000u);
         return 1;
     }
-    return dd_render_config(&g_pack, g_config_selection, g_pixels,
-                            g_pack.config_meta.width, g_pack.config_meta.height);
+    return dd_render_config_view(&g_pack, &g_config_view, g_pixels,
+                                 g_pack.config_meta.width, g_pack.config_meta.height);
 }
 
 static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
@@ -105,17 +137,35 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
             } else if (!g_started && wparam == VK_DOWN) {
                 g_selection = 1u;
                 InvalidateRect(window, NULL, FALSE);
-            } else if (!g_started && (wparam == VK_RETURN || wparam == VK_SPACE) && g_selection == 0u) {
+            } else if (!g_started && (wparam == VK_RETURN || wparam == VK_SPACE || wparam == 'X') && g_selection == 0u) {
                 PlaySoundW(NULL, NULL, 0);
                 g_started = 1;
                 g_start_tick = GetTickCount64();
+                if (g_select_wav != NULL) {
+                    PlaySoundA((LPCSTR)g_select_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+                }
                 InvalidateRect(window, NULL, FALSE);
-            } else if (g_started && dd_elapsed_frames() >= DD_CONFIG_VISIBLE_FRAME && wparam == VK_UP) {
+            } else if (g_started && dd_elapsed_frames() >= DD_CONFIG_VISIBLE_FRAME &&
+                       !g_config_view.action_active && !g_config_boundary_reached && wparam == VK_UP) {
                 g_config_selection = (g_config_selection + g_pack.config_meta.option_count - 1u) %
                                      g_pack.config_meta.option_count;
+                g_config_view.selection = g_config_selection;
                 InvalidateRect(window, NULL, FALSE);
-            } else if (g_started && dd_elapsed_frames() >= DD_CONFIG_VISIBLE_FRAME && wparam == VK_DOWN) {
+            } else if (g_started && dd_elapsed_frames() >= DD_CONFIG_VISIBLE_FRAME &&
+                       !g_config_view.action_active && !g_config_boundary_reached && wparam == VK_DOWN) {
                 g_config_selection = (g_config_selection + 1u) % g_pack.config_meta.option_count;
+                g_config_view.selection = g_config_selection;
+                InvalidateRect(window, NULL, FALSE);
+            } else if (g_started && dd_elapsed_frames() >= DD_CONFIG_VISIBLE_FRAME &&
+                       !g_config_view.action_active && !g_config_boundary_reached &&
+                       (wparam == 'X' || wparam == 'Z' ||
+                        (wparam == VK_RETURN && g_config_view.selection == 3u)) &&
+                       (lparam & (1L << 30)) == 0) {
+                g_config_view.action_active = 1;
+                g_config_view.action_row = g_config_view.selection;
+                g_config_view.action_frame = 0u;
+                g_config_action_start = dd_elapsed_frames();
+                g_config_action_applied = 0;
                 InvalidateRect(window, NULL, FALSE);
             }
             return 0;
@@ -165,11 +215,13 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     g_pixels = (uint32_t *)malloc((size_t)g_pack.meta.width * g_pack.meta.height * sizeof(uint32_t));
     if (g_pixels == NULL || !dd_render_title(&g_pack, g_pixels, g_pack.meta.width, g_pack.meta.height) ||
         !dd_build_title_wav(&g_pack, &g_wav, &g_wav_size) ||
-        !dd_build_intro_music_wav(&g_pack, &g_intro_wav, &g_intro_wav_size)) {
+        !dd_build_intro_music_wav(&g_pack, &g_intro_wav, &g_intro_wav_size) ||
+        !dd_build_select_music_wav(&g_pack, &g_select_wav, &g_select_wav_size)) {
         dd_asset_pack_unload(&g_pack);
         free(g_pixels);
         free(g_wav);
         free(g_intro_wav);
+        free(g_select_wav);
         return 1;
     }
     ZeroMemory(&g_bitmap_info, sizeof(g_bitmap_info));
@@ -202,6 +254,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     free(g_pixels);
     free(g_wav);
     free(g_intro_wav);
+    free(g_select_wav);
     dd_asset_pack_unload(&g_pack);
     return 0;
 }

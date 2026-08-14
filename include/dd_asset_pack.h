@@ -19,6 +19,7 @@ typedef struct DDTitleMeta {
     uint32_t dmc_length;
     uint32_t ppu_control;
     uint32_t sprite_count;
+    uint32_t select_music_frames;
 } DDTitleMeta;
 
 typedef struct DDIntroMeta {
@@ -43,6 +44,25 @@ typedef struct DDConfigMeta {
     uint32_t option_count;
     uint32_t original_visible_frame;
 } DDConfigMeta;
+
+#pragma pack(push, 1)
+typedef struct DDConfigAssetsHeader {
+    uint32_t metasprite_offset[15];
+    uint32_t metasprite_size[15];
+    uint8_t object_table[44];
+    uint8_t cursor_y[4];
+    uint8_t time_values[4];
+    uint8_t time_tiles[32];
+    uint8_t team_tiles[96];
+    uint8_t base_sprite_palette[8];
+    uint8_t team_sprite_palette[16];
+    uint8_t level_x[3];
+    uint8_t ball_velocity[24];
+    uint8_t player_velocity[12];
+    uint8_t ball_offsets[14];
+    uint8_t basket_y[4];
+} DDConfigAssetsHeader;
+#pragma pack(pop)
 
 #pragma pack(push, 1)
 typedef struct DDMusicNote {
@@ -70,10 +90,14 @@ typedef struct DDAssetPack {
     size_t intro_updates_size;
     DDMusicNote *intro_music;
     size_t intro_music_count;
+    DDMusicNote *select_music;
+    size_t select_music_count;
     uint8_t *config_ppu;
     size_t config_ppu_size;
     uint8_t *config_oam;
     size_t config_oam_size;
+    uint8_t *config_assets;
+    size_t config_assets_size;
     DDTitleMeta meta;
     DDIntroMeta intro_meta;
     DDConfigMeta config_meta;

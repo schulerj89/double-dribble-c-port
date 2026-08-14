@@ -40,7 +40,7 @@ Do not infer a ROM offset from a CPU address without recording the active bank. 
 
 ## Current milestone
 
-Preserve the completed title/voice, full native 1P introduction, and initial game-configuration screen while moving into configuration values and confirmation. The completed acceptance baseline includes:
+Preserve the completed title/voice, 1P-confirm sound, full native 1P introduction, and shooting-driven game-configuration screen through END while moving toward gameplay. The completed acceptance baseline includes:
 
 - an FCEUX reference screenshot and timing note;
 - a Ghidra/FCEUX-backed trace of title initialization and DMC playback;
@@ -52,3 +52,4 @@ Preserve the completed title/voice, full native 1P introduction, and initial gam
 - exact comparisons at stable road, balloon, and flag checkpoints through original frame 2084.
 - the cyan/black configuration loading transition and pixel-exact first visible frame at original frame 2097;
 - native Up/Down navigation across the four configuration rows.
+- native X/Z (NES A/B) basket shots, the four TIME values, three selectable 1P teams, three LEVEL values, and the END handoff boundary.

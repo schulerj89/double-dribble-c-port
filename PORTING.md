@@ -79,7 +79,7 @@ The first asset-pack version will use a small directory-based binary container w
 - per-entry length and checksum;
 - sanitized source provenance (bank/offset/transform), not copied source bytes beyond the entry payload itself.
 
-Asset-pack v4 entries:
+Asset-pack v5 entries:
 
 - decoded title pattern data required by the native renderer;
 - title nametable/attribute data;
@@ -91,6 +91,7 @@ Asset-pack v4 entries:
 - procedural intro OAM metadata and a native three-channel note score.
 - decoded game-configuration pattern/nametable state and palette;
 - importer-expanded configuration metasprites and configuration metadata.
+- normalized title-confirm music events and recovered configuration value/physics tables.
 
 The asset pack is always local and ignored by Git.
 
@@ -181,9 +182,9 @@ The checked-in capture tools compare original frames against native logical fram
 
 The supplied application art is committed only as `resources/double_dribble.ico`. It is embedded as Windows branding and is never part of the generated game-content asset pack.
 
-## Milestone 3: initial game-configuration screen
+## Milestone 3: game-configuration screen through END
 
-Status: **transition, initial screen, and row navigation implemented**. Original frame 2084 is the last flag frame. Frames 2085-2091 show the cyan loading field, frames 2092-2096 are black, and frame 2097 is the first visible configuration frame. The native timeline preserves those boundaries.
+Status: **configuration sequence implemented through END**. Original frame 2084 is the last flag frame. Frames 2085-2091 show the cyan loading field, frames 2092-2096 are black, and frame 2097 is the first visible configuration frame. The native timeline preserves those boundaries.
 
 | Behavior | Source evidence | Native counterpart |
 |---|---|---|
@@ -195,12 +196,23 @@ Status: **transition, initial screen, and row navigation implemented**. Original
 | Palette | fixed bank `$C96F`, 32 bytes | asset-pack configuration palette |
 | Metasprite pointer table/builder | bank 2 `$828D`, `$80E8-$8151` | bounded importer-side metasprite expansion |
 | Row navigation | bank 1 `$A307-$A363`, positions `$A364-$A367` | wrapping native Up/Down selection |
+| A/B shot initializer | bank 1 `$A38C-$A3EA` | native per-row fixed-point shot state |
+| Shot/landing handler | bank 1 `$A40F-$A4D4`, `$A73C-$A7BF` | native player animation, ball arc, basket animation, and landing |
+| TIME handler/data | bank 1 `$A4EB-$A54B`, tables `$A368-$A38B` | 5:00, 10:00, 20:00, and 30:00 tile patches |
+| TEAM handler/data | bank 1 `$A54C-$A58E`, `$A609-$A630`, tables `$A63D-$A6BC` | New York, Chicago, and Los Angeles names and palettes; CPU team is skipped |
+| LEVEL handler/data | bank 1 `$A593-$A5B7`, table `$A58F-$A591` | three highlight positions |
+| END boundary | bank 1 `$A631-$A63C` | original 128-frame handoff retained, then native execution stops before gameplay |
+| Computed dispatcher | fixed bank `$C41C-$C437`, inline table at bank 1 `$A4D5-$A4DC` | direct native calls to the four named handlers |
 
-Original and native frame 2097 report **0 differing pixels out of 57,344**. `Capture-NativeConfig.ps1` and `Compare-ConfigCaptures.ps1` reproduce the configuration screenshot check without storing any game assets in the repository.
+The title-confirm sound was traced from original frames 76-138 through the bank-1 APU driver and normalized into the v5 asset pack as `select.music`. It plays immediately when 1P is accepted and ends before the road-intro score begins.
+
+The v5 pack adds `config.assets`, containing only importer-extracted menu tables and metasprites needed by the native state machine. The runtime still has no ROM access, bank switching, instruction interpretation, or frame-log playback.
+
+Original and native frames 2097/2100 report **0 differing pixels out of 57,344**. The TEAM shot launch, jump, basket, and settled Chicago checkpoints also compare exactly; original frame 2180 differs only in the 31 overlapping ball pixels (0.0541%). `Capture-NativeConfig.ps1` and `Compare-ConfigCaptures.ps1` reproduce the configuration screenshot check without storing any game assets in the repository.
 
 ## Open research questions
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
-- Port TIME/TEAM/LEVEL value changes and END confirmation from the configuration handler.
+- Trace and port the gameplay scene entered after the END handoff; this milestone intentionally stops before it.

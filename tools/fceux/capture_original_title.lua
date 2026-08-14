@@ -10,6 +10,23 @@ local start_frame = tonumber(os.getenv("DD_START_FRAME") or "-1")
 local intro_trace = os.getenv("DD_INTRO_TRACE") == "1"
 local trace_start = tonumber(os.getenv("DD_TRACE_START") or "166")
 local trace_end = tonumber(os.getenv("DD_TRACE_END") or "240")
+local capture_range_start = tonumber(os.getenv("DD_CAPTURE_RANGE_START") or "-1")
+local capture_range_end = tonumber(os.getenv("DD_CAPTURE_RANGE_END") or "-1")
+local input_events = {}
+for item in string.gmatch(os.getenv("DD_INPUT_SCRIPT") or "", "[^,]+") do
+    local frame_text, button = string.match(item, "^(%d+):([%a]+)$")
+    local frame = tonumber(frame_text)
+    if frame ~= nil and button ~= nil then
+        input_events[frame] = input_events[frame] or {}
+        local normalized_button = string.lower(button)
+        if normalized_button == "a" then
+            normalized_button = "A"
+        elseif normalized_button == "b" then
+            normalized_button = "B"
+        end
+        input_events[frame][normalized_button] = true
+    end
+end
 
 local capture_frames = {
     [30] = true,
@@ -65,6 +82,13 @@ local capture_frames = {
     [2099] = true,
     [2100] = true,
 }
+
+-- Scripted captures are used for menu-action studies. Preserve the moment an
+-- input is applied and the settled screen after the original shot sequence.
+for frame, _ in pairs(input_events) do
+    capture_frames[frame] = true
+    capture_frames[frame + 145] = true
+end
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -199,10 +223,13 @@ end
 emu.poweron()
 while emu.framecount() < final_frame do
     local next_frame = emu.framecount() + 1
-    joypad.set(1, { start = next_frame == start_frame or next_frame == start_frame + 1 })
+    local input = input_events[next_frame] or {}
+    input.start = input.start or next_frame == start_frame or next_frame == start_frame + 1
+    joypad.set(1, input)
     emu.frameadvance()
     local frame = emu.framecount()
-    if capture_frames[frame] or (frame > 1500 and frame % 60 == 0) then
+    if capture_frames[frame] or (frame > 1500 and frame % 60 == 0) or
+       (capture_range_start >= 0 and frame >= capture_range_start and frame <= capture_range_end) then
         capture(frame)
     end
 end

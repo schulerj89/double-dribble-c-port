@@ -88,7 +88,8 @@ int dd_write_title_wav(const DDAssetPack *pack, const char *path) {
     return 1;
 }
 
-int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
+                              uint32_t music_frames, uint8_t **wav_data, size_t *wav_size) {
     const uint32_t sample_rate = 44100u;
     const double cpu_clock = 1789773.0;
     const double duty_cycles[4] = {0.125, 0.25, 0.5, 0.75};
@@ -99,9 +100,9 @@ int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t
     uint32_t note_start[3] = {0u, 0u, 0u};
     double phase[3] = {0.0, 0.0, 0.0};
     uint8_t *wav;
-    if (pack == NULL || pack->intro_music == NULL || pack->intro_music_count == 0u ||
-        pack->intro_meta.music_frames == 0u || wav_data == NULL || wav_size == NULL) return 0;
-    sample_count = (uint32_t)(((uint64_t)pack->intro_meta.music_frames * sample_rate) / 60u);
+    if (notes == NULL || note_count == 0u || music_frames == 0u ||
+        wav_data == NULL || wav_size == NULL) return 0;
+    sample_count = (uint32_t)(((uint64_t)music_frames * sample_rate) / 60u);
     if (sample_count > (UINT32_MAX - 44u) / 2u) return 0;
     wav = (uint8_t *)malloc(44u + (size_t)sample_count * 2u);
     if (wav == NULL) return 0;
@@ -121,13 +122,13 @@ int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t
         uint32_t frame = (uint32_t)(((uint64_t)sample * 60u) / sample_rate);
         double mix = 0.0;
         uint32_t channel;
-        while (next_note < pack->intro_music_count && pack->intro_music[next_note].frame <= frame) {
-            const DDMusicNote *note = &pack->intro_music[next_note++];
+        while (next_note < note_count && notes[next_note].frame <= frame) {
+            const DDMusicNote *note = &notes[next_note++];
             if (note->channel >= 3u || note->period > 0x07FFu || note->volume > 15u || note->duty > 3u) {
                 free(wav);
                 return 0;
             }
-            active[note->channel] = note;
+            active[note->channel] = note->volume == 0u ? NULL : note;
             note_start[note->channel] = note->frame;
             phase[note->channel] = 0.0;
         }
@@ -158,4 +159,16 @@ int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t
     *wav_data = wav;
     *wav_size = 44u + (size_t)sample_count * 2u;
     return 1;
+}
+
+int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->intro_music, pack->intro_music_count,
+                              pack->intro_meta.music_frames, wav_data, wav_size);
+}
+
+int dd_build_select_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->select_music, pack->select_music_count,
+                              pack->meta.select_music_frames, wav_data, wav_size);
 }

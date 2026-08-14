@@ -13,8 +13,10 @@ static void dd_usage(void) {
     puts("  --render-title <input.assetpack> <output.bmp>");
     puts("  --render-intro <input.assetpack> <frame> <output.bmp>");
     puts("  --render-config <input.assetpack> <selection> <output.bmp>");
+    puts("  --render-config-state <input.assetpack> <selection> <time> <team> <level> <action-row> <action-frame> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
+    puts("  --dump-select-wav <input.assetpack> <output.wav>");
 }
 
 int main(int argc, char **argv) {
@@ -74,6 +76,22 @@ int main(int argc, char **argv) {
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;
     }
+    if (argc == 4 && strcmp(argv[1], "--dump-select-wav") == 0) {
+        uint8_t *wav;
+        size_t size;
+        FILE *file;
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        ok = dd_build_select_music_wav(&pack, &wav, &size);
+        if (ok) {
+            file = fopen(argv[3], "wb");
+            ok = file != NULL && fwrite(wav, 1, size, file) == size;
+            if (file != NULL) fclose(file);
+            free(wav);
+        }
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
     if (argc == 5 && strcmp(argv[1], "--render-config") == 0) {
         uint32_t *pixels;
         unsigned long selection;
@@ -86,6 +104,34 @@ int main(int argc, char **argv) {
         ok = pixels != NULL && dd_render_config(&pack, (uint32_t)selection, pixels,
                                                 pack.config_meta.width, pack.config_meta.height) &&
              dd_write_bmp(argv[4], pixels, pack.config_meta.width, pack.config_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 10 && strcmp(argv[1], "--render-config-state") == 0) {
+        DDConfigView view;
+        uint32_t *pixels;
+        unsigned long values[6];
+        uint32_t index;
+        int ok;
+        for (index = 0u; index < 6u; ++index) {
+            char *end;
+            values[index] = strtoul(argv[index + 3u], &end, 10);
+            if (*argv[index + 3u] == '\0' || *end != '\0' || values[index] > UINT32_MAX) return 1;
+        }
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&view, 0, sizeof(view));
+        view.selection = (uint32_t)values[0];
+        view.time_index = (uint32_t)values[1];
+        view.team_index = (uint32_t)values[2];
+        view.level_index = (uint32_t)values[3];
+        view.action_row = (uint32_t)values[4];
+        view.action_frame = (uint32_t)values[5];
+        view.action_active = 1;
+        pixels = (uint32_t *)malloc((size_t)pack.config_meta.width * pack.config_meta.height * sizeof(uint32_t));
+        ok = pixels != NULL && dd_render_config_view(&pack, &view, pixels,
+                                                     pack.config_meta.width, pack.config_meta.height) &&
+             dd_write_bmp(argv[9], pixels, pack.config_meta.width, pack.config_meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;

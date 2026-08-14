@@ -4,7 +4,7 @@ Source-only native C port of **Double Dribble (USA) (Rev 1)** for NES. The runti
 
 ## Current milestone
 
-The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue, accepts keyboard selection, plays the complete 1P city/road introduction, and transitions into the game-configuration screen. Stable title, intro, and configuration checkpoints match local FCEUX references exactly.
+The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue and 1P-confirm music, plays the complete 1P city/road introduction, and implements the original shooting-driven configuration screen through END. Stable title, intro, and configuration checkpoints match local FCEUX references exactly.
 
 ## Build
 
@@ -20,7 +20,7 @@ Run the native port:
 .\build\double_dribble_game.exe .\build\double-dribble.assetpack
 ```
 
-Use Up/Down to choose a title option. Press Enter or Space on **1P** to start the intro. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. Escape exits. Configuration values and END confirmation are the next gameplay slice.
+Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot and stops at the native-port gameplay boundary. Escape exits.
 
 Reproduce the reference and native captures:
 

@@ -319,22 +319,238 @@ int dd_render_intro(const DDAssetPack *pack, uint32_t intro_frame,
                            pixels, width, height);
 }
 
-int dd_render_config(const DDAssetPack *pack, uint32_t selection,
-                     uint32_t *pixels, uint32_t width, uint32_t height) {
+typedef struct DDConfigObjectState {
+    uint8_t animation[11];
+    uint8_t attributes[11];
+    uint8_t x[11];
+    uint8_t y[11];
+} DDConfigObjectState;
+
+static void dd_config_step_player(DDConfigObjectState *objects, uint32_t row,
+                                  uint8_t *fraction, uint8_t *velocity_low,
+                                  uint8_t *velocity_high, uint8_t acceleration) {
+    uint16_t sum;
+    uint8_t carry;
+    if (row == 3u) return;
+    sum = (uint16_t)*fraction + *velocity_low;
+    *fraction = (uint8_t)sum;
+    carry = (uint8_t)(sum > 0xFFu);
+    objects->y[5] = (uint8_t)(objects->y[5] + *velocity_high + carry);
+    sum = (uint16_t)*velocity_low + acceleration;
+    *velocity_low = (uint8_t)sum;
+    *velocity_high = (uint8_t)(*velocity_high + (sum > 0xFFu));
+    if (objects->y[5] >= 0xB8u) {
+        objects->y[5] = 0xB8u;
+        objects->animation[5] = 0x68u;
+    }
+}
+
+static int dd_config_simulate_action(const DDAssetPack *pack, uint32_t row, uint32_t frame,
+                                     DDConfigObjectState *objects, int *setting_applied,
+                                     int *complete) {
+    const DDConfigAssetsHeader *assets;
+    uint8_t phase = 0u;
+    uint8_t timer = 1u;
+    uint8_t ball_x_fraction = 0u;
+    uint8_t ball_y_fraction = 0u;
+    uint8_t ball_vx_low;
+    uint8_t ball_vx_high;
+    uint8_t ball_vy_low;
+    uint8_t ball_vy_high;
+    uint8_t ball_ax;
+    uint8_t ball_ay;
+    uint8_t player_fraction = 0u;
+    uint8_t player_v_low;
+    uint8_t player_v_high;
+    uint8_t player_acceleration;
+    uint8_t end_countdown = 0u;
+    uint32_t step;
+    if (pack == NULL || pack->config_assets == NULL ||
+        pack->config_assets_size < sizeof(DDConfigAssetsHeader) || row >= 4u || objects == NULL) return 0;
+    assets = (const DDConfigAssetsHeader *)pack->config_assets;
+    memset(objects, 0, sizeof(*objects));
+    for (step = 0u; step < 11u; ++step) {
+        objects->animation[step] = assets->object_table[step * 4u];
+        objects->attributes[step] = assets->object_table[step * 4u + 1u];
+        objects->x[step] = assets->object_table[step * 4u + 2u];
+        objects->y[step] = assets->object_table[step * 4u + 3u];
+    }
+    ball_vx_low = assets->ball_velocity[row * 6u];
+    ball_vx_high = assets->ball_velocity[row * 6u + 1u];
+    ball_vy_low = assets->ball_velocity[row * 6u + 2u];
+    ball_vy_high = assets->ball_velocity[row * 6u + 3u];
+    ball_ax = assets->ball_velocity[row * 6u + 4u];
+    ball_ay = assets->ball_velocity[row * 6u + 5u];
+    player_v_low = assets->player_velocity[row * 3u];
+    player_v_high = assets->player_velocity[row * 3u + 1u];
+    player_acceleration = assets->player_velocity[row * 3u + 2u];
+    if (setting_applied != NULL) *setting_applied = 0;
+    if (complete != NULL) *complete = 0;
+    for (step = 0u; step < frame; ++step) {
+        if (end_countdown != 0u) {
+            --end_countdown;
+            if (end_countdown == 0x60u) {
+                objects->animation[5] = 0x68u;
+                objects->x[6] = 0xC0u;
+                objects->y[6] = 0xA2u;
+            }
+            if (end_countdown == 0u) {
+                if (complete != NULL) *complete = 1;
+                break;
+            }
+            continue;
+        }
+        if ((int8_t)phase >= 0) {
+            --timer;
+            if (timer == 0u) {
+                uint8_t target = row == 3u ? 0x6Au : 0x6Eu;
+                if (row != 3u && objects->animation[5] == 0x68u) objects->animation[5] = 0x6Au;
+                ++objects->animation[5];
+                if (objects->animation[5] == target) {
+                    phase = 0x80u;
+                    dd_config_step_player(objects, row, &player_fraction, &player_v_low,
+                                          &player_v_high, player_acceleration);
+                    continue;
+                }
+                timer = 0x1Cu;
+            }
+            if (row == 3u || objects->animation[5] >= 0x6Du) {
+                dd_config_step_player(objects, row, &player_fraction, &player_v_low,
+                                      &player_v_high, player_acceleration);
+            }
+            {
+                uint32_t offset = (uint32_t)(objects->animation[5] - 0x68u) * 2u;
+                objects->x[6] = (uint8_t)(objects->x[5] + assets->ball_offsets[offset]);
+                objects->y[6] = (uint8_t)(objects->y[5] + assets->ball_offsets[offset + 1u]);
+            }
+            continue;
+        }
+        if (phase != 0xFFu) {
+            uint16_t sum;
+            uint8_t carry;
+            sum = (uint16_t)ball_x_fraction + ball_vx_low;
+            ball_x_fraction = (uint8_t)sum;
+            carry = (uint8_t)(sum > 0xFFu);
+            objects->x[6] = (uint8_t)(objects->x[6] + ball_vx_high + carry);
+            sum = (uint16_t)ball_y_fraction + ball_vy_low;
+            ball_y_fraction = (uint8_t)sum;
+            carry = (uint8_t)(sum > 0xFFu);
+            objects->y[6] = (uint8_t)(objects->y[6] + ball_vy_high + carry);
+            if ((int8_t)ball_vy_high < 0 || objects->y[6] < assets->basket_y[row]) {
+                sum = (uint16_t)ball_vx_low + ball_ax;
+                ball_vx_low = (uint8_t)sum;
+                ball_vx_high = (uint8_t)(ball_vx_high + (sum > 0xFFu));
+                sum = (uint16_t)ball_vy_low + ball_ay;
+                ball_vy_low = (uint8_t)sum;
+                ball_vy_high = (uint8_t)(ball_vy_high + (sum > 0xFFu));
+            } else {
+                phase = 0xFFu;
+                objects->y[6] = 0xF4u;
+                ++objects->animation[row];
+                timer = 8u;
+            }
+            dd_config_step_player(objects, row, &player_fraction, &player_v_low,
+                                  &player_v_high, player_acceleration);
+            continue;
+        }
+        --timer;
+        if (timer != 0u) {
+            dd_config_step_player(objects, row, &player_fraction, &player_v_low,
+                                  &player_v_high, player_acceleration);
+            continue;
+        }
+        dd_config_step_player(objects, row, &player_fraction, &player_v_low,
+                              &player_v_high, player_acceleration);
+        timer = 8u;
+        if (objects->animation[row] == 0x60u) {
+            if (objects->y[5] >= 0xB8u) {
+                if (complete != NULL) *complete = 1;
+                break;
+            }
+            continue;
+        }
+        ++objects->animation[row];
+        if (objects->animation[row] >= 0x63u) {
+            objects->animation[row] = 0x60u;
+            if (setting_applied != NULL) *setting_applied = 1;
+            if (row == 3u) end_countdown = 0x80u;
+        }
+    }
+    return 1;
+}
+
+int dd_config_action_status(const DDAssetPack *pack, uint32_t row, uint32_t frame,
+                            int *setting_applied, int *complete) {
+    DDConfigObjectState objects;
+    return dd_config_simulate_action(pack, row, frame, &objects, setting_applied, complete);
+}
+
+static uint32_t dd_config_emit_object(const DDAssetPack *pack, const DDConfigAssetsHeader *assets,
+                                      uint8_t oam[256], uint32_t sprite, uint8_t animation,
+                                      uint8_t x, uint8_t y, uint8_t attributes) {
+    uint32_t index;
+    if (animation < 0x60u || animation > 0x6Eu) return sprite;
+    index = animation - 0x60u;
+    if (assets->metasprite_offset[index] > pack->config_assets_size ||
+        assets->metasprite_size[index] > pack->config_assets_size - assets->metasprite_offset[index]) return sprite;
+    return dd_intro_emit_metasprite(oam, sprite,
+                                    pack->config_assets + assets->metasprite_offset[index], x, y, attributes);
+}
+
+int dd_render_config_view(const DDAssetPack *pack, const DDConfigView *view,
+                          uint32_t *pixels, uint32_t width, uint32_t height) {
+    const DDConfigAssetsHeader *assets;
+    DDConfigObjectState objects;
+    uint8_t ppu[DD_PPU_SIZE];
     uint8_t oam[256];
-    uint8_t cursor_y;
-    if (pack == NULL || pack->config_ppu == NULL || pack->config_ppu_size != DD_PPU_SIZE ||
-        pack->config_oam == NULL || pack->config_oam_size != sizeof(oam) ||
-        selection >= pack->config_meta.option_count || width != pack->config_meta.width ||
-        height != pack->config_meta.height) return 0;
-    memcpy(oam, pack->config_oam, sizeof(oam));
-    cursor_y = (uint8_t)(0x17u + selection * 0x20u);
-    oam[46u * 4u] = cursor_y;
-    oam[47u * 4u] = cursor_y;
-    return dd_render_scene(pack->config_ppu, pack->config_ppu_size, oam, sizeof(oam),
+    uint32_t object;
+    uint32_t sprite = 1u;
+    if (pack == NULL || view == NULL || pack->config_ppu == NULL ||
+        pack->config_ppu_size != sizeof(ppu) || pack->config_assets == NULL ||
+        pack->config_assets_size < sizeof(DDConfigAssetsHeader) ||
+        view->selection >= 4u || view->time_index >= 4u || view->team_index >= 4u ||
+        view->level_index >= 3u || width != pack->config_meta.width || height != pack->config_meta.height) return 0;
+    assets = (const DDConfigAssetsHeader *)pack->config_assets;
+    memcpy(ppu, pack->config_ppu, sizeof(ppu));
+    memcpy(ppu + 0x2073u, assets->time_tiles + view->time_index * 8u, 4u);
+    memcpy(ppu + 0x2093u, assets->time_tiles + view->time_index * 8u + 4u, 4u);
+    memcpy(ppu + 0x20F3u, assets->team_tiles + view->team_index * 24u, 12u);
+    memcpy(ppu + 0x2113u, assets->team_tiles + view->team_index * 24u + 12u, 12u);
+    memcpy(ppu + 0x3F10u, assets->base_sprite_palette, 8u);
+    memcpy(ppu + 0x3F18u, assets->team_sprite_palette + view->team_index * 4u, 4u);
+    memcpy(ppu + 0x3F1Cu, assets->team_sprite_palette + 4u, 4u);
+    if (view->action_active) {
+        if (!dd_config_simulate_action(pack, view->action_row, view->action_frame, &objects, NULL, NULL)) return 0;
+    } else {
+        memset(&objects, 0, sizeof(objects));
+        for (object = 0u; object < 11u; ++object) {
+            objects.animation[object] = assets->object_table[object * 4u];
+            objects.attributes[object] = assets->object_table[object * 4u + 1u];
+            objects.x[object] = assets->object_table[object * 4u + 2u];
+            objects.y[object] = assets->object_table[object * 4u + 3u];
+        }
+    }
+    objects.x[7] = assets->level_x[view->level_index];
+    objects.y[10] = assets->cursor_y[view->selection];
+    memset(oam, 0, sizeof(oam));
+    for (object = 0u; object < 64u; ++object) oam[object * 4u] = 0xF4u;
+    oam[0] = 0x38u; oam[1] = 0xFEu; oam[2] = 0x30u; oam[3] = 0x20u;
+    for (object = 0u; object < 11u; ++object) {
+        sprite = dd_config_emit_object(pack, assets, oam, sprite, objects.animation[object],
+                                       objects.x[object], objects.y[object], objects.attributes[object]);
+    }
+    return dd_render_scene(ppu, sizeof(ppu), oam, sizeof(oam),
                            pack->config_meta.background_pattern_base, pack->config_meta.nametable_base,
                            pack->config_meta.ppu_control, pack->config_meta.sprite_count,
                            pixels, width, height);
+}
+
+int dd_render_config(const DDAssetPack *pack, uint32_t selection,
+                     uint32_t *pixels, uint32_t width, uint32_t height) {
+    DDConfigView view;
+    memset(&view, 0, sizeof(view));
+    view.selection = selection;
+    return dd_render_config_view(pack, &view, pixels, width, height);
 }
 
 #pragma pack(push, 1)

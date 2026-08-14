@@ -5,7 +5,10 @@ param(
     [int]$StartFrame = 75,
     [int]$FinalFrame = 900,
     [int]$TraceStart = 166,
-    [int]$TraceEnd = 240
+    [int]$TraceEnd = 240,
+    [string]$InputScript = '',
+    [int]$CaptureRangeStart = -1,
+    [int]$CaptureRangeEnd = -1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -30,6 +33,9 @@ $env:DD_START_FRAME = $StartFrame.ToString([System.Globalization.CultureInfo]::I
 $env:DD_INTRO_TRACE = '1'
 $env:DD_TRACE_START = $TraceStart.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 $env:DD_TRACE_END = $TraceEnd.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INPUT_SCRIPT = $InputScript
+$env:DD_CAPTURE_RANGE_START = $CaptureRangeStart.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+$env:DD_CAPTURE_RANGE_END = $CaptureRangeEnd.ToString([System.Globalization.CultureInfo]::InvariantCulture)
 
 Write-Host "Capturing the original 1P path (Start at frame $StartFrame) through frame $FinalFrame..."
 $process = Start-Process -FilePath $FceuxPath `
