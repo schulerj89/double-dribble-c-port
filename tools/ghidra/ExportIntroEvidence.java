@@ -1,4 +1,4 @@
-// Ghidra headless post-script for repeatable Double Dribble evidence exports.
+// Ghidra headless post-script for the bank-1 road-intro and music-driver slice.
 // @category DoubleDribble
 
 import java.io.File;
@@ -13,12 +13,12 @@ import ghidra.program.model.listing.Function;
 import ghidra.program.model.listing.Instruction;
 import ghidra.program.model.symbol.Reference;
 
-public class ExportEvidence extends GhidraScript {
+public class ExportIntroEvidence extends GhidraScript {
     private static final long[] ANCHORS = {
-        0xC001L, 0xC036L, 0xC04EL, 0xC08FL, 0xC164L,
-        0xC43AL, 0xC566L, 0xC57DL, 0xC597L, 0xC5A9L, 0xC5B4L,
-        0xC5C3L, 0xCD70L, 0xCD83L, 0xCD8BL, 0xCD96L,
-        0xD368L, 0xD371L, 0xD393L, 0xD3A0L
+        0x8000L, 0x8079L, 0x808AL, 0x80EDL, 0x813DL, 0x81D0L,
+        0x8241L, 0x82C3L, 0x82D5L, 0x83AAL, 0x847DL, 0x8493L,
+        0x9348L, 0x9357L, 0x937FL, 0x938DL, 0x9396L, 0x939DL,
+        0x93A3L, 0x93ABL, 0x93B8L
     };
 
     @Override
@@ -40,15 +40,14 @@ public class ExportEvidence extends GhidraScript {
                 disassemble(address);
             }
             if (getFunctionContaining(address) == null && getInstructionAt(address) != null) {
-                createFunction(address, String.format("evidence_%04X", value));
+                createFunction(address, String.format("intro_%04X", value));
             }
         }
 
         DecompInterface decompiler = new DecompInterface();
         decompiler.openProgram(currentProgram);
-
         try (PrintWriter report = new PrintWriter(output, "UTF-8")) {
-            report.println("Double Dribble Rev 1 - Ghidra evidence report");
+            report.println("Double Dribble Rev 1 - bank 1 intro/music evidence");
             report.println("Program: " + currentProgram.getName());
             report.println("Language: " + currentProgram.getLanguageID());
             report.println();
@@ -66,13 +65,11 @@ public class ExportEvidence extends GhidraScript {
                 for (Reference reference : references) {
                     report.printf("  %s (%s)%n", reference.getFromAddress(), reference.getReferenceType());
                 }
-
                 Instruction instruction = getInstructionAt(address);
-                for (int count = 0; instruction != null && count < 32; count++) {
+                for (int count = 0; instruction != null && count < 48; count++) {
                     report.printf("%s  %s%n", instruction.getAddress(), instruction);
                     instruction = instruction.getNext();
                 }
-
                 if (function != null) {
                     DecompileResults result = decompiler.decompileFunction(function, 60, monitor);
                     if (result.decompileCompleted() && result.getDecompiledFunction() != null) {
@@ -87,7 +84,6 @@ public class ExportEvidence extends GhidraScript {
         } finally {
             decompiler.dispose();
         }
-
-        println("Wrote Ghidra evidence report to " + output.getAbsolutePath());
+        println("Wrote bank-1 intro evidence report to " + output.getAbsolutePath());
     }
 }

@@ -24,6 +24,7 @@ if (-not (Test-Path -LiteralPath $vcVars -PathType Leaf)) {
 
 $cli = Join-Path $buildDir 'double_dribble_port.exe'
 $game = Join-Path $buildDir 'double_dribble_game.exe'
+$resource = Join-Path $objDir 'double_dribble.res'
 $assetPack = Join-Path $buildDir 'double-dribble.assetpack'
 $include = Join-Path $root 'include'
 $commonSources = @(
@@ -36,9 +37,11 @@ $common = ($commonSources | ForEach-Object { '"{0}"' -f $_ }) -join ' '
 $batchText = @"
 @echo off
 call "$vcVars" > nul
+rc.exe /nologo /fo "$resource" "$root\src\double_dribble.rc"
+if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 cl.exe /nologo /std:c17 /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I "$include" /Fo"$objDir\\" /Fe"$cli" "$root\src\main.c" $common bcrypt.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
-cl.exe /nologo /std:c17 /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I "$include" /Fo"$objDir\\" /Fe"$game" "$root\src\win32_game_main.c" $common bcrypt.lib user32.lib gdi32.lib shell32.lib winmm.lib /link /SUBSYSTEM:WINDOWS
+cl.exe /nologo /std:c17 /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I "$include" /Fo"$objDir\\" /Fe"$game" "$root\src\win32_game_main.c" $common "$resource" bcrypt.lib user32.lib gdi32.lib shell32.lib winmm.lib /link /SUBSYSTEM:WINDOWS
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 "@
 [System.IO.File]::WriteAllText($batch, $batchText, [System.Text.Encoding]::ASCII)
@@ -60,4 +63,3 @@ Write-Host 'Build complete:' -ForegroundColor Green
 Write-Host "  CLI:       $cli"
 Write-Host "  Game:      $game"
 Write-Host "  Assetpack: $assetPack"
-

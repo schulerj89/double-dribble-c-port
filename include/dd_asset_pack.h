@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #define DD_TITLE_PPU_SIZE 0x4000u
+#define DD_PPU_SIZE DD_TITLE_PPU_SIZE
 
 typedef struct DDTitleMeta {
     uint32_t width;
@@ -20,6 +21,29 @@ typedef struct DDTitleMeta {
     uint32_t sprite_count;
 } DDTitleMeta;
 
+typedef struct DDIntroMeta {
+    uint32_t width;
+    uint32_t height;
+    uint32_t background_pattern_base;
+    uint32_t nametable_base;
+    uint32_t ppu_control;
+    uint32_t sprite_count;
+    uint32_t visible_frame;
+    uint32_t update_count;
+    uint32_t music_frames;
+} DDIntroMeta;
+
+#pragma pack(push, 1)
+typedef struct DDMusicNote {
+    uint32_t frame;
+    uint16_t period;
+    uint8_t channel;
+    uint8_t duty;
+    uint8_t volume;
+    uint8_t reserved;
+} DDMusicNote;
+#pragma pack(pop)
+
 typedef struct DDAssetPack {
     uint8_t *ppu;
     size_t ppu_size;
@@ -27,7 +51,16 @@ typedef struct DDAssetPack {
     size_t dmc_size;
     uint8_t *oam;
     size_t oam_size;
+    uint8_t *intro_ppu;
+    size_t intro_ppu_size;
+    uint8_t *intro_oam;
+    size_t intro_oam_size;
+    uint8_t *intro_updates;
+    size_t intro_updates_size;
+    DDMusicNote *intro_music;
+    size_t intro_music_count;
     DDTitleMeta meta;
+    DDIntroMeta intro_meta;
 } DDAssetPack;
 
 int dd_build_asset_pack(const char *rom_path, const char *output_path);

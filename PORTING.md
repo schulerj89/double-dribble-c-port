@@ -79,13 +79,16 @@ The first asset-pack version will use a small directory-based binary container w
 - per-entry length and checksum;
 - sanitized source provenance (bank/offset/transform), not copied source bytes beyond the entry payload itself.
 
-Planned title milestone entries:
+Asset-pack v2 entries:
 
 - decoded title pattern data required by the native renderer;
 - title nametable/attribute data;
 - title palettes and render metadata;
 - spoken-title DMC bytes plus decoded playback metadata, or PCM produced deterministically by the importer;
 - provenance for the title loader and audio routine.
+- decoded road-intro pattern/nametable state and palette;
+- normalized road-update commands with ROM pointers removed;
+- procedural intro OAM metadata and a native three-channel note score.
 
 The asset pack is always local and ignored by Git.
 
@@ -136,8 +139,45 @@ captures/diff/title-diff.png
 
 The native framebuffer is 256 x 240. This workstation's FCEUX configuration captures visible scanlines 8 through 231 as a 256 x 224 PNG, so `Compare-TitleCaptures.ps1` compares it to native rows 8 through 231 without scaling or tolerance. Current result: **0 differing pixels out of 57,344**. Audio is exported as mono 44.1 kHz, 16-bit PCM from the recovered DMC bitstream.
 
+## Milestone 2: 1P road intro and music
+
+Status: **selectable 1P and the complete road-approach phase are implemented**. The balloon/stadium follow-on that begins after the road phase is the next slice.
+
+### Original input and timing
+
+`Capture-Original1PIntro.ps1` presses Start for controller 1 on frames 75 and 76. The title remains active during the original transition, the new scene streams begin at frame 158, its palette is installed at frame 166, music begins at frame 166, and the road scene first becomes visible at frame 170. The native state machine preserves the corresponding 95-frame delay from selection to the first visible intro frame.
+
+### Recovered road scene
+
+| Behavior | Source evidence | Native counterpart |
+|---|---|---|
+| Intro pattern stream 0 | bank 5 `$B196`, 3,294 encoded bytes | decoded `intro.ppu` data at `$0000` |
+| Intro pattern stream 1 | bank 2 `$AD67`, 2,647 encoded bytes | decoded `intro.ppu` data at `$1000` |
+| Road nametable stream | bank 1 `$A030`, 555 encoded bytes | decoded `intro.ppu` data at `$2000` |
+| Intro palette stream | fixed bank `$C996`, palette bytes begin at `$C998` | asset-pack intro palette |
+| Road updater | bank 1 `$9348-$93BD` | normalized phase/update iterator in `dd_render_intro` |
+| Phase counts | bank 1 `$9402-$9416` | importer-generated update records |
+| Phase pointer table | bank 1 `$9504-$952D` | resolved by importer; no ROM pointers at runtime |
+| NMI update consumer | fixed bank `$CB63-$CBAF`, RAM buffer `$0700` | native PPU-state command application |
+| Blimp OAM | frame-170 RAM/OAM observation, 16 8x16 sprites | procedural OAM plus one-pixel-per-eight-frame motion |
+
+Ghidra recovered `$0471` as the 21-phase index, `$0472` as the update index inside a phase, and `$0473` as the countdown. Each phase's first update waits 48 frames; its remaining row updates execute on consecutive frames. The importer resolves the source pointer tables into 170 bounded records containing only delay, size, PPU address, and tile values. The native runtime advances those records as a scene state machine; it does not execute 6502 code or replay an emulator log.
+
+### Music path
+
+FCEUX observed the active music driver in switch bank 1. Ghidra anchors `$80ED-$83AA` cover channel sequencing, envelope/control updates, and timer writes to `$4000-$400B`. The importer emits a normalized native score for two pulse voices and one triangle voice, with provenance pointing to the bank-1 driver/data region. `dd_build_intro_music_wav` synthesizes those voices directly at 44.1 kHz; there is no APU emulator and no per-frame APU-write log in the asset pack.
+
+The current score covers a 720-frame phrase and loops while the road intro runs. Envelope and nonlinear-mixer matching remain audio-fidelity work; the melody, channel periods, duty choices, and entry timing come from the traced bank-1 driver.
+
+### Screenshot fidelity
+
+The checked-in capture tools compare original frames against native logical frames (`original - 165`). Stable original checkpoints 170, 180, 240, 300, 360, 600, 1200, and 1260 currently report **0 differing pixels out of 57,344**. Frames captured during an NMI row update can contain a partial scanline from the old/new tile state and are intentionally not used as stable regression checkpoints.
+
+The supplied application art is committed only as `resources/double_dribble.ico`. It is embedded as Windows branding and is never part of the generated game-content asset pack.
+
 ## Open research questions
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
+- Port the balloon/stadium sprite phase that follows road-update phase 21 (original frame approximately 1276 onward).

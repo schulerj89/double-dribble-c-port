@@ -8,7 +8,7 @@ These instructions apply to every contributor and agent working in this reposito
 - Convert observed 6502 routines into named C state machines, algorithms, and data structures. Preserve behavior, not CPU machinery.
 - The shipping runtime must load only a generated `.assetpack`. It must never open, map, scan, or execute the NES ROM.
 - Mapper 2/UxROM bank selection is an importer and reverse-engineering concern only. Runtime code must use stable asset-pack entry identifiers and native structures.
-- Do not commit a ROM, PRG/CHR dump, decoded graphics, DMC sample, screenshot from the original game, save state, movie, or any other copyrighted binary asset.
+- Do not commit a ROM, PRG/CHR dump, decoded graphics, DMC sample, screenshot from the original game, save state, movie, or any other copyrighted binary asset. The sole exception is the user-supplied application icon at `resources/double_dribble.ico`; it is branding metadata and is never loaded as game content.
 - Build/capture/Ghidra outputs stay under ignored local directories (`build/`, `captures/`, or `ghidra-projects/`).
 
 ## Required evidence workflow
@@ -40,11 +40,13 @@ Do not infer a ROM offset from a CPU address without recording the active bank. 
 
 ## Current milestone
 
-Reproduce the stable Double Dribble title frame and the spoken "Double Dribble" cue. Acceptance requires:
+Reproduce the title/voice milestone and the first native 1P intro slice. Acceptance requires:
 
 - an FCEUX reference screenshot and timing note;
 - a Ghidra/FCEUX-backed trace of title initialization and DMC playback;
 - ROM-to-assetpack extraction with no committed game data;
 - an assetpack-only native executable;
 - native screenshot and audio evidence plus a documented comparison.
-
+- keyboard-selectable 1P and original transition timing;
+- the road-intro PPU streams, compact update state machine, blimp motion, and native music synthesis;
+- exact comparisons at stable road-intro checkpoints.

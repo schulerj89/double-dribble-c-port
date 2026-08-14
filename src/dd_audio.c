@@ -87,3 +87,75 @@ int dd_write_title_wav(const DDAssetPack *pack, const char *path) {
     free(wav);
     return 1;
 }
+
+int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    const uint32_t sample_rate = 44100u;
+    const double cpu_clock = 1789773.0;
+    const double duty_cycles[4] = {0.125, 0.25, 0.5, 0.75};
+    uint32_t sample_count;
+    uint32_t sample;
+    size_t next_note = 0u;
+    const DDMusicNote *active[3] = {NULL, NULL, NULL};
+    uint32_t note_start[3] = {0u, 0u, 0u};
+    double phase[3] = {0.0, 0.0, 0.0};
+    uint8_t *wav;
+    if (pack == NULL || pack->intro_music == NULL || pack->intro_music_count == 0u ||
+        pack->intro_meta.music_frames == 0u || wav_data == NULL || wav_size == NULL) return 0;
+    sample_count = (uint32_t)(((uint64_t)pack->intro_meta.music_frames * sample_rate) / 60u);
+    if (sample_count > (UINT32_MAX - 44u) / 2u) return 0;
+    wav = (uint8_t *)malloc(44u + (size_t)sample_count * 2u);
+    if (wav == NULL) return 0;
+    memcpy(wav, "RIFF", 4);
+    dd_write_u32(wav + 4, 36u + sample_count * 2u);
+    memcpy(wav + 8, "WAVEfmt ", 8);
+    dd_write_u32(wav + 16, 16u);
+    dd_write_u16(wav + 20, 1u);
+    dd_write_u16(wav + 22, 1u);
+    dd_write_u32(wav + 24, sample_rate);
+    dd_write_u32(wav + 28, sample_rate * 2u);
+    dd_write_u16(wav + 32, 2u);
+    dd_write_u16(wav + 34, 16u);
+    memcpy(wav + 36, "data", 4);
+    dd_write_u32(wav + 40, sample_count * 2u);
+    for (sample = 0; sample < sample_count; ++sample) {
+        uint32_t frame = (uint32_t)(((uint64_t)sample * 60u) / sample_rate);
+        double mix = 0.0;
+        uint32_t channel;
+        while (next_note < pack->intro_music_count && pack->intro_music[next_note].frame <= frame) {
+            const DDMusicNote *note = &pack->intro_music[next_note++];
+            if (note->channel >= 3u || note->period > 0x07FFu || note->volume > 15u || note->duty > 3u) {
+                free(wav);
+                return 0;
+            }
+            active[note->channel] = note;
+            note_start[note->channel] = note->frame;
+            phase[note->channel] = 0.0;
+        }
+        for (channel = 0; channel < 3u; ++channel) {
+            const DDMusicNote *note = active[channel];
+            double frequency;
+            double wave;
+            double amplitude;
+            if (note == NULL) continue;
+            frequency = cpu_clock / ((channel == 2u ? 32.0 : 16.0) * ((double)note->period + 1.0));
+            phase[channel] += frequency / sample_rate;
+            if (phase[channel] >= 1.0) phase[channel] -= (uint32_t)phase[channel];
+            if (channel == 2u) {
+                wave = phase[channel] < 0.5 ? phase[channel] * 4.0 - 1.0 : 3.0 - phase[channel] * 4.0;
+                amplitude = 0.24;
+            } else {
+                double age = (double)(frame - note_start[channel]);
+                double envelope = age >= 20.0 ? 0.0 : (20.0 - age) / 20.0;
+                wave = phase[channel] < duty_cycles[note->duty] ? 1.0 : -1.0;
+                amplitude = ((double)note->volume / 15.0) * envelope * 0.20;
+            }
+            mix += wave * amplitude;
+        }
+        if (mix > 1.0) mix = 1.0;
+        if (mix < -1.0) mix = -1.0;
+        dd_write_u16(wav + 44u + (size_t)sample * 2u, (uint16_t)(int16_t)(mix * 28000.0));
+    }
+    *wav_data = wav;
+    *wav_size = 44u + (size_t)sample_count * 2u;
+    return 1;
+}

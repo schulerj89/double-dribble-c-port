@@ -8,6 +8,6 @@
 
 int dd_build_title_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 int dd_write_title_wav(const DDAssetPack *pack, const char *path);
+int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 
 #endif
-

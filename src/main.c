@@ -11,7 +11,9 @@ static void dd_usage(void) {
     puts("  --build-assetpack <rom.nes> <output.assetpack>");
     puts("  --inspect-assetpack <input.assetpack>");
     puts("  --render-title <input.assetpack> <output.bmp>");
+    puts("  --render-intro <input.assetpack> <frame> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
+    puts("  --dump-intro-wav <input.assetpack> <output.wav>");
 }
 
 int main(int argc, char **argv) {
@@ -40,7 +42,37 @@ int main(int argc, char **argv) {
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;
     }
+    if (argc == 5 && strcmp(argv[1], "--render-intro") == 0) {
+        uint32_t *pixels;
+        unsigned long frame;
+        char *end;
+        int ok;
+        frame = strtoul(argv[3], &end, 10);
+        if (*argv[3] == '\0' || *end != '\0' || frame > UINT32_MAX || !dd_asset_pack_load(argv[2], &pack)) return 1;
+        pixels = (uint32_t *)malloc((size_t)pack.intro_meta.width * pack.intro_meta.height * sizeof(uint32_t));
+        ok = pixels != NULL && dd_render_intro(&pack, (uint32_t)frame, pixels,
+                                               pack.intro_meta.width, pack.intro_meta.height) &&
+             dd_write_bmp(argv[4], pixels, pack.intro_meta.width, pack.intro_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 4 && strcmp(argv[1], "--dump-intro-wav") == 0) {
+        uint8_t *wav;
+        size_t size;
+        FILE *file;
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        ok = dd_build_intro_music_wav(&pack, &wav, &size);
+        if (ok) {
+            file = fopen(argv[3], "wb");
+            ok = file != NULL && fwrite(wav, 1, size, file) == size;
+            if (file != NULL) fclose(file);
+            free(wav);
+        }
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
     dd_usage();
     return 2;
 }
-

@@ -6,13 +6,25 @@
 local capture_root = os.getenv("DD_CAPTURE_ROOT") or "."
 local rom_path = os.getenv("DD_ROM_PATH") or ""
 local final_frame = tonumber(os.getenv("DD_CAPTURE_FINAL_FRAME") or "600")
+local start_frame = tonumber(os.getenv("DD_START_FRAME") or "-1")
+local intro_trace = os.getenv("DD_INTRO_TRACE") == "1"
 
 local capture_frames = {
     [30] = true,
     [60] = true,
+    [75] = true,
+    [76] = true,
+    [77] = true,
+    [80] = true,
     [90] = true,
     [120] = true,
     [150] = true,
+    [158] = true,
+    [161] = true,
+    [164] = true,
+    [165] = true,
+    [166] = true,
+    [170] = true,
     [180] = true,
     [210] = true,
     [240] = true,
@@ -22,6 +34,21 @@ local capture_frames = {
     [480] = true,
     [540] = true,
     [600] = true,
+    [660] = true,
+    [720] = true,
+    [780] = true,
+    [840] = true,
+    [900] = true,
+    [960] = true,
+    [1020] = true,
+    [1080] = true,
+    [1140] = true,
+    [1200] = true,
+    [1260] = true,
+    [1320] = true,
+    [1380] = true,
+    [1440] = true,
+    [1500] = true,
 }
 
 local function join_path(left, right)
@@ -70,6 +97,7 @@ end
 local log_path = join_path(capture_root, "trace.csv")
 local log_file = assert(io.open(log_path, "w"))
 log_file:write("frame,event,address,value,pc,bank,a,x,y,p,zp00,zp01,zp02\n")
+local intro_pc_counts = {}
 
 local function log_event(event_name, address, value)
     log_file:write(string.format(
@@ -118,6 +146,21 @@ memory.registerexecute(0xCD70, function(address, size, value)
     log_event("dmc-entry", address, value)
 end)
 
+if intro_trace then
+    memory.registerwrite(0x0300, 0x0500, function(address, size, value)
+        local frame = emu.framecount()
+        if (frame >= 166 and frame <= 240) then
+            log_event("intro-ram-write", address, value)
+        end
+    end)
+    memory.registerexecute(0x8000, 0x4000, function(address, size, value)
+        local frame = emu.framecount()
+        if frame >= 166 and frame <= 240 and current_switch_bank() == 1 then
+            intro_pc_counts[address] = (intro_pc_counts[address] or 0) + 1
+        end
+    end)
+end
+
 local function write_binary(path, bytes)
     local file = assert(io.open(path, "wb"))
     file:write(bytes)
@@ -140,6 +183,8 @@ end
 
 emu.poweron()
 while emu.framecount() < final_frame do
+    local next_frame = emu.framecount() + 1
+    joypad.set(1, { start = next_frame == start_frame or next_frame == start_frame + 1 })
     emu.frameadvance()
     local frame = emu.framecount()
     if capture_frames[frame] then
@@ -148,4 +193,12 @@ while emu.framecount() < final_frame do
 end
 
 log_file:close()
+if intro_trace then
+    local count_file = assert(io.open(join_path(capture_root, "intro-pc-counts.csv"), "w"))
+    count_file:write("address,count\n")
+    for address, count in pairs(intro_pc_counts) do
+        count_file:write(string.format("%04X,%d\n", address, count))
+    end
+    count_file:close()
+end
 emu.exit()
