@@ -825,6 +825,7 @@ static void dd_begin_live(DDGameplayState *state, uint32_t winner) {
     state->controlled_player = 0u;
     state->ball.owner = state->carrier;
     state->ball.action = DD_BALL_DRIBBLE;
+    state->ball.held_height_offset = 0x08u;
     state->ball.height = 0x10C0;
     state->controlled_flash_palette = 1u;
     state->cpu_global_frame = 0xDCu;
@@ -895,6 +896,7 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
     state->ball.height = 0x1800;
     state->ball.animation = 1u;
     state->ball.action = DD_BALL_AWARDED;
+    state->ball.held_height_offset = 0x08u;
     state->ball.owner = DD_NO_OWNER;
     state->ball.receiver = DD_NO_OWNER;
     state->ball.action_age = 0u;
@@ -996,11 +998,14 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     if (ball->action_age != UINT16_MAX) ++ball->action_age;
     switch (ball->action) {
         case DD_BALL_AWARDED:
-            /* $ACB6 projects the held/awarded ball from its owner. */
+            /* $ACB6 attaches with table index 2, then adds 24 height units in
+               tip modes $01/$03 and eight during ordinary held play. */
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
                 state->carrier = ball->owner;
                 dd_attach_ball(assets, state, 1u);
-                ball->height = state->players[ball->owner].height + 0x1800;
+                ball->height = state->players[ball->owner].height +
+                    ((int32_t)(ball->held_height_offset == 0u
+                        ? 0x08u : ball->held_height_offset) << 8u);
             }
             break;
         case DD_BALL_DRIBBLE:
@@ -1140,10 +1145,13 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                                          0x0400, 0x9800);
             ball->velocity_height -= 0x0010;
             ball->height += ball->velocity_height;
-            if (ball->action_age >= 61u) {
+            /* $AFDD tests unsigned integer height >= $E0 after integration;
+               the observed result-four arc crosses into $FF at frame 61. */
+            if ((((uint32_t)ball->height >> 8u) & 0xFFu) >= 0xE0u) {
                 ball->action = DD_BALL_REBOUND;
                 ball->action_age = 0u;
-                ball->velocity_height = 0x0290;
+                ball->velocity_height = 0x02E0;
+                ball->rim_contact = 0u;
             }
             break;
         case DD_BALL_SHOT_LAUNCH: {
@@ -1224,6 +1232,7 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
         dd_step_dribble(assets, state);
     } else if (state->inbound_age == 221u) {
         state->ball.action = DD_BALL_AWARDED;
+        state->ball.held_height_offset = 0x08u;
         state->ball.action_age = 0u;
         state->players[5].action = DD_PLAYER_INBOUND_READY;
     } else if (state->inbound_age == 229u) {
@@ -1301,6 +1310,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         state->carrier = DD_NO_OWNER;
         state->ball.owner = DD_NO_OWNER;
         state->ball.action = DD_BALL_AWARDED;
+        state->ball.held_height_offset = 0x08u;
         state->ball.action_age = 0u;
     }
     if (live_frame == 767u && state->possession_count == 0u) {
@@ -1370,6 +1380,7 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
         state->tip_winner = 5u;
         state->ball.owner = state->carrier;
         state->ball.action = DD_BALL_AWARDED;
+        state->ball.held_height_offset = 0x18u;
     }
     if (sequence_frame == DD_USER_AWARD_FRAME &&
         state->tip_user_jump_frame == DD_USER_JUMP_WIN_FRAME) {

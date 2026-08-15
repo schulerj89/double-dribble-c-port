@@ -538,9 +538,20 @@ Native tests cover `$0A`, `$0B`, and `$0C`, promoting all three to Verified.
 Selected-bank offsets are `$8C36->$0C46`, `$8CF3->$0D03`, `$B017->$3027`, and
 `$ACAB->$2CBB`; fixed-bank `$D99A` is offset `$199A` in the fixed 16 KiB bank.
 
+Awarded ball `$00` at `$ACB6` has two portable height branches after attachment:
+tip modes `$01/$03` add `$18` to the owner's integer height, while ordinary mode
+`$00` adds `$08`. Natural frames 2532 and 3004 prove `$26+$18=$3E` and
+`$10+$08=$18` respectively. The native ball carries this mode explicitly so a
+later inbound cannot accidentally retain the tip offset. Loose flight `$09` at
+`$AFDD` checks the unsigned integer height after integration, not elapsed time;
+`>= $E0` changes to rebound `$07`, writes vertical term `$02E0`, and clears the
+rim latch. The observed result-four arc reaches that condition on its 61st
+frame, and the native regression now asserts both the threshold and writes.
+States `$00` and `$09` therefore move to Verified; `$03/$08` remain Partial.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **73% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **75% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

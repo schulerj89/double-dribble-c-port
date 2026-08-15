@@ -458,6 +458,26 @@ int main(int argc, char **argv) {
           "$B435's exclusive 10-unit court boundary resets the contact timer");
 
     dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.ball.action = DD_BALL_AWARDED;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.held_height_offset = 0x18u;
+    dispatch_state.players[5].height = 0x2600;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step tip-awarded ball state $00");
+    check(dispatch_state.ball.height == 0x3E00 && dispatch_state.carrier == 5u,
+          "ball state $00 applies $ACB6's traced tip-award height offset $18");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.ball.action = DD_BALL_AWARDED;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.held_height_offset = 0x08u;
+    dispatch_state.players[0].height = 0x1000;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step ordinary awarded ball state $00");
+    check(dispatch_state.ball.height == 0x1800 && dispatch_state.carrier == 0u,
+          "ball state $00 applies $ACB6's ordinary held-ball height offset $08");
+
+    dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_PASS;
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.ball.receiver = 0u;
@@ -558,8 +578,10 @@ int main(int argc, char **argv) {
     check(dispatch_state.ball.action == DD_BALL_LOOSE_AIRBORNE,
           "ball state $09 remains airborne through its traced sixtieth frame");
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "finish loose-ball airborne state $09");
-    check(dispatch_state.ball.action == DD_BALL_REBOUND,
-          "ball state $09 reaches rebound state $07 on traced frame 61");
+    check(dispatch_state.ball.action == DD_BALL_REBOUND &&
+          dispatch_state.ball.velocity_height == 0x02E0 &&
+          dispatch_state.ball.rim_contact == 0u,
+          "ball state $09 crosses $AFDD's $E0 threshold into rebound state $07");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_SHOT_LAUNCH;
