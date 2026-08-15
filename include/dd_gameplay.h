@@ -42,6 +42,7 @@ typedef enum DDBallAction {
 
 typedef enum DDPlayerAction {
     DD_PLAYER_LIVE_USER_CARRIER = 0x02,
+    DD_PLAYER_LIVE_USER_INBOUND = 0x0D,
     DD_PLAYER_LIVE_USER = 0x0F,
     DD_PLAYER_FORMATION_USER = 0x10,
     DD_PLAYER_TIP_USER_AIRBORNE = 0x11,
@@ -105,6 +106,7 @@ typedef struct DDPlayerState {
     uint8_t height_script_reverse;
     uint8_t release_timer;
     uint8_t hold_timer;
+    uint8_t paired_timer;
 } DDPlayerState;
 
 typedef struct DDBallState {
@@ -143,6 +145,7 @@ typedef struct DDGameplayState {
     uint8_t cpu_priority_player;
     uint8_t possession_direction;
     uint8_t possession_count;
+    uint8_t inbound_variant;
     uint8_t camera_chr_side;
     uint8_t hud_split_y;
     uint8_t tip_winner;

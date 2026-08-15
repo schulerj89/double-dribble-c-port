@@ -381,6 +381,18 @@ static int dd_cpu_target_occupied(const DDGameplayState *state, uint32_t player,
     return 0;
 }
 
+/* $9102 compares the current player with its $0580 paired opponent using
+   two-unit half extents on both portable court axes. */
+static int dd_paired_player_contact(const DDGameplayState *state, uint32_t player) {
+    uint32_t opponent = player < 5u ? player + 5u : player - 5u;
+    return dd_axis_boxes_overlap(state->players[player].court_depth,
+                                 state->players[opponent].court_depth,
+                                 0x0200, 0x0200) &&
+           dd_axis_boxes_overlap(state->players[player].court_x,
+                                 state->players[opponent].court_x,
+                                 0x0200, 0x0200);
+}
+
 static void dd_move_cpu_player(DDPlayerState *player, uint32_t player_index,
                                uint32_t live_frame, int32_t speed) {
     int32_t old_x = player->court_x;
@@ -584,6 +596,14 @@ static int dd_inbound_formation_ready(const DDGameplayState *state,
 static void dd_start_inbound_release(DDGameplayState *state, uint32_t inbounder,
                                      uint32_t receiver) {
     DDPlayerState *player = &state->players[inbounder];
+    uint32_t other_first = inbounder < 5u ? 5u : 0u;
+    uint32_t teammate;
+    for (teammate = other_first; teammate < other_first + 5u; ++teammate) {
+        state->players[teammate].action = DD_PLAYER_LIVE_TEAMMATE;
+        state->players[teammate].action_age = 0u;
+    }
+    state->controlled_player = (uint8_t)other_first;
+    state->players[other_first].action = DD_PLAYER_LIVE_USER;
     player->action = DD_PLAYER_INBOUND_READY;
     player->action_age = 0u;
     player->release_timer = 8u;
@@ -591,6 +611,29 @@ static void dd_start_inbound_release(DDGameplayState *state, uint32_t inbounder,
     state->ball.held_height_offset = 0x08u;
     state->ball.receiver = (uint8_t)receiver;
     state->ball.action_age = 0u;
+}
+
+static void dd_start_inbound_alternate(DDGameplayState *state, uint32_t inbounder) {
+    uint32_t first = inbounder < 5u ? 0u : 5u;
+    uint32_t opposite = first == 0u ? 5u : 0u;
+    uint32_t selected = first;
+    while (selected < first + 5u && state->players[selected].role != 0u) ++selected;
+    if (selected >= first + 5u) selected = inbounder;
+    state->ball.action = DD_BALL_AWARDED;
+    state->ball.action_age = 0u;
+    state->controlled_player = (uint8_t)selected;
+    state->players[selected].action = DD_PLAYER_LIVE_USER_INBOUND;
+    state->players[selected].action_age = 0u;
+    if (state->inbound_variant == 2u) {
+        uint32_t role_zero = opposite;
+        while (role_zero < opposite + 5u && state->players[role_zero].role != 0u) {
+            ++role_zero;
+        }
+        if (role_zero < opposite + 5u) {
+            state->players[role_zero].action = DD_PLAYER_LIVE_USER;
+            state->players[role_zero].action_age = 0u;
+        }
+    }
 }
 
 static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
@@ -735,6 +778,18 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_LIVE_TEAMMATE: {
             uint32_t opponent = player_index < 5u ? player_index + 5u : player_index - 5u;
+            if (dd_paired_player_contact(state, player_index)) {
+                player->action = DD_PLAYER_LIVE_PAIRED_DEFENDER;
+                player->action_age = 0u;
+                player->paired_timer = 0x10u;
+                return;
+            }
+            if (state->players[opponent].action == 0x03u) {
+                /* $9139 converts the paired defender to jump start when its
+                   paired object exposes ball/action state $03. */
+                player->action = DD_PLAYER_JUMP_START;
+                player->action_age = 0u;
+            }
             int32_t basket_side = player_index < 5u ? 0x1400 : -0x1400;
             speed = 0x0200;
             player->target_x = dd_clamp(state->players[opponent].court_x + basket_side,
@@ -757,6 +812,10 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         case DD_PLAYER_LIVE_PAIRED_DEFENDER: {
             uint32_t opponent = player_index < 5u ? player_index + 5u : player_index - 5u;
             speed = 0;
+            if (!dd_paired_player_contact(state, player_index)) {
+                player->action = DD_PLAYER_LIVE_TEAMMATE;
+                player->action_age = 0u;
+            }
             player->target_x = player->court_x;
             player->target_depth = player->court_depth;
             player->velocity_x = 0;
@@ -883,11 +942,14 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             player->velocity_x = 0;
             player->velocity_depth = 0;
             if (player->hold_timer != 0u) --player->hold_timer;
-            if (player->hold_timer <= 0x0Au &&
-                dd_inbound_formation_ready(state, player_index)) {
+            if (dd_inbound_formation_ready(state, player_index)) {
                 uint32_t receiver = player_index + 1u;
                 if (receiver >= DD_GAMEPLAY_PLAYER_COUNT) receiver = player_index - 1u;
-                dd_start_inbound_release(state, player_index, receiver);
+                if (state->inbound_variant != 0u) {
+                    dd_start_inbound_alternate(state, player_index);
+                } else {
+                    dd_start_inbound_release(state, player_index, receiver);
+                }
             }
             break;
         case DD_PLAYER_INBOUND_READY:

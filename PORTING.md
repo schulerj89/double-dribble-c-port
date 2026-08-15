@@ -480,6 +480,25 @@ state `$30` retains the observed `$20` hold countdown/readiness gate, and state
 The native checkpoints remain release setup at frame 1344/live 988, pass launch
 at frame 1352/live 996, and reception at frame 1371/live 1015.
 
+Controlled state `$30` probes also cover `$8EE2`'s two nonstandard branches.
+With mode bit `$40`, frame 2601 writes ball `$00`, selects the same-side role-zero
+object, and changes it to action `$0D`. With `$002C=1`, it additionally changes
+the opposite-side role-zero object to `$0F`. The standard probe produces
+`$0F,$20,$20,$20,$20,$31,$37,$37,$37,$37`, matching the natural inbound
+arrangement, while the two alternate probes preserve the other `$37` objects.
+The native `inbound_variant` makes these portable choices explicit without
+emulating zero-page flags.
+
+State `$20`'s missing paired-player path is `$8A16->$9102`. `$9102` feeds
+current and paired projected coordinates to the shared `$9B42` two-axis box
+test with half extents two. Controlled case 1 records `$20->$22`, latch
+`$0480=$10`, and preserved vectors `$0123/$FEDC`; case 2 moves the projection
+away and records `$22->$20` with both vectors zero. `$9139` supplies the third
+branch: paired action `$03` changes the current object `$20->$23`. Native uses
+the same two-unit fixed-point boxes and explicit paired latch. Mappings are
+selected-bank `$8A16->$0A26`, `$9102->$1112`, `$9139->$1149`, and
+`$9B42->$1B52`.
+
 Dispatcher states `$2C/$33/$34/$35` contain no state-specific decision at all: each
 table entry targets `$8BC5`, which jumps to fixed-bank `$D98A`. On the observed
 gate-zero path `$D98A->$A84C->$A896->$A85A`, `$A84C` calls `$9CF6` twice for
@@ -664,7 +683,7 @@ promoting `$21/$41` to Verified.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **84% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **85% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

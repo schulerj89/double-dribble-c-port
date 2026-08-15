@@ -273,6 +273,31 @@ int main(int argc, char **argv) {
           "$D99A leaves the CPU target unchanged when forward lookahead is clear");
 
     dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_TEAMMATE;
+    dispatch_state.players[5].court_x = 0x010000;
+    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[0].court_x = 0x010000;
+    dispatch_state.players[0].court_depth = 0x005800;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.court_x = 0x001000;
+    dispatch_state.ball.court_depth = 0x001000;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_PAIRED_DEFENDER &&
+          dispatch_state.players[5].paired_timer == 0x10u,
+          "player state $20 follows $9102 contact into $22 with latch $10");
+    dispatch_state.players[0].court_x = 0x014000;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[5].velocity_x == 0 &&
+          dispatch_state.players[5].velocity_depth == 0,
+          "player state $22 returns to $20 when $9102 reports separation");
+    dispatch_state.players[0].action = 0x03u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_JUMP_START,
+          "player state $20 follows $9139 paired action $03 into jump state $23");
+
+    dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_JUMP_START;
     dispatch_state.players[5].height = 0x1055;
     dispatch_state.players[5].velocity_x = 0x0123;
@@ -457,8 +482,36 @@ int main(int argc, char **argv) {
           dispatch_state.players[5].hold_timer == 0x0Au &&
           dispatch_state.players[5].release_timer == 8u &&
           dispatch_state.ball.action == DD_BALL_AWARDED &&
-          dispatch_state.ball.receiver == 6u,
+          dispatch_state.ball.receiver == 6u &&
+          dispatch_state.players[0].action == DD_PLAYER_LIVE_USER &&
+          dispatch_state.players[1].action == DD_PLAYER_LIVE_TEAMMATE,
           "player state $30 waits for formation $37 then installs $9018 release state $31");
+
+    dispatch_state = dispatch_base;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_LIVE_SET;
+        dispatch_state.players[player].role = (uint8_t)(player % 5u);
+    }
+    dispatch_state.players[5].action = DD_PLAYER_INBOUND_HOLD;
+    dispatch_state.players[5].hold_timer = 0x0Au;
+    dispatch_state.inbound_variant = 1u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_USER_INBOUND &&
+          dispatch_state.controlled_player == 5u &&
+          dispatch_state.ball.action == DD_BALL_AWARDED,
+          "player state $30 mode-bit $40 branch installs selected action $0D");
+    dispatch_state = dispatch_base;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_LIVE_SET;
+        dispatch_state.players[player].role = (uint8_t)(player % 5u);
+    }
+    dispatch_state.players[5].action = DD_PLAYER_INBOUND_HOLD;
+    dispatch_state.players[5].hold_timer = 0x0Au;
+    dispatch_state.inbound_variant = 2u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_USER_INBOUND &&
+          dispatch_state.players[0].action == DD_PLAYER_LIVE_USER,
+          "player state $30 $002C branch also installs opposite role-zero action $0F");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_INBOUND_READY;

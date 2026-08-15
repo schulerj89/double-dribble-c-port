@@ -22,6 +22,8 @@ local inject_player_slot = tonumber(os.getenv("DD_INJECT_PLAYER_SLOT") or "7")
 local inject_player_route_case = tonumber(os.getenv("DD_INJECT_PLAYER_ROUTE_CASE") or "0")
 local inject_player_jump_case = tonumber(os.getenv("DD_INJECT_PLAYER_JUMP_CASE") or "0")
 local inject_player_inbound_case = tonumber(os.getenv("DD_INJECT_PLAYER_INBOUND_CASE") or "0")
+local inject_player_pair_case = tonumber(os.getenv("DD_INJECT_PLAYER_PAIR_CASE") or "0")
+local inject_player_hold_case = tonumber(os.getenv("DD_INJECT_PLAYER_HOLD_CASE") or "0")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -318,6 +320,40 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x03F0 + player, 0xDC)
         memory.writebyte(0x0430 + player, 0x03)
         memory.writebyte(0x0440 + player, 0x45)
+        if inject_player_hold_case ~= 0 then
+            -- Controlled $8EE2 formation-ready standard/alternate branches.
+            for slot = 0x02, 0x0B do
+                memory.writebyte(0x0340 + slot, 0x37)
+                memory.writebyte(0x0690 + slot, (slot - 0x02) % 5)
+            end
+            memory.writebyte(0x0340 + player, 0x30)
+            memory.writebyte(0x04F0 + player, 0x0A)
+            memory.writebyte(0x0050,
+                inject_player_hold_case == 2 and 0x48 or 0x08)
+            memory.writebyte(0x002C,
+                inject_player_hold_case == 3 and 0x01 or 0x00)
+            memory.writebyte(0x0052, 0x00)
+            memory.writebyte(0x0056, 0x01)
+            memory.writebyte(0x0340, 0x0B)
+        end
+        if inject_player_pair_case ~= 0 then
+            -- Controlled $8A16/$8A98->$9102 paired-player contact.
+            local paired = 0x02
+            memory.writebyte(0x0340 + player,
+                inject_player_pair_case == 2 and 0x22 or 0x20)
+            memory.writebyte(0x0580 + player, paired)
+            memory.writebyte(0x0360 + player, 0x00)
+            memory.writebyte(0x0370 + player, 0x80)
+            memory.writebyte(0x03C0 + player, 0x58)
+            memory.writebyte(0x0490 + paired,
+                inject_player_pair_case == 1 and 0x58 or 0x20)
+            memory.writebyte(0x04A0 + paired, 0x80)
+            memory.writebyte(0x04B0 + paired, 0x00)
+            if inject_player_pair_case == 3 then
+                memory.writebyte(0x0340 + paired, 0x03)
+            end
+            memory.writebyte(0x0340, 0x0B)
+        end
         if inject_player_inbound_case ~= 0 then
             -- Controlled $8FE0 release countdown installed by $9018.
             memory.writebyte(0x0340 + player, 0x31)

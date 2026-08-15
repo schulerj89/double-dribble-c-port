@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 84%**
+**Portable Ghidra-to-C gameplay-loop coverage: 85%**
 
 **End-to-end match completeness: approximately 50%**
 
@@ -23,19 +23,19 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 83.8%`, rounded to **84%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 84.6%`, rounded to **85%**.
 
-## Player action dispatcher — 97.1%
+## Player action dispatcher — 100%
 
 Ghidra anchor `$89B2` subtracts `$20` from player action `$0340+slot` and dispatches through the 34-entry table at `$89C0`. `ExportGameplayLoopEvidence.java` prints all entries so this denominator is reproducible.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 32 | `$21-$2F,$31-$41` |
-| P | 2 | `$20,$30` |
+| V | 34 | `$20-$41` |
+| P | 0 | none |
 | M | 0 | none |
 
-Score: `(32 + 2 × 0.5) / 34 = 97.1%`.
+Score: `34 / 34 = 100%`.
 
 Every table entry now has an explicit native handler. States `$28/$29` reproduce
 the traced `$20` countdown, rotating-priority ball target, immediate `$B435`
@@ -81,9 +81,9 @@ at timer `$04`, metasprite index subtraction by eight below `$06`, and the
 underflow transition `$31->$40`. Controlled probes separately prove the launch
 and underflow branches. The native inbound phase now enters `$31` from state
 `$30` only when every remaining `$36` formation object has reached `$37`, then
-uses the same alternating-frame timer; `$31` is V. State `$30` remains P because
-its alternate `$002C`, mode-bit `$40`, and timeout orchestration branches are
-not yet translated.
+uses the same alternating-frame timer. Controlled state `$30` probes cover the
+standard `$9018->$31` arrangement, mode-bit `$40` action `$0D` arrangement,
+and `$002C`'s additional opposite-role-zero `$0F` assignment. Both states are V.
 
 States `$2C/$33/$34/$35` share the literal `$8BC5->$D98A->$A84C` tail. `$A84C`
 calls the longitudinal fixed-point integrator twice and the depth integrator
@@ -103,6 +103,14 @@ when the jumper owns the ball; otherwise it restores that five-player side to
 frames 2505-2557 prove height `$10->$26->$10`, tip ownership `$07`, and
 `$2B->$25`. Isolated native checks cover the below-threshold, winner, and loser
 branches, promoting both states to V.
+
+State `$20` now follows `$8A16->$9102/$9139` rather than remaining a generic
+off-ball target seeker. `$9102` uses two-unit half extents against the paired
+player's projected coordinates. Controlled probes prove contact `$20->$22`
+with latch `$10` while preserving vectors, separation `$22->$20` while clearing
+both vectors, and paired action `$03` causing `$20->$23`. Together with the
+already translated common tail, states `$20/$22` are V and the player action
+dispatcher is fully Verified.
 
 ## Ball action dispatcher — 100%
 
