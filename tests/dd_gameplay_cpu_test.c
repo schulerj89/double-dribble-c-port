@@ -441,7 +441,7 @@ int main(int argc, char **argv) {
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u &&
           dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER,
-          "player state $29 uses immediate $91FB/$B435 contact to run $A347 possession transfer");
+          "player state $29 uses immediate $91FB/$B435 contact to run $A44B possession transfer");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_REBOUND_CHASE;
@@ -676,7 +676,63 @@ int main(int argc, char **argv) {
           dispatch_state.players[3].action == DD_PLAYER_LIVE_CPU_CUT &&
           dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
           dispatch_state.possession_direction == 1u,
-          "$B435/$A347 sustained contact transfers possession, control, and both team states");
+          "$B435/$9FA3->$A44B sustained contact transfers possession, control, and both team states");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.court_x = dispatch_state.players[1].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[1].court_depth;
+    dispatch_state.ball.height = dispatch_state.players[1].height + 0x0800;
+    dispatch_state.players[1].contact_age = 19u;
+    dispatch_state.players[1].facing = dispatch_state.players[5].facing;
+    dispatch_state.scene_frame = dispatch_state.next_clock_frame - 1u;
+    run_cpu_dispatch(&pack, &dispatch_state, 1u);
+    check(dispatch_state.phase == DD_GAMEPLAY_FREE_THROW &&
+          dispatch_state.foul_shooter == 5u && dispatch_state.foul_offender == 1u &&
+          dispatch_state.ball.action == DD_BALL_DEAD &&
+          dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_SHOOTER &&
+          dispatch_state.players[1].action == DD_PLAYER_FREE_THROW_FORMATION,
+          "$A347 zero-clock same-facing contact enters the foul/free-throw dead ball");
+    for (player = 0u; player < 194u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance traced free-throw dead-ball formation");
+    }
+    check(dispatch_state.free_throw_age == 194u &&
+          dispatch_state.ball.action == DD_BALL_DRIBBLE &&
+          dispatch_state.ball.owner == 5u,
+          "free throw reproduces frame 2802's $0B->$01 shooter award");
+    for (player = 194u; player < 214u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance free throw to ready state");
+    }
+    check(dispatch_state.ball.action == DD_BALL_AWARDED &&
+          dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_READY &&
+          dispatch_state.players[5].court_x == 0x009200,
+          "free throw reproduces frame 2822's ball $00 and shooter state $45");
+    for (player = 214u; player < 348u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance free throw to gather state");
+    }
+    check(dispatch_state.ball.action == DD_BALL_SHOT_GATHER &&
+          dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_GATHER &&
+          dispatch_state.shot_value == 1u,
+          "free throw reproduces frame 2956's shooter $47/ball $04 one-point gather");
+    dispatch_state.ball.action = DD_BALL_AIRBORNE;
+    dispatch_state.ball.action_age = 0u;
+    dispatch_state.ball.court_x = 0x004900;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.ball.height = 0x003500;
+    dispatch_state.ball.velocity_x = 0;
+    dispatch_state.ball.velocity_depth = 0;
+    dispatch_state.ball.velocity_height = 0;
+    dispatch_state.score[1] = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "score controlled free-throw result one");
+    check(dispatch_state.ball.action == DD_BALL_SCORE &&
+          dispatch_state.score[1] == 1u,
+          "$B377 result one awards one point while the foul shot is active");
 
     dispatch_state = dispatch_base;
     dispatch_state.carrier = 5u;
@@ -808,6 +864,29 @@ int main(int argc, char **argv) {
           dispatch_state.ball.velocity_x == 0x007D &&
           dispatch_state.ball.velocity_depth == -0x0019,
           "$AF72 reverses and halves both miss velocities before state $09");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_AIRBORNE;
+    dispatch_state.ball.action_age = 0x00FFu;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.court_x = 0x004900;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.ball.height = 0x003500;
+    dispatch_state.ball.velocity_x = 0;
+    dispatch_state.ball.velocity_depth = 0;
+    dispatch_state.ball.velocity_height = 0;
+    dispatch_state.last_shooter = 5u;
+    dispatch_state.possession_direction = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step $AE25/$B377 counter-wrap arming frame");
+    check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.ball.outcome == 0u,
+          "$B377 rearms wrapped $04F0 and returns without classifying contact");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step armed $B377 result-one frame");
+    check(dispatch_state.ball.action == DD_BALL_SCORE &&
+          dispatch_state.ball.outcome == 1u,
+          "$B377 classifies the same hoop contact after its arming return");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_LOOSE_LAUNCH;

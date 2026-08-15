@@ -21,7 +21,8 @@ typedef enum DDGameplayPhase {
     DD_GAMEPLAY_TOSS,
     DD_GAMEPLAY_AWARD,
     DD_GAMEPLAY_LIVE,
-    DD_GAMEPLAY_INBOUND
+    DD_GAMEPLAY_INBOUND,
+    DD_GAMEPLAY_FREE_THROW
 } DDGameplayPhase;
 
 typedef enum DDBallAction {
@@ -80,7 +81,15 @@ typedef enum DDPlayerAction {
     DD_PLAYER_LIVE_CPU_ROUTE = 0x3E,
     DD_PLAYER_LIVE_RENDER_ONLY = 0x3F,
     DD_PLAYER_LIVE_CPU = 0x40,
-    DD_PLAYER_INBOUNDER = 0x41
+    DD_PLAYER_INBOUNDER = 0x41,
+    DD_PLAYER_FREE_THROW_SHOOTER = 0x42,
+    DD_PLAYER_FREE_THROW_FORMATION = 0x43,
+    DD_PLAYER_FREE_THROW_READY = 0x45,
+    DD_PLAYER_FREE_THROW_SET = 0x46,
+    DD_PLAYER_FREE_THROW_GATHER = 0x47,
+    DD_PLAYER_FREE_THROW_FOLLOW = 0x48,
+    DD_PLAYER_FREE_THROW_RECOVER = 0x49,
+    DD_PLAYER_FREE_THROW_WALK = 0x4A
 } DDPlayerAction;
 
 typedef struct DDPlayerState {
@@ -160,6 +169,11 @@ typedef struct DDGameplayState {
     uint8_t clock_seconds;
     uint8_t period;
     uint8_t last_shooter;
+    uint8_t shot_value;
+    uint8_t foul_shooter;
+    uint8_t foul_offender;
+    uint8_t match_clock_pulse;
+    uint16_t free_throw_age;
     int clock_expired;
     int initialized;
 } DDGameplayState;

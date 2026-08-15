@@ -567,13 +567,14 @@ player follows the loose ball.
 
 The defensive path begins at `$91A6` and `$9FA3`. Both use `$B435`, increment
 the per-object contact counter `$06A0+slot` against limit `$0068`, clear the
-counter when contact or eligibility fails, and branch to `$A347` when sustained
+counter when contact or eligibility fails, and call `$A347` when sustained
 contact qualifies. `$B435` uses exclusive player/ball half extents 4+6 on court
 X and depth, then accepts height when unsigned
 `player_height + $11 - ball_height < $22`. A controlled, opt-in FCEUX probe at
 frames 2602/2606/2608 holds opposing slots `$03/$07` in stable state `$3B` at
-the same coordinates with limit 3. The original calls `$A347` at frame 2608,
-changes owner/carrier `$07->$03`, installs carrier state `$02`, assigns the
+the same coordinates with limit 3. The original calls `$A347` at frame 2608;
+because clock countdown `$0025` is nonzero, it returns and `$9FA3` jumps to
+`$A44B`. That routine changes owner/carrier `$07->$03`, installs carrier state `$02`, assigns the
 winning team `$40,$40,$3C,$3E`, and resets the other team to `$20`. The native
 translation applies those team roles, ownership, court direction, control, and
 contact-counter resets without emulating instructions.
@@ -584,12 +585,41 @@ later after `$8E88` excludes ball states `$05/$06` and assigns owner/carrier;
 and `$2F->$30` after the direction-selected `$BD/$A1` return target is reached.
 The isolated native regression checks exercise the arrival, exclusion, claim,
 target, and hold branches. Selected-bank ROM offsets are `$8D9C->$0DAC`,
-`$8DAB->$0DBB`, `$91A6->$11B6`, `$9FA3->$1FB3`, `$A347->$2357`, and
+`$8DAB->$0DBB`, `$91A6->$11B6`, `$9FA3->$1FB3`, `$A347->$2357`,
+`$A44B->$245B`, and
 `$B435->$3445`.
 
 These additions promote player states `$28,$29,$2D,$2E,$2F` to Verified and
 defensive steals/blocks from Missing to Partial. Blocks and the remaining
 defensive eligibility rules are still outstanding.
+
+### Foul/free-throw rule and complete basket-result slice
+
+The `$A347` call is not itself the ordinary steal handoff. Ghidra shows its
+exceptional branch requires clock countdown `$0025==0`, ball state `$01`, and
+equal owner/current-player facing. It stores the fouled owner in `$006A`, writes
+animation `$29`, requests SFX `$30`, selects match mode `$1A`, removes its return
+address, and jumps directly to `$9645`. Otherwise it returns to `$9FA3`, which
+plays SFX `$10` and jumps to the separately exported `$A44B` possession reset.
+
+The opt-in zero-tick FCEUX probe proves the exceptional path. At frame 2608 it
+executes `$A347` but never `$A44B`, writes `$006A=$07` and `$0059=$1A`, changes
+the ball to dead state `$0B`, and clears carrier `$0048`. Frames 2609-2610 put
+the shooter in `$42->$4A` and the other players in formation `$43`; formation
+objects independently reach `$44`. The shooter receives ball `$01` at frame
+2802, advances through ball `$00`/player `$45` at 2822, player `$46` at 2860,
+ball `$04`/player `$47` at 2956, ball `$05` at 2982, and player `$48` at 3010.
+The native match phase reproduces this dispatcher spine and scores its result-one
+basket as one point rather than the ordinary two. Formation movement and the
+remaining post-attempt branches are intentionally still Partial.
+
+Controlled `$AE25->$B377` probes now isolate all four basket results: result
+`$01` enters score state `$06`, while `$02/$03/$04` enter loose initializer `$08`
+and then airborne `$09`. A separate `$04F0=$FF` probe shows `$AE25` wrapping the
+counter to zero, `$B377` rearming it to one, and returning without contact. The
+native classifier now has the same wrap guard; tests cover all `$AF72` vector
+branches and `$AFDD`'s 61-frame arc. This promotes missed-shot outcomes to
+Verified without promoting the still-partial shot-block collision family.
 
 ### CPU packed avoidance and terminal ball states
 

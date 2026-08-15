@@ -4,11 +4,11 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 85%**
+**Portable Ghidra-to-C gameplay-loop coverage: 86%**
 
-**End-to-end match completeness: approximately 50%**
+**Match-rules completeness: 57.7%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: clock, score, periods, the observed result-four miss, and sustained-contact steals now have bounded native paths, while exact clock gating, final match end, blocks, fouls, general out-of-bounds handling, and broad CPU decision coverage remain incomplete.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, final match end, blocks, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 84.6%`, rounded to **85%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 86.2%`, rounded to **86%**.
 
 ## Player action dispatcher — 100%
 
@@ -39,12 +39,12 @@ Score: `34 / 34 = 100%`.
 
 Every table entry now has an explicit native handler. States `$28/$29` reproduce
 the traced `$20` countdown, rotating-priority ball target, immediate `$B435`
-contact, and `$A347` possession handoff. States `$2D-$2F` have repeated dynamic
+contact, and `$A44B` possession handoff. States `$2D-$2F` have repeated dynamic
 traces plus isolated native checks for target arrival, ball-state exclusions,
-possession claim, direction-dependent return target, and hold-state arrival. The
-partial group still uses bounded timing, movement, collision, or formation logic
-where important original branches remain, especially the full `$D99A` obstacle
-search and several `$D759-$DA39` CPU branches.
+possession claim, direction-dependent return target, and hold-state arrival.
+Higher-level movement, collision, and decision caveats are tracked under the
+core-loop and match-rule components, especially the remaining `$D759-$DA39`
+CPU branches.
 
 State `$38` now follows `$8195->$8468` exactly: `$AC2A` selects the court
 region, region zero uses `($001A + 1) & 3`, and `$AC58` reads the seven-byte
@@ -160,21 +160,28 @@ metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
 switching are likewise excluded globally and are not represented as gameplay
 coverage entries.
 
-## Match rules and possession flow — 50.0%
+## Match rules and possession flow — 57.7%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
-| V (1) | opening tip-off and possession award |
-| P (11) | live user control, CPU pass/shot choice, made-shot sequence, rebound sequence, inbound sequence, possession transfer, game clock, score/HUD updates, period transitions/end conditions, missed-shot outcomes, defensive steals/blocks |
-| M (1) | fouls and general out-of-bounds rules |
+| V (2) | opening tip-off and possession award; missed-shot outcomes |
+| P (11) | live user control, CPU pass/shot choice, made-shot sequence, rebound sequence, inbound sequence, possession transfer, game clock, score/HUD updates, period transitions/end conditions, defensive steals/blocks, fouls and general out-of-bounds rules |
+| M (0) | none |
 
-Score: `(1 + 11 × 0.5) / 13 = 50.0%`.
+Score: `(2 + 11 × 0.5) / 13 = 57.7%`.
 
 The defensive entry is Partial: the original sustained-contact steal path and
 immediate loose-ball possession arbitration are now native, but shot blocks and
 the remaining defensive eligibility branches are not yet complete.
+
+Missed-shot outcomes are Verified from `$AE25->$B377->$AF72/$AFDD`: controlled
+FCEUX probes independently produce classifier results `$01-$04`, the `$04F0`
+wrap/arming return is covered, and native checks exercise all three miss-vector
+branches plus the traced 61-frame loose-ball arc. The combined foul/out-of-bounds
+entry is now Partial because the zero-clock same-facing foul/free-throw path is
+native; general sideline and baseline out-of-bounds decisions remain missing.
 
 ## Evidence and update rules
 
@@ -197,8 +204,8 @@ When updating this ledger:
 
 ## Highest-value next coverage work
 
-1. Deepen the partial dispatcher handlers with dynamic FCEUX branch captures, especially `$20/$23/$24` and `$30/$31`.
-2. Translate the remaining `$D99A` CPU decision/search branches and pass-lane rejection.
+1. Translate the free-throw formation states `$42-$4A`, starting with `$8594/$85BE/$860A/$8682`.
+2. Translate the remaining CPU decision branches and pass-lane rejection.
 3. Translate the higher-level block, contested-rebound, and general rim-contact eligibility branches around `$B473`.
 4. Match the clock's presentation-state call gaps and implement fourth-period/final match end conditions.
-5. Add steals, blocks, fouls, and non-scripted out-of-bounds handling.
+5. Add non-scripted sideline and baseline out-of-bounds handling.

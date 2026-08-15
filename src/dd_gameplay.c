@@ -156,8 +156,35 @@ static int dd_possession_ball_contact(const DDGameplayState *state, uint32_t pla
     return height_delta < 0x22u;
 }
 
-/* $91A6/$9FA3 -> $A347: sustained opposing-team contact changes owner,
-   controlled player, attack direction, and every live player state together. */
+/* $A347's exceptional branch runs only when clock countdown $0025 is zero,
+   the ball is in dribble state $01, and the two players face the same way.
+   It preserves the fouled owner in $006A, installs animation $29, requests
+   whistle SFX $30/mode $1A, and jumps to $9645's dead-ball setup. */
+static void dd_begin_free_throw(DDGameplayState *state, uint32_t shooter,
+                                uint32_t offender) {
+    uint32_t player;
+    state->phase = DD_GAMEPLAY_FREE_THROW;
+    state->free_throw_age = 0u;
+    state->foul_shooter = (uint8_t)shooter;
+    state->foul_offender = (uint8_t)offender;
+    state->carrier = DD_NO_OWNER;
+    state->ball.action = DD_BALL_DEAD;
+    state->ball.receiver = DD_NO_OWNER;
+    state->ball.action_age = 0u;
+    state->ball.velocity_x = 0;
+    state->ball.velocity_depth = 0;
+    state->ball.velocity_height = 0;
+    state->players[shooter].animation = 0x29u;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        state->players[player].action = player == shooter
+            ? DD_PLAYER_FREE_THROW_SHOOTER : DD_PLAYER_FREE_THROW_FORMATION;
+        state->players[player].action_age = 0u;
+        state->players[player].contact_age = 0u;
+    }
+}
+
+/* $9FA3 calls $A347 first.  If that special branch returns, its tail jumps
+   to $A44B, which performs the ordinary possession and ten-player reset. */
 static void dd_transfer_contact_possession(DDGameplayState *state, uint32_t winner) {
     static const uint8_t route_actions[4] = {
         DD_PLAYER_LIVE_CPU, DD_PLAYER_LIVE_CPU,
@@ -205,6 +232,11 @@ static int dd_step_possession_contact(DDGameplayState *state, uint32_t player_in
     }
     if (player->contact_age != UINT8_MAX) ++player->contact_age;
     if (player->contact_age < DD_POSSESSION_CONTACT_LIMIT) return 0;
+    if (state->match_clock_pulse != 0u &&
+        state->players[owner].facing == player->facing) {
+        dd_begin_free_throw(state, owner, player_index);
+        return 1;
+    }
     dd_transfer_contact_possession(state, player_index);
     return 1;
 }
@@ -217,6 +249,9 @@ static uint8_t dd_basket_contact_result(const DDGameplayState *state) {
     uint8_t height = (uint8_t)(state->ball.height >> 8);
     uint8_t result;
     if (height < 0x34u || height > 0x37u) return 0u;
+    /* $AE25 increments byte counter $04F0 before calling $B377.  If that
+       increment wraps to zero, $B377 rearms it and returns without contact. */
+    if ((uint8_t)state->ball.action_age == 0u) return 0u;
     for (result = 1u; result <= 4u; ++result) {
         int32_t ball_half = (int32_t)result << 8;
         if (dd_axis_boxes_overlap(state->ball.court_depth, 0x005800,
@@ -645,6 +680,7 @@ static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
     state->ball.outcome = 0u;
     state->ball.rim_contact = 0u;
     state->last_shooter = (uint8_t)shooter;
+    state->shot_value = 2u;
     state->players[shooter].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
     state->players[shooter].action_age = 0u;
 }
@@ -1129,8 +1165,10 @@ static uint8_t dd_bcd_decrement(uint8_t value) {
 }
 
 static void dd_step_game_clock(DDGameplayState *state) {
+    state->match_clock_pulse = 0u;
     if (state->clock_expired || state->scene_frame < state->next_clock_frame) return;
     while (!state->clock_expired && state->scene_frame >= state->next_clock_frame) {
+        state->match_clock_pulse = 1u;
         if (state->clock_seconds == 0u) state->clock_seconds = 0x60u;
         state->clock_seconds = dd_bcd_decrement(state->clock_seconds);
         if (state->clock_seconds == 0x59u && state->clock_minutes != 0u) {
@@ -1172,6 +1210,10 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
     state->clock_expired_frame = UINT_MAX;
     state->next_clock_frame = state->scene_frame + 141u;
     state->last_shooter = DD_NO_OWNER;
+    state->shot_value = 2u;
+    state->foul_shooter = DD_NO_OWNER;
+    state->foul_offender = DD_NO_OWNER;
+    state->free_throw_age = 0u;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         DDPlayerState *object = &state->players[player];
         memset(object, 0, sizeof(*object));
@@ -1348,7 +1390,10 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                     ball->velocity_depth = 0;
                     if (state->last_shooter < DD_GAMEPLAY_PLAYER_COUNT) {
                         uint32_t team = state->last_shooter < 5u ? 0u : 1u;
-                        if (state->score[team] <= 997u) state->score[team] += 2u;
+                        uint32_t points = state->shot_value == 1u ? 1u : 2u;
+                        if (state->score[team] <= 999u - points) {
+                            state->score[team] = (uint16_t)(state->score[team] + points);
+                        }
                     }
                     state->possession_direction ^= 1u;
                 }
@@ -1550,6 +1595,64 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
     }
 }
 
+/* Controlled FCEUX frames 2608-3146 expose the foul/free-throw spine after
+   $A347: dead ball $0B, shooter states $42/$4A, formation $43->$44, ball
+   $01->$00, shooter $45->$46->$47, then shot states $04->$05.  The detailed
+   formation walkers remain a later slice, but these timings keep the rule,
+   one-point shot, and return to live play native and deterministic. */
+static void dd_step_free_throw(const DDTipoffAssetsHeader *assets,
+                               DDGameplayState *state) {
+    uint32_t shooter = state->foul_shooter;
+    DDBallState *ball = &state->ball;
+    if (shooter >= DD_GAMEPLAY_PLAYER_COUNT) {
+        state->phase = DD_GAMEPLAY_LIVE;
+        return;
+    }
+    if (state->free_throw_age != UINT16_MAX) ++state->free_throw_age;
+    if (state->free_throw_age == 2u) {
+        state->players[shooter].action = DD_PLAYER_FREE_THROW_WALK;
+    } else if (state->free_throw_age == 192u) {
+        state->players[shooter].action = DD_PLAYER_FREE_THROW_SHOOTER;
+    } else if (state->free_throw_age == 194u) {
+        state->carrier = (uint8_t)shooter;
+        ball->owner = (uint8_t)shooter;
+        ball->action = DD_BALL_DRIBBLE;
+        ball->action_age = 0u;
+        state->players[shooter].action = DD_PLAYER_FREE_THROW_FORMATION;
+        dd_step_dribble(assets, state);
+    } else if (state->free_throw_age == 214u) {
+        state->players[shooter].court_x = state->possession_direction == 0u
+            ? 0x009200 : 0x016E00;
+        state->players[shooter].court_depth = 0x005800;
+        state->players[shooter].action = DD_PLAYER_FREE_THROW_READY;
+        ball->action = DD_BALL_AWARDED;
+        ball->action_age = 0u;
+        ball->owner = (uint8_t)shooter;
+    } else if (state->free_throw_age == 252u) {
+        state->players[shooter].action = DD_PLAYER_FREE_THROW_SET;
+    } else if (state->free_throw_age == 348u) {
+        ball->action = DD_BALL_SHOT_GATHER;
+        ball->action_age = 0u;
+        ball->owner = (uint8_t)shooter;
+        ball->receiver = DD_NO_OWNER;
+        ball->outcome = 0u;
+        ball->rim_contact = 0u;
+        state->last_shooter = (uint8_t)shooter;
+        state->shot_value = 1u;
+        state->players[shooter].action = DD_PLAYER_FREE_THROW_GATHER;
+    } else if (state->free_throw_age == 402u) {
+        state->players[shooter].height = 0x1000;
+        state->players[shooter].action = DD_PLAYER_FREE_THROW_FOLLOW;
+    }
+    dd_step_ball(assets, state);
+    if (state->free_throw_age > 348u && ball->action == DD_BALL_DRIBBLE &&
+        ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
+        uint32_t winner = ball->owner;
+        state->phase = DD_GAMEPLAY_LIVE;
+        dd_transfer_contact_possession(state, winner);
+    }
+}
+
 static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *state,
                          uint32_t input_mask) {
     DDPlayerState *controlled = &state->players[state->controlled_player];
@@ -1559,6 +1662,13 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     uint32_t cpu_end;
     int32_t input_x = 0;
     int32_t input_depth = 0;
+    if (state->phase == DD_GAMEPLAY_FREE_THROW) {
+        dd_step_free_throw(assets, state);
+        dd_update_camera(state);
+        state->live_frame = live_frame;
+        state->previous_input = input_mask;
+        return;
+    }
     if (state->phase == DD_GAMEPLAY_INBOUND) {
         dd_step_inbound(assets, state, live_frame);
         dd_update_camera(state);
@@ -1594,6 +1704,12 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     }
     for (player = cpu_start; player < cpu_end; ++player) {
         dd_update_cpu_player(assets, state, player, live_frame);
+    }
+    if (state->phase == DD_GAMEPLAY_FREE_THROW) {
+        dd_update_camera(state);
+        state->live_frame = live_frame;
+        state->previous_input = input_mask;
+        return;
     }
     if (state->carrier == state->controlled_player && state->ball.action == DD_BALL_DRIBBLE) {
         uint32_t pressed = input_mask & ~state->previous_input;
@@ -1701,7 +1817,8 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
     if (sequence_frame == state->live_start_frame) {
         dd_begin_live(state, state->tip_winner);
         state->previous_input = input_mask;
-    } else if (state->phase == DD_GAMEPLAY_LIVE || state->phase == DD_GAMEPLAY_INBOUND) {
+    } else if (state->phase == DD_GAMEPLAY_LIVE || state->phase == DD_GAMEPLAY_INBOUND ||
+               state->phase == DD_GAMEPLAY_FREE_THROW) {
         dd_step_live(assets, state, input_mask);
     }
     return 1;

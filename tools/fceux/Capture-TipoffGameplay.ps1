@@ -7,6 +7,13 @@ param(
     [string]$CaptureName = 'original-tipoff-gameplay',
     [int]$JumpStart = -1,
     [int]$JumpEnd = -1,
+    [int]$ContactFrame = -1,
+    [int]$ContactClockGate = -1,
+    [int]$BasketFrame = -1,
+    [ValidateRange(1, 4)]
+    [int]$BasketResult = 1,
+    [ValidateRange(0, 255)]
+    [int]$BasketCounter = 0,
     [switch]$DisablePcCounts,
     [ValidateSet('A', 'B')]
     [string]$JumpButton = 'A'
@@ -28,6 +35,11 @@ $env:DD_TIP_JUMP_START = $JumpStart.ToString([Globalization.CultureInfo]::Invari
 $env:DD_TIP_JUMP_END = $JumpEnd.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_TIP_JUMP_BUTTON = $JumpButton
 $env:DD_ENABLE_PC_COUNTS = if ($DisablePcCounts) { '0' } else { '1' }
+$env:DD_INJECT_CONTACT_FRAME = $ContactFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CONTACT_CLOCK_GATE = $ContactClockGate.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_BASKET_FRAME = $BasketFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_BASKET_RESULT = $BasketResult.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_BASKET_COUNTER = $BasketCounter.ToString([Globalization.CultureInfo]::InvariantCulture)
 
 $process = Start-Process -FilePath $FceuxPath `
     -ArgumentList @('-nothrottle', '1', '-turbo', '1', '-srendline', '0', '-erendline', '239', '-lua', ('"{0}"' -f $scriptPath), ('"{0}"' -f $RomPath)) `

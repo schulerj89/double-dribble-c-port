@@ -12,6 +12,10 @@ local jump_button = os.getenv("DD_TIP_JUMP_BUTTON") or "A"
 local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
+local inject_contact_clock_gate = tonumber(os.getenv("DD_INJECT_CONTACT_CLOCK_GATE") or "-1")
+local inject_basket_frame = tonumber(os.getenv("DD_INJECT_BASKET_FRAME") or "-1")
+local inject_basket_result = tonumber(os.getenv("DD_INJECT_BASKET_RESULT") or "1")
+local inject_basket_counter = tonumber(os.getenv("DD_INJECT_BASKET_COUNTER") or "0")
 local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME") or "-1")
 local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
 local inject_loose_launch_frame = tonumber(os.getenv("DD_INJECT_LOOSE_LAUNCH_FRAME") or "-1")
@@ -83,7 +87,7 @@ dispatch:write("frame,object,slot,state,owner,carrier,clock_minutes,clock_second
 local clock_calls = assert(io.open(join_path(capture_root, "gameplay-clock-calls.csv"), "w"))
 clock_calls:write("frame,clock_minutes,clock_seconds,ball_state,phase\n")
 local collision_calls = assert(io.open(join_path(capture_root, "gameplay-collision-calls.csv"), "w"))
-collision_calls:write("frame,pc,current_object,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier,contact_timer,contact_limit\n")
+collision_calls:write("frame,pc,current_object,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier,contact_timer,contact_limit,clock_gate,current_facing,owner_facing\n")
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
@@ -152,17 +156,21 @@ local function record_collision_call(address, size, value)
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
         local object = memory.readbyte(0x004B)
-        collision_calls:write(string.format("%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+        local owner = memory.readbyte(0x005B)
+        collision_calls:write(string.format("%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
             frame, address, object, memory.readbyte(0x0340), memory.readbyte(0x0360),
             memory.readbyte(0x0370), memory.readbyte(0x03C0), memory.readbyte(0x0410),
-            memory.readbyte(0x0490), memory.readbyte(0x0480), memory.readbyte(0x005B),
-            memory.readbyte(0x0048), memory.readbyte(0x06A0 + object), memory.readbyte(0x0068)))
+            memory.readbyte(0x0490), memory.readbyte(0x0480), owner,
+            memory.readbyte(0x0048), memory.readbyte(0x06A0 + object), memory.readbyte(0x0068),
+            memory.readbyte(0x0025), memory.readbyte(0x0350 + object),
+            owner < 0x10 and memory.readbyte(0x0350 + owner) or 0xFF))
     end
 end
 memory.registerexecute(0xB377, 1, record_collision_call)
 memory.registerexecute(0xB473, 1, record_collision_call)
 memory.registerexecute(0xB435, 1, record_collision_call)
 memory.registerexecute(0xA347, 1, record_collision_call)
+memory.registerexecute(0xA44B, 1, record_collision_call)
 
 local function record_cpu_decision(address, size, value)
     local frame = emu.framecount()
@@ -258,7 +266,9 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0048, 0x07)
     end
     if next_frame == inject_contact_frame then
-        -- Controlled probe for $B435 -> $9FA3 -> $A347 possession contact.
+        -- Controlled probe for $B435 -> $9FA3.  A nonzero $0025 continues
+        -- through $A44B possession transfer; zero plus equal facing makes
+        -- $A347 take its whistle/dead-ball jump to $9645 instead.
         local player = 0x03
         memory.writebyte(0x0340, 0x01)
         memory.writebyte(0x005B, 0x07)
@@ -283,6 +293,35 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0580 + player, 0x07)
         memory.writebyte(0x0690 + player, 0x01)
         memory.writebyte(0x06A0 + player, 0x00)
+        if inject_contact_clock_gate >= 0 then
+            memory.writebyte(0x0025, inject_contact_clock_gate)
+        end
+    end
+    if next_frame == inject_basket_frame then
+        -- Controlled $AE25->$B377 classifier probe.  $AE25 increments $04F0
+        -- first; injecting $FF proves B377's wrap/arming return, while 0
+        -- classifies the requested result on this frame.
+        local hoop_x = 0x48
+        memory.writebyte(0x0340, 0x05)
+        memory.writebyte(0x003B, 0x00)
+        memory.writebyte(0x0050, 0x08)
+        memory.writebyte(0x005B, 0x07)
+        memory.writebyte(0x0340 + 0x07, 0x25)
+        memory.writebyte(0x0360, 0x00)
+        memory.writebyte(0x0370, hoop_x +
+            (inject_basket_result == 1 and 1 or inject_basket_result + 1))
+        memory.writebyte(0x03C0, 0x58)
+        memory.writebyte(0x0410, 0x35)
+        memory.writebyte(0x0420, 0x00)
+        memory.writebyte(0x0390, 0x00)
+        memory.writebyte(0x03A0, 0x00)
+        memory.writebyte(0x03E0, 0x00)
+        memory.writebyte(0x03F0, 0x00)
+        memory.writebyte(0x0430, 0x00)
+        memory.writebyte(0x0440, 0x00)
+        memory.writebyte(0x0480, 0x00)
+        memory.writebyte(0x0490, 0x00)
+        memory.writebyte(0x04F0, inject_basket_counter)
     end
     if next_frame == inject_ball_state_frame then
         -- Controlled dispatcher probe, disabled by default.  It verifies that
