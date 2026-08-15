@@ -112,6 +112,7 @@ typedef struct DDBallState {
     uint8_t owner;
     uint8_t receiver;
     uint8_t outcome;
+    uint8_t rim_contact;
     uint16_t action_age;
     int32_t velocity_x;
     int32_t velocity_depth;
@@ -123,6 +124,7 @@ typedef struct DDGameplayState {
     DDBallState ball;
     int32_t camera_x;
     uint32_t scene_frame;
+    uint32_t sequence_frame;
     uint32_t live_frame;
     uint8_t controlled_player;
     uint8_t carrier;
@@ -138,7 +140,15 @@ typedef struct DDGameplayState {
     uint16_t inbound_age;
     uint32_t tip_user_jump_frame;
     uint32_t live_start_frame;
+    uint32_t next_clock_frame;
+    uint32_t clock_expired_frame;
     uint32_t previous_input;
+    uint16_t score[2];
+    uint8_t clock_minutes;
+    uint8_t clock_seconds;
+    uint8_t period;
+    uint8_t last_shooter;
+    int clock_expired;
     int initialized;
 } DDGameplayState;
 

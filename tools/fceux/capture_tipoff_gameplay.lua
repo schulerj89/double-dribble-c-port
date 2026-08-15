@@ -9,6 +9,8 @@ local trace_end = tonumber(os.getenv("DD_TRACE_END") or "2760")
 local jump_start = tonumber(os.getenv("DD_TIP_JUMP_START") or "-1")
 local jump_end = tonumber(os.getenv("DD_TIP_JUMP_END") or "-1")
 local jump_button = os.getenv("DD_TIP_JUMP_BUTTON") or "A"
+local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
+local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -63,7 +65,15 @@ audio_state:write("frame,square1_period,square1_volume,square1_duty,square2_peri
 local audio_ram = assert(io.open(join_path(capture_root, "gameplay-audio-ram-writes.csv"), "w"))
 audio_ram:write("frame,address,value,pc,bank\n")
 local states = assert(io.open(join_path(capture_root, "tipoff-state.bin"), "wb"))
+local dispatch = assert(io.open(join_path(capture_root, "gameplay-dispatch.csv"), "w"))
+dispatch:write("frame,object,slot,state,owner,carrier,clock_minutes,clock_seconds\n")
+local clock_calls = assert(io.open(join_path(capture_root, "gameplay-clock-calls.csv"), "w"))
+clock_calls:write("frame,clock_minutes,clock_seconds,ball_state,phase\n")
+local collision_calls = assert(io.open(join_path(capture_root, "gameplay-collision-calls.csv"), "w"))
+collision_calls:write("frame,pc,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
+local previous_ball_state = -1
+local previous_player_state = {}
 
 local function record_write(address, size, value)
     local frame = emu.framecount()
@@ -106,13 +116,35 @@ memory.registerwrite(0x0079, 0x60, function(address, size, value)
             frame, address, value, memory.getregister("pc"), current_switch_bank()))
     end
 end)
-memory.registerexecute(0x8000, 0x4000, function(address, size, value)
+if enable_pc_counts then
+    memory.registerexecute(0x8000, 0x4000, function(address, size, value)
+        local frame = emu.framecount()
+        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+            local phase = phase_for_frame(frame)
+            counts[phase][address] = (counts[phase][address] or 0) + 1
+        end
+    end)
+end
+memory.registerexecute(0x9431, 1, function(address, size, value)
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
-        local phase = phase_for_frame(frame)
-        counts[phase][address] = (counts[phase][address] or 0) + 1
+        clock_calls:write(string.format("%d,%02X,%02X,%02X,%s\n", frame,
+            memory.readbyte(0x0058), memory.readbyte(0x0057), memory.readbyte(0x0340),
+            phase_for_frame(frame)))
     end
 end)
+local function record_collision_call(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+        collision_calls:write(string.format("%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+            frame, address, memory.readbyte(0x0340), memory.readbyte(0x0360),
+            memory.readbyte(0x0370), memory.readbyte(0x03C0), memory.readbyte(0x0410),
+            memory.readbyte(0x0490), memory.readbyte(0x0480), memory.readbyte(0x005B),
+            memory.readbyte(0x0048)))
+    end
+end
+memory.registerexecute(0xB377, 1, record_collision_call)
+memory.registerexecute(0xB473, 1, record_collision_call)
 
 local capture_frames = {
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
@@ -122,7 +154,11 @@ local capture_frames = {
     [2660]=true,[2680]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,
     [2770]=true,[2783]=true,[2929]=true,[2944]=true,[3004]=true,[3324]=true,
     [3501]=true,[3545]=true,[3553]=true,[3572]=true,[3600]=true,[3640]=true,
-    [3680]=true,[3720]=true,[3800]=true,[3900]=true,[4000]=true,[4100]=true,[4200]=true
+    [3680]=true,[3720]=true,[3800]=true,[3900]=true,[4000]=true,[4100]=true,[4200]=true,
+    [11800]=true,[12000]=true,[12064]=true,[12096]=true,[12097]=true,[12100]=true,
+    [12120]=true,[12160]=true,[12200]=true,[12300]=true,[12400]=true,[12412]=true,
+    [12413]=true,[12420]=true,[12440]=true,[12480]=true,[12520]=true,[12600]=true,
+    [12700]=true,[12800]=true,[12900]=true,[13000]=true,[13100]=true,[13200]=true
 }
 
 local function write_state(frame)
@@ -130,6 +166,27 @@ local function write_state(frame)
     local bytes = {}
     for address = 0, 0x07FF do bytes[#bytes + 1] = string.char(memory.readbyte(address)) end
     states:write(table.concat(bytes))
+end
+
+local function write_dispatch_changes(frame)
+    local owner = memory.readbyte(0x005B)
+    local carrier = memory.readbyte(0x0048)
+    local minutes = memory.readbyte(0x0058)
+    local seconds = memory.readbyte(0x0057)
+    local ball_state = memory.readbyte(0x0340)
+    if ball_state ~= previous_ball_state then
+        dispatch:write(string.format("%d,ball,0,%02X,%02X,%02X,%02X,%02X\n",
+            frame, ball_state, owner, carrier, minutes, seconds))
+        previous_ball_state = ball_state
+    end
+    for slot = 2, 11 do
+        local player_state = memory.readbyte(0x0340 + slot)
+        if player_state ~= previous_player_state[slot] then
+            dispatch:write(string.format("%d,player,%d,%02X,%02X,%02X,%02X,%02X\n",
+                frame, slot, player_state, owner, carrier, minutes, seconds))
+            previous_player_state[slot] = player_state
+        end
+    end
 end
 
 emu.poweron()
@@ -142,12 +199,35 @@ while emu.framecount() < final_frame do
     if next_frame >= jump_start and next_frame <= jump_end then
         input[jump_button] = true
     end
+    if next_frame == inject_rim_frame then
+        -- Controlled reverse-engineering probe for bank-0 $B473.  This is
+        -- disabled by default and never contributes runtime data/assets.
+        memory.writebyte(0x0340, 0x03)
+        memory.writebyte(0x0360, 0x00)
+        memory.writebyte(0x0370, 0x45)
+        memory.writebyte(0x0380, 0x00)
+        memory.writebyte(0x03C0, 0x58)
+        memory.writebyte(0x03D0, 0x00)
+        memory.writebyte(0x0410, 0x46)
+        memory.writebyte(0x0420, 0x00)
+        memory.writebyte(0x0390, 0x01)
+        memory.writebyte(0x03A0, 0x00)
+        memory.writebyte(0x03E0, 0x00)
+        memory.writebyte(0x03F0, 0x00)
+        memory.writebyte(0x0430, 0x01)
+        memory.writebyte(0x0440, 0x00)
+        memory.writebyte(0x0490, 0x00)
+        memory.writebyte(0x0050, 0x08)
+        memory.writebyte(0x005B, 0x07)
+        memory.writebyte(0x0048, 0x07)
+    end
     joypad.set(1, input)
     emu.frameadvance()
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end then
         local snd = sound.get().rp2a03
         write_state(frame)
+        write_dispatch_changes(frame)
         audio_state:write(string.format("%d,%d,%.6f,%d,%d,%.6f,%d,%d,%.6f,%d,%.6f,%s\n",
             frame,
             snd.square1.regs.frequency, snd.square1.volume, snd.square1.duty,
@@ -168,6 +248,9 @@ apu_writes:close()
 audio_state:close()
 audio_ram:close()
 states:close()
+dispatch:close()
+clock_calls:close()
+collision_calls:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")
 for phase, phase_counts in pairs(counts) do

@@ -4,11 +4,11 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Ghidra-to-C gameplay-loop coverage: 62%**
+**Ghidra-to-C gameplay-loop coverage: 66%**
 
-**End-to-end match completeness: approximately 30%**
+**End-to-end match completeness: approximately 46%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: a full match still lacks the clock, score updates, period transitions, missed shots, steals, blocks, fouls, general out-of-bounds handling, and broad CPU decision coverage.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: clock, score, periods, and the observed result-four miss now have bounded native paths, while exact clock gating, final match end, steals, blocks, fouls, general out-of-bounds handling, and broad CPU decision coverage remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -18,7 +18,7 @@ Coverage statuses have fixed values:
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + core loop × 25% + match rules × 20% = 61.8%`, rounded to **62%**.
+`player actions × 30% + ball actions × 25% + core loop × 25% + match rules × 20% = 66.1%`, rounded to **66%**.
 
 ## Player action dispatcher — 66.2%
 
@@ -48,29 +48,29 @@ Score: `(6 + 7 × 0.5) / 13 = 73.1%`.
 
 Every table entry now has an explicit native handler. Although states `$04-$09` are present, their current made-shot and loose-ball paths are bounded. General rim outcomes, misses, blocks, contested rebounds, and every branch of `$B377/$B473` are not complete.
 
-## Core per-frame loop — 70%
+## Core per-frame loop — 75%
 
 Ten tracked subsystems produce this score.
 
 | Status | Subsystems |
 | --- | --- |
 | V (6) | native object state, alternating 30 Hz team scheduler, packed target coordinates, camera/CHR streaming, metasprite rendering, state-driven dribble audio |
-| P (2) | user control/control ownership, fixed-point height and movement physics |
-| M (2) | general player/ball collision resolution, exact full dynamic OAM/order behavior |
+| P (3) | user control/control ownership, fixed-point height and movement physics, general player/ball collision resolution |
+| M (1) | exact full dynamic OAM/order behavior |
 
-Score: `(6 + 2 × 0.5) / 10 = 70%`.
+Score: `(6 + 3 × 0.5) / 10 = 75%`.
 
-## Match rules and possession flow — 30.8%
+## Match rules and possession flow — 46.2%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
 | V (1) | opening tip-off and possession award |
-| P (6) | live user control, CPU pass/shot choice, made-shot sequence, rebound sequence, inbound sequence, possession transfer |
-| M (6) | game clock, score/HUD updates, period transitions/end conditions, steals/blocks, missed-shot outcomes, fouls and general out-of-bounds rules |
+| P (10) | live user control, CPU pass/shot choice, made-shot sequence, rebound sequence, inbound sequence, possession transfer, game clock, score/HUD updates, period transitions/end conditions, missed-shot outcomes |
+| M (2) | steals/blocks, fouls and general out-of-bounds rules |
 
-Score: `(1 + 6 × 0.5) / 13 = 30.8%`.
+Score: `(1 + 10 × 0.5) / 13 = 46.2%`.
 
 ## Evidence and update rules
 
@@ -95,6 +95,6 @@ When updating this ledger:
 
 1. Deepen the partial dispatcher handlers with dynamic FCEUX branch captures, especially `$21/$23/$24/$2D-$2F` and `$38-$3A`.
 2. Translate the remaining `$D99A` CPU decision/search branches and pass-lane rejection.
-3. Complete `$B377/$B473` collision, rim, miss, and contested-rebound outcomes behind ball `$03/$08/$09`.
-4. Implement the clock, scoring HUD, period transitions, and match end conditions.
+3. Complete the remaining `$B473` hoop/rim sweep and contested-rebound branches behind ball `$03/$08/$09`.
+4. Match the clock's presentation-state call gaps and implement fourth-period/final match end conditions.
 5. Add steals, blocks, fouls, and non-scripted out-of-bounds handling.

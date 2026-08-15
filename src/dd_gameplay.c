@@ -11,6 +11,9 @@
 #define DD_USER_JUMP_WIN_FRAME 301u
 #define DD_USER_AWARD_FRAME 331u
 #define DD_USER_LIVE_FRAME 355u
+#define DD_FIRST_CLOCK_TICK_FRAME 296u
+#define DD_CLOCK_FRAMES_PER_SECOND 32u
+#define DD_PERIOD_RESET_DELAY 214u
 #define DD_NO_OWNER 0xFFu
 
 static const uint16_t DD_INITIAL_X[DD_GAMEPLAY_PLAYER_COUNT] = {
@@ -100,6 +103,82 @@ static int32_t dd_clamp(int32_t value, int32_t minimum, int32_t maximum) {
 
 static int32_t dd_absolute(int32_t value) {
     return value < 0 ? -value : value;
+}
+
+/* Bank 0 $9B42 compares two axis-aligned boxes.  Its carry is clear only
+   when both axes overlap; the subtraction makes the upper edge exclusive. */
+static int dd_axis_boxes_overlap(int32_t moving, int32_t fixed,
+                                 int32_t moving_half, int32_t fixed_half) {
+    int32_t extent = moving_half + fixed_half;
+    int32_t delta = moving - fixed;
+    return delta >= -extent && delta < extent;
+}
+
+/* $B138: pass receiver uses an 8x8 player box and a 6x6 ball box in the
+   two court axes.  The original checks this before integrating the ball. */
+static int dd_pass_receiver_contact(const DDGameplayState *state, uint32_t receiver) {
+    const DDPlayerState *player;
+    if (receiver >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
+    player = &state->players[receiver];
+    return dd_axis_boxes_overlap(state->ball.court_depth, player->court_depth,
+                                 0x0600, 0x0800) &&
+           dd_axis_boxes_overlap(state->ball.court_x, player->court_x,
+                                 0x0600, 0x0800);
+}
+
+/* $A6C3: jumping players use 4x4 boxes.  Object slots $02-$06 shift six
+   court units one way and slots $07-$0B the other; native slots are $00-$09. */
+static int dd_jump_ball_contact(const DDGameplayState *state, uint32_t player_index) {
+    const DDPlayerState *player;
+    int32_t shifted_x;
+    if (player_index >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
+    player = &state->players[player_index];
+    shifted_x = player->court_x + (player_index < 5u ? 0x0600 : -0x0600);
+    return dd_axis_boxes_overlap(state->ball.height, player->height + 0x0800,
+                                 0x0400, 0x0400) &&
+           dd_axis_boxes_overlap(state->ball.court_x, shifted_x,
+                                 0x0400, 0x0400);
+}
+
+/* $B377 only classifies the ball while its integer height is $34-$37.  It
+   expands a box around the hoop from result 1 through result 4; result 1 is
+   the clean make and 2-4 are progressively wider rim misses. */
+static uint8_t dd_basket_contact_result(const DDGameplayState *state) {
+    int32_t hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
+    uint8_t height = (uint8_t)(state->ball.height >> 8);
+    uint8_t result;
+    if (height < 0x34u || height > 0x37u) return 0u;
+    for (result = 1u; result <= 4u; ++result) {
+        int32_t ball_half = (int32_t)result << 8;
+        if (dd_axis_boxes_overlap(state->ball.court_depth, 0x005800,
+                                  ball_half, 0x0100) &&
+            dd_axis_boxes_overlap(state->ball.court_x, hoop_x,
+                                  ball_half, 0x0100)) return result;
+    }
+    return 0u;
+}
+
+/* $B473 sweeps seven two-axis samples along the rim/backboard diagonal.  On
+   the first contact it latches $0490 and reverses longitudinal velocity. */
+static int dd_rim_sweep_contact(DDGameplayState *state) {
+    DDBallState *ball = &state->ball;
+    uint32_t sample;
+    if (ball->rim_contact != 0u) return 0;
+    for (sample = 0u; sample < 7u; ++sample) {
+        int32_t rim_x = state->possession_direction == 0u
+            ? 0x004500 - (int32_t)sample * 0x0100
+            : 0x01BB00 + (int32_t)sample * 0x0100;
+        int32_t rim_axis = 0x009E00 - (int32_t)sample * 0x0200;
+        if (dd_axis_boxes_overlap(ball->court_depth + ball->height, rim_axis,
+                                  0x0100, 0x0800) &&
+            dd_axis_boxes_overlap(ball->court_x, rim_x, 0x0100, 0x0100)) {
+            ball->rim_contact = 1u;
+            ball->owner = DD_NO_OWNER;
+            ball->velocity_x = -ball->velocity_x;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 /* $ABAB expands the original packed court target into native world axes. */
@@ -249,6 +328,7 @@ static void dd_begin_pass(DDGameplayState *state, uint32_t carrier, uint32_t rec
     ball->owner = DD_NO_OWNER;
     ball->receiver = (uint8_t)receiver;
     ball->action_age = 0u;
+    ball->rim_contact = 0u;
     ball->velocity_x = (state->players[receiver].court_x - ball->court_x) / 19;
     ball->velocity_depth = (state->players[receiver].court_depth - ball->court_depth) / 19;
     ball->velocity_height = 0x0300;
@@ -263,7 +343,9 @@ static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
     state->ball.owner = (uint8_t)shooter;
     state->ball.receiver = DD_NO_OWNER;
     state->ball.action_age = 0u;
-    state->ball.outcome = 1u;
+    state->ball.outcome = 0u;
+    state->ball.rim_contact = 0u;
+    state->last_shooter = (uint8_t)shooter;
     state->players[shooter].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
     state->players[shooter].action_age = 0u;
 }
@@ -392,9 +474,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                chooses possession/recovery when the player lands. */
             speed = 0;
             if (state->ball.owner == DD_NO_OWNER &&
-                dd_absolute(state->ball.court_x - player->court_x) <= 0x0C00 &&
-                dd_absolute(state->ball.court_depth - player->court_depth) <= 0x0C00 &&
-                dd_absolute(state->ball.height - player->height) <= 0x1800) {
+                dd_jump_ball_contact(state, player_index)) {
                 dd_claim_loose_ball(state, player_index);
             }
             player->height += player->velocity_height;
@@ -615,11 +695,30 @@ static void dd_begin_live(DDGameplayState *state, uint32_t winner) {
     state->hud_split_y = 48u;
 }
 
-void dd_gameplay_reset(DDGameplayState *state) {
+static uint8_t dd_bcd_decrement(uint8_t value) {
+    /* Bank 0 $9490 subtracts one, or seven when the low decimal digit is zero. */
+    return (uint8_t)(value - ((value & 0x0Fu) == 0u ? 7u : 1u));
+}
+
+static void dd_step_game_clock(DDGameplayState *state) {
+    if (state->clock_expired || state->scene_frame < state->next_clock_frame) return;
+    while (!state->clock_expired && state->scene_frame >= state->next_clock_frame) {
+        if (state->clock_seconds == 0u) state->clock_seconds = 0x60u;
+        state->clock_seconds = dd_bcd_decrement(state->clock_seconds);
+        if (state->clock_seconds == 0x59u && state->clock_minutes != 0u) {
+            state->clock_minutes = dd_bcd_decrement(state->clock_minutes);
+        }
+        state->next_clock_frame += DD_CLOCK_FRAMES_PER_SECOND;
+        if (state->clock_minutes == 0u && state->clock_seconds == 0u) {
+            state->clock_expired = 1;
+            state->clock_expired_frame = state->scene_frame;
+        }
+    }
+}
+
+static void dd_prepare_period_formation(DDGameplayState *state) {
     uint32_t player;
-    if (state == NULL) return;
-    memset(state, 0, sizeof(*state));
-    state->scene_frame = DD_FORMATION_VISIBLE_FRAME - 1u;
+    state->sequence_frame = DD_FORMATION_VISIBLE_FRAME - 1u;
     state->phase = DD_GAMEPLAY_FORMATION;
     state->camera_x = 0x7F00;
     state->controlled_player = 0u;
@@ -629,15 +728,24 @@ void dd_gameplay_reset(DDGameplayState *state) {
     state->ball.court_depth = 0x5A00;
     state->ball.height = 0x1800;
     state->ball.animation = 1u;
+    state->ball.action = DD_BALL_AWARDED;
     state->ball.owner = DD_NO_OWNER;
     state->ball.receiver = DD_NO_OWNER;
+    state->ball.action_age = 0u;
     state->tip_winner = DD_NO_OWNER;
     state->tip_user_jump_frame = UINT_MAX;
     state->live_start_frame = DD_LIVE_FRAME;
     state->camera_chr_side = 1u;
     state->hud_split_y = 64u;
+    state->clock_minutes = 0x05u;
+    state->clock_seconds = 0u;
+    state->clock_expired = 0;
+    state->clock_expired_frame = UINT_MAX;
+    state->next_clock_frame = state->scene_frame + 141u;
+    state->last_shooter = DD_NO_OWNER;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         DDPlayerState *object = &state->players[player];
+        memset(object, 0, sizeof(*object));
         object->court_x = (int32_t)DD_INITIAL_X[player] << 8;
         object->court_depth = (int32_t)DD_INITIAL_DEPTH[player] << 8;
         object->height = 0x1000;
@@ -648,6 +756,15 @@ void dd_gameplay_reset(DDGameplayState *state) {
             (player == 5u ? DD_PLAYER_TIP_CPU :
              (player < 5u ? DD_PLAYER_FORMATION_TEAMMATE : DD_PLAYER_FORMATION_CPU));
     }
+}
+
+void dd_gameplay_reset(DDGameplayState *state) {
+    if (state == NULL) return;
+    memset(state, 0, sizeof(*state));
+    state->scene_frame = DD_FORMATION_VISIBLE_FRAME - 1u;
+    state->period = 1u;
+    dd_prepare_period_formation(state);
+    state->next_clock_frame = DD_FIRST_CLOCK_TICK_FRAME;
     state->initialized = 1;
 }
 
@@ -724,17 +841,28 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             dd_step_dribble(assets, state);
             break;
         case DD_BALL_PASS:
+            /* The traced inbound remains in $02 for 19 frames (3553-3572).
+               Keep that initializer-derived flight floor while using $B138,
+               rather than elapsed time alone, to decide actual reception. */
+            if (ball->action_age >= 19u && ball->receiver < DD_GAMEPLAY_PLAYER_COUNT &&
+                dd_pass_receiver_contact(state, ball->receiver)) {
+                dd_finish_ball_reception(assets, state, ball->receiver);
+                break;
+            }
             ball->court_x += ball->velocity_x;
             ball->court_depth += ball->velocity_depth;
             ball->height += ball->velocity_height;
             ball->velocity_height -= 0x0030;
-            if (ball->action_age >= 19u && ball->receiver < DD_GAMEPLAY_PLAYER_COUNT) {
-                dd_finish_ball_reception(assets, state, ball->receiver);
-            }
             break;
         case DD_BALL_PASS_BOUNCE:
             /* $ADF2 runs rim/contact helper $B473, free-flight integrators
                $9CA0/$9CF6, and the common ball physics tail $B3E9. */
+            dd_rim_sweep_contact(state);
+            if (ball->velocity_height == 0) {
+                ball->action = DD_BALL_HIDDEN;
+                ball->action_age = 0u;
+                break;
+            }
             ball->court_x += ball->velocity_x;
             ball->court_depth = dd_clamp(ball->court_depth + ball->velocity_depth,
                                          0x0400, 0x9800);
@@ -744,11 +872,6 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 ball->height = 0x1000;
                 ball->velocity_height = dd_absolute(ball->velocity_height) / 2;
             }
-            if (ball->action_age >= 6u && ball->receiver < DD_GAMEPLAY_PLAYER_COUNT &&
-                dd_absolute(state->players[ball->receiver].court_x - ball->court_x) <= 0x1000 &&
-                dd_absolute(state->players[ball->receiver].court_depth - ball->court_depth) <= 0x1000) {
-                dd_finish_ball_reception(assets, state, ball->receiver);
-            }
             break;
         case DD_BALL_SHOT_GATHER:
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
@@ -756,29 +879,52 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 ball->height = state->players[ball->owner].height + 0x1200;
             }
             if (ball->action_age > 26u) {
-                int32_t hoop_x = state->possession_direction == 0u ? 0x001C00 : 0x01E400;
+                int32_t hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
                 ball->action = DD_BALL_AIRBORNE;
                 ball->action_age = 0u;
                 ball->owner = DD_NO_OWNER;
                 ball->velocity_x = (hoop_x - ball->court_x) / 21;
                 ball->velocity_depth = (0x005800 - ball->court_depth) / 21;
-                ball->velocity_height = 0x0500;
+                ball->height = (ball->height & 0x00FF) | 0x3800;
+                ball->velocity_height = 0x0200;
                 state->carrier = DD_NO_OWNER;
             }
             break;
-        case DD_BALL_AIRBORNE:
+        case DD_BALL_AIRBORNE: {
+            uint8_t result = dd_basket_contact_result(state);
+            if (result != 0u) {
+                ball->outcome = result;
+                ball->action = result == 1u ? DD_BALL_SCORE : DD_BALL_LOOSE_LAUNCH;
+                ball->action_age = 0u;
+                if (result == 1u) {
+                    ball->height = (ball->height & 0x00FF) | 0x3200;
+                    ball->velocity_x = 0;
+                    ball->velocity_depth = 0;
+                    if (state->last_shooter < DD_GAMEPLAY_PLAYER_COUNT) {
+                        uint32_t team = state->last_shooter < 5u ? 0u : 1u;
+                        if (state->score[team] <= 997u) state->score[team] += 2u;
+                    }
+                    state->possession_direction ^= 1u;
+                }
+                break;
+            }
+            dd_rim_sweep_contact(state);
             ball->court_x += ball->velocity_x;
             ball->court_depth += ball->velocity_depth;
+            ball->velocity_height -= 0x0033;
             ball->height += ball->velocity_height;
-            ball->velocity_height -= 0x0080;
-            if (ball->action_age >= 21u) {
-                ball->action = DD_BALL_SCORE;
+            if (ball->height <= 0) {
+                ball->action = DD_BALL_REBOUND;
                 ball->action_age = 0u;
-                ball->height = 0x3200;
-                state->possession_direction ^= 1u;
+                ball->height = 0x0100;
+                ball->velocity_height = 0x0290;
             }
             break;
+        }
         case DD_BALL_SCORE:
+            if (ball->action_age >= 7u && ball->height >= 0x0100) {
+                ball->height -= 0x0100;
+            }
             if (ball->action_age >= 13u) {
                 ball->action = DD_BALL_REBOUND;
                 ball->action_age = 0u;
@@ -810,27 +956,28 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                and increments the ball dispatcher to state $09. */
             state->carrier = DD_NO_OWNER;
             ball->owner = DD_NO_OWNER;
-            ball->height = 0x3800;
-            ball->velocity_x = state->possession_direction == 0u ? -0x0180 : 0x0180;
-            ball->velocity_depth = (state->cpu_global_frame & 1u) != 0u ? 0x00C0 : -0x00C0;
+            ball->height = (ball->height & 0x00FF) | 0x3800;
+            ball->velocity_x = -ball->velocity_x / 2;
+            ball->velocity_depth = -ball->velocity_depth / 2;
             ball->velocity_height = 0x0100;
+            ball->rim_contact = 0u;
             ball->action = DD_BALL_LOOSE_AIRBORNE;
             ball->action_age = 0u;
             break;
         case DD_BALL_LOOSE_AIRBORNE:
             /* $AFDD integrates both court axes and height until its threshold,
                then switches to rebound state $07. */
+            dd_rim_sweep_contact(state);
             ball->court_x = dd_clamp(ball->court_x + ball->velocity_x,
                                      0x001000, 0x01F000);
             ball->court_depth = dd_clamp(ball->court_depth + ball->velocity_depth,
                                          0x0400, 0x9800);
+            ball->velocity_height -= 0x0010;
             ball->height += ball->velocity_height;
-            ball->velocity_height -= 0x0040;
-            if (ball->action_age >= 5u && ball->height <= 0x1000) {
-                ball->height = 0x1000;
+            if (ball->action_age >= 61u) {
                 ball->action = DD_BALL_REBOUND;
                 ball->action_age = 0u;
-                ball->velocity_height = 0x0200;
+                ball->velocity_height = 0x0290;
             }
             break;
         case DD_BALL_SHOT_LAUNCH: {
@@ -890,6 +1037,10 @@ static void dd_begin_inbound(DDGameplayState *state) {
     state->ball.owner = DD_NO_OWNER;
     state->ball.receiver = DD_NO_OWNER;
     state->ball.action_age = 0u;
+    state->ball.height = 0;
+    state->ball.velocity_x = 0;
+    state->ball.velocity_depth = 0;
+    state->ball.velocity_height = 0;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         state->players[player].action = DD_PLAYER_INBOUND_FORMATION;
         state->players[player].action_age = 0u;
@@ -1006,26 +1157,36 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
 int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t input_mask) {
     const DDTipoffAssetsHeader *assets;
     uint32_t age;
+    uint32_t sequence_frame;
     if (pack == NULL || state == NULL || pack->tipoff_assets == NULL ||
         pack->tipoff_assets_size < sizeof(DDTipoffAssetsHeader)) return 0;
     if (!state->initialized) dd_gameplay_reset(state);
     assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
     if (state->scene_frame == UINT_MAX) return 0;
     ++state->scene_frame;
-    if (state->scene_frame < DD_TOSS_START_FRAME) return 1;
-    if (state->scene_frame == DD_TOSS_START_FRAME) {
+    ++state->sequence_frame;
+    dd_step_game_clock(state);
+    if (state->clock_expired && state->period < 4u &&
+        state->scene_frame - state->clock_expired_frame >= DD_PERIOD_RESET_DELAY) {
+        ++state->period;
+        dd_prepare_period_formation(state);
+        return 1;
+    }
+    sequence_frame = state->sequence_frame;
+    if (sequence_frame < DD_TOSS_START_FRAME) return 1;
+    if (sequence_frame == DD_TOSS_START_FRAME) {
         state->phase = DD_GAMEPLAY_TOSS;
         state->ball.action = DD_BALL_AIRBORNE;
         state->ball.owner = DD_NO_OWNER;
     }
-    if (state->scene_frame >= DD_TOSS_START_FRAME && state->scene_frame <= DD_AWARD_FRAME &&
+    if (sequence_frame >= DD_TOSS_START_FRAME && sequence_frame <= DD_AWARD_FRAME &&
         state->tip_user_jump_frame == UINT_MAX && (input_mask & DD_INPUT_B) != 0u) {
-        state->tip_user_jump_frame = state->scene_frame;
+        state->tip_user_jump_frame = sequence_frame;
         state->players[0].action = DD_PLAYER_TIP_USER_AIRBORNE;
         state->players[0].animation = 0x21u;
     }
-    if (state->scene_frame <= DD_AWARD_FRAME) {
-        age = state->scene_frame - DD_TOSS_START_FRAME;
+    if (sequence_frame <= DD_AWARD_FRAME) {
+        age = sequence_frame - DD_TOSS_START_FRAME;
         state->ball.height = 0x1800;
         if (age != 0u) {
             uint32_t tick;
@@ -1033,17 +1194,17 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
                 state->ball.height += 0x0305 - (int32_t)((tick * 64u) / 3u);
             }
         }
-        state->players[5].height = dd_jump_height(assets, state->scene_frame);
-        if (state->scene_frame >= DD_JUMPER_START_FRAME) {
+        state->players[5].height = dd_jump_height(assets, sequence_frame);
+        if (sequence_frame >= DD_JUMPER_START_FRAME) {
             state->players[5].animation = 0x21u;
             state->players[5].action = DD_PLAYER_TIP_CPU_AIRBORNE;
         }
         if (state->tip_user_jump_frame != UINT_MAX) {
             state->players[0].height = dd_scripted_jump_height(
-                assets, state->scene_frame, state->tip_user_jump_frame);
+                assets, sequence_frame, state->tip_user_jump_frame);
         }
     }
-    if (state->scene_frame == DD_AWARD_FRAME) {
+    if (sequence_frame == DD_AWARD_FRAME) {
         state->hud_split_y = 48u;
         state->phase = DD_GAMEPLAY_AWARD;
         state->carrier = 5u;
@@ -1051,23 +1212,23 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
         state->ball.owner = state->carrier;
         state->ball.action = DD_BALL_AWARDED;
     }
-    if (state->scene_frame == DD_USER_AWARD_FRAME &&
+    if (sequence_frame == DD_USER_AWARD_FRAME &&
         state->tip_user_jump_frame == DD_USER_JUMP_WIN_FRAME) {
         state->carrier = 0u;
         state->tip_winner = 0u;
         state->ball.owner = 0u;
         state->live_start_frame = DD_USER_LIVE_FRAME;
     }
-    if (state->scene_frame > DD_AWARD_FRAME && state->scene_frame < state->live_start_frame) {
+    if (sequence_frame > DD_AWARD_FRAME && sequence_frame < state->live_start_frame) {
         if (state->tip_user_jump_frame != UINT_MAX) {
             state->players[0].height = dd_scripted_jump_height(
-                assets, state->scene_frame, state->tip_user_jump_frame);
+                assets, sequence_frame, state->tip_user_jump_frame);
         }
-        state->players[5].height = dd_jump_height(assets, state->scene_frame);
+        state->players[5].height = dd_jump_height(assets, sequence_frame);
         dd_attach_ball(assets, state, 0u);
         state->ball.height = state->players[state->carrier].height + 0x1800;
     }
-    if (state->scene_frame == state->live_start_frame) {
+    if (sequence_frame == state->live_start_frame) {
         dd_begin_live(state, state->tip_winner);
         state->previous_input = input_mask;
     } else if (state->phase == DD_GAMEPLAY_LIVE || state->phase == DD_GAMEPLAY_INBOUND) {

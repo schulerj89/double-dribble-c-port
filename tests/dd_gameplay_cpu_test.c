@@ -48,6 +48,7 @@ int main(int argc, char **argv) {
     DDGameplayState pass_state;
     DDGameplayState dispatch_base;
     DDGameplayState dispatch_state;
+    DDGameplayState period_state;
     const DDTipoffAssetsHeader *assets;
     int32_t live_start_x[DD_GAMEPLAY_PLAYER_COUNT];
     int32_t live_start_depth[DD_GAMEPLAY_PLAYER_COUNT];
@@ -71,6 +72,8 @@ int main(int argc, char **argv) {
     memset(&jump_state, 0, sizeof(jump_state));
     check(dd_gameplay_advance_to(&pack, &jump_state, 300u, 0u),
           "advance to the original user jump window");
+    check(jump_state.clock_minutes == 0x04u && jump_state.clock_seconds == 0x59u,
+          "bank-0 $9431/$9490 clock reaches the traced 04:59 rollover");
     check(dd_gameplay_step(&pack, &jump_state, DD_INPUT_B), "B starts the tip-off jump");
     check(jump_state.players[0].action == DD_PLAYER_TIP_USER_AIRBORNE &&
           jump_state.tip_user_jump_frame == 301u,
@@ -147,6 +150,8 @@ int main(int argc, char **argv) {
     check(dd_gameplay_advance_to(&pack, &state, 569u, 0u), "advance to scoring result");
     check(state.live_frame == 213u && state.ball.action == DD_BALL_SCORE,
           "live 213 reaches original score/rim state $06");
+    check(state.score[1] == 2u && state.score[0] == 0u,
+          "first CPU make updates the native right-side score to two points");
     check(dd_gameplay_advance_to(&pack, &state, 582u, 0u), "advance to rebound state");
     check(state.live_frame == 226u && state.ball.action == DD_BALL_REBOUND,
           "live 226 reaches original rebound state $07");
@@ -173,6 +178,8 @@ int main(int argc, char **argv) {
     check(state.live_frame == 1015u && state.phase == DD_GAMEPLAY_LIVE &&
           state.ball.action == DD_BALL_DRIBBLE && state.carrier == 6u,
           "live 1015 completes the inbound and resumes CPU possession decisions");
+    check(state.clock_minutes == 0x04u && state.clock_seconds == 0x26u,
+          "native HUD clock matches original frame 3572 at 04:26");
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         check_checkpoint(&state, 1015u, player,
                          post_inbound_action[player], post_inbound_target[player]);
@@ -234,6 +241,18 @@ int main(int argc, char **argv) {
     check(dispatch_state.players[5].action == DD_PLAYER_LIVE_SHOOTER_RECOVER &&
           dispatch_state.players[5].height == 0x1000,
           "player state $24 lands into recovery when no loose ball is contacted");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_JUMP_CONTEST;
+    dispatch_state.players[5].height = 0x2000;
+    dispatch_state.players[5].velocity_height = 0;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x - 0x0600;
+    dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u,
+          "player state $24 uses $A6C3's shifted 4x4 boxes to claim a contacted ball");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_CONTINUE;
@@ -335,6 +354,49 @@ int main(int argc, char **argv) {
           "player state $41 claims the inbound ball and advances to $30");
 
     dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_PASS;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.receiver = 0u;
+    dispatch_state.ball.action_age = 18u;
+    dispatch_state.ball.court_x = dispatch_state.players[0].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[0].court_depth;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step pass at the original reception age inside $B138 boxes");
+    check(dispatch_state.ball.action == DD_BALL_DRIBBLE && dispatch_state.ball.owner == 0u,
+          "ball state $02 catches only after $B138 reports receiver overlap");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_PASS;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.receiver = 0u;
+    dispatch_state.ball.action_age = 18u;
+    dispatch_state.ball.court_x = dispatch_state.players[0].court_x + 0x0E00;
+    dispatch_state.ball.court_depth = dispatch_state.players[0].court_depth;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step pass at $B138's exclusive collision boundary");
+    check(dispatch_state.ball.action == DD_BALL_PASS && dispatch_state.ball.owner == 0xFFu,
+          "$B138's combined 14-unit half extent excludes its upper boundary");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_PASS_BOUNCE;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.receiver = 0xFFu;
+    dispatch_state.ball.court_x = 0x004500;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.ball.height = 0x004600;
+    dispatch_state.ball.velocity_x = 0x0100;
+    dispatch_state.ball.velocity_depth = 0;
+    dispatch_state.ball.velocity_height = 0;
+    dispatch_state.possession_direction = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step ball through $B473's first left-rim sample");
+    check(dispatch_state.ball.rim_contact == 1u &&
+          dispatch_state.ball.owner == 0xFFu && dispatch_state.carrier == 5u &&
+          dispatch_state.ball.velocity_x == -0x0100,
+          "$B473 latches rim contact, clears ownership, retains camera follow, and reverses velocity");
+
+    dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_PASS_BOUNCE;
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.ball.receiver = 5u;
@@ -346,8 +408,32 @@ int main(int argc, char **argv) {
     dispatch_state.ball.velocity_depth = 0;
     dispatch_state.ball.velocity_height = 0;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step ball bounce-pass state $03");
-    check(dispatch_state.ball.action == DD_BALL_DRIBBLE && dispatch_state.ball.owner == 5u,
-          "ball state $03 completes a nearby bounce-pass reception");
+    check(dispatch_state.ball.action == DD_BALL_HIDDEN,
+          "ball state $03 follows $ADF2's zero vertical-term branch into state $0C");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_AIRBORNE;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.court_x = 0x004C00;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.ball.height = 0x003600;
+    dispatch_state.ball.velocity_x = -0x00FA;
+    dispatch_state.ball.velocity_depth = 0x0032;
+    dispatch_state.last_shooter = 5u;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.score[1] = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step $B377 result-four hoop contact");
+    check(dispatch_state.ball.action == DD_BALL_LOOSE_LAUNCH &&
+          dispatch_state.ball.outcome == 4u && dispatch_state.score[1] == 0u,
+          "$B377 result four follows $AE25's missed-shot branch into state $08");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step traced result-four loose-ball initializer");
+    check(dispatch_state.ball.action == DD_BALL_LOOSE_AIRBORNE &&
+          dispatch_state.ball.height == 0x3800 &&
+          dispatch_state.ball.velocity_x == 0x007D &&
+          dispatch_state.ball.velocity_depth == -0x0019,
+          "$AF72 reverses and halves both miss velocities before state $09");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_LOOSE_LAUNCH;
@@ -358,12 +444,18 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_LOOSE_AIRBORNE;
-    dispatch_state.ball.action_age = 5u;
-    dispatch_state.ball.height = 0x1000;
-    dispatch_state.ball.velocity_height = -0x0100;
-    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step loose-ball airborne state $09");
+    dispatch_state.ball.action_age = 0u;
+    dispatch_state.ball.height = 0x38D8;
+    dispatch_state.ball.velocity_height = 0x0100;
+    for (player = 0u; player < 60u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "step traced loose-ball airborne arc");
+    }
+    check(dispatch_state.ball.action == DD_BALL_LOOSE_AIRBORNE,
+          "ball state $09 remains airborne through its traced sixtieth frame");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "finish loose-ball airborne state $09");
     check(dispatch_state.ball.action == DD_BALL_REBOUND,
-          "ball state $09 reaches rebound state $07 at the floor threshold");
+          "ball state $09 reaches rebound state $07 on traced frame 61");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_SHOT_LAUNCH;
@@ -378,6 +470,18 @@ int main(int argc, char **argv) {
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step hidden ball state $0C");
     check(dispatch_state.ball.action == DD_BALL_HIDDEN && dispatch_state.ball.height == 0,
           "ball state $0C shares the original $ACAB zero-height handler");
+
+    period_state = dispatch_base;
+    period_state.clock_minutes = 0u;
+    period_state.clock_seconds = 0u;
+    period_state.clock_expired = 1;
+    period_state.clock_expired_frame = period_state.scene_frame - 214u;
+    check(dd_gameplay_step(&pack, &period_state, 0u), "step traced end-of-period reset delay");
+    check(period_state.period == 2u && period_state.phase == DD_GAMEPLAY_FORMATION &&
+          period_state.clock_minutes == 0x05u && period_state.clock_seconds == 0u &&
+          period_state.players[0].action == DD_PLAYER_FORMATION_USER &&
+          period_state.players[5].action == DD_PLAYER_TIP_CPU,
+          "expired period resets the 2ND PERIOD formation and five-minute clock");
 
     dd_asset_pack_unload(&pack);
     if (failures != 0) {

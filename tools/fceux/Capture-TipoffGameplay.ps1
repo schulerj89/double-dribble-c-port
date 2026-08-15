@@ -7,6 +7,7 @@ param(
     [string]$CaptureName = 'original-tipoff-gameplay',
     [int]$JumpStart = -1,
     [int]$JumpEnd = -1,
+    [switch]$DisablePcCounts,
     [ValidateSet('A', 'B')]
     [string]$JumpButton = 'A'
 )
@@ -26,6 +27,7 @@ $env:DD_TRACE_END = $FinalFrame.ToString([Globalization.CultureInfo]::InvariantC
 $env:DD_TIP_JUMP_START = $JumpStart.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_TIP_JUMP_END = $JumpEnd.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_TIP_JUMP_BUTTON = $JumpButton
+$env:DD_ENABLE_PC_COUNTS = if ($DisablePcCounts) { '0' } else { '1' }
 
 $process = Start-Process -FilePath $FceuxPath `
     -ArgumentList @('-nothrottle', '1', '-turbo', '1', '-srendline', '0', '-erendline', '239', '-lua', ('"{0}"' -f $scriptPath), ('"{0}"' -f $RomPath)) `

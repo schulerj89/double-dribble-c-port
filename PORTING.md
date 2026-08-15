@@ -451,12 +451,32 @@ Their ROM offsets are `$ADF2->$2E02`, `$AF72->$2F82`, `$AFDD->$2FED`, and `$ACAB
 2. Name and translate steal, block, missed-shot, and non-scripted out-of-bounds branches.
 3. Port game-clock/HUD updates and the remaining defensive action states.
 
+### Clock, score, period, collision, and missed-shot core slice
+
+The long no-input FCEUX capture now runs through the first period boundary and writes a compact `gameplay-dispatch.csv` plus exact `$9431` entry records in `gameplay-clock-calls.csv`. The original clock stores packed-BCD seconds in `$0057` and minutes in `$0058`. Bank 0 `$9431` tests `$001A & $1F`, calls `$9490` to subtract one (or seven at a decimal rollover), and uses fixed-bank `$C694` to convert each nibble to HUD tile `$D9 + digit`. The native clock uses the same BCD representation and produces the verified early checkpoints 04:59 at native frame 296 and 04:26 at native frame 1371/original frame 3572.
+
+The complete trace reaches 00:00 at original frame 12412, then resets the second-period formation at 12626-12628 after the active loose-ball sequence finishes. Fixed-bank reset writes at `$CEF3`, `$CF33/$CF37`, `$CF88/$CF8C`, and `$CFD5-$D258` restore the owner, 05:00 clock, ball, and ten formation objects. The HUD period tile changes from `$DA` to `$DB`, and the banner changes from `1ST PERIOD START` to `2ND PERIOD START`, while the 0-16 period score persists. Native state now carries the score, packed clock, period, and delayed period reset and patches those HUD tiles directly. This is still partial: the original calls `$9431` on 9,624 of the 9,942 traced frames, with four large presentation gaps (104, 89, 62, and 55 frames), so a fixed absolute 32-frame cadence will run early late in a period until those presentation gates are translated.
+
+The pass and jump collision paths now use the shared Ghidra primitive rather than broad native distance checks:
+
+| Original helper | Recovered behavior | Native counterpart |
+| --- | --- | --- |
+| `$9B42` | two-axis signed box overlap; carry clear means contact and the upper edge is exclusive | `dd_axis_boxes_overlap` |
+| `$B138` | pass receiver: player half extent 8, ball half extent 6 in both court axes | `dd_pass_receiver_contact` |
+| `$A6C3` | jump contact: 4+4 extents in height/longitudinal axes, player shifted six units by team and eight units upward | `dd_jump_ball_contact` |
+
+The frame-12430 miss supplies a dynamic branch for `$B377/$AF72/$AFDD`. `$B377` only classifies the ball at integer heights `$34-$37`; it expands the hoop-contact box from result 1 through 4. Result 1 enters made-basket state `$06`, while results 2-4 enter loose launch `$08`. The observed ball is result 4 at `(x=$4B.A0, depth=$5D.4D, height=$37.D8)`. On the next frame `$AF72` changes `$08->$09`, raises the ball to `$38.D8`, reverses and halves longitudinal velocity `$FF.05->$00.7D`, reverses and halves depth velocity `$00.31->$FF.E7`, and seeds vertical velocity `$01.00`. `$AFDD` subtracts `$10` gravity per frame; the trace peaks near `$40.58` and enters rebound `$07` after 61 frames at height `$00.A8`, with a new vertical term near `$02.90`.
+
+Native shot flight now aims at the original hoop centers `$0048/$01B8`, evaluates the same result-1-through-4 boxes, sends misses through `$08/$09`, and reproduces the reverse/half and `$10`-gravity behavior. `$B473` is also translated as seven diagonal samples: left-side X runs `$45->$3F`, right-side X runs `$01BB->$01C1`, and the combined depth/height sample runs `$9E->$92`. A controlled, opt-in FCEUX probe at original frame 2601 placed ball state `$03` on the first left sample; the original wrote `$0490=1` at `$B4D4`, cleared owner `$005B` at `$B4D8`, retained camera-follow `$0048`, and negated injected velocity `+$0100 -> -$0100` at `$B4FB`. The equivalent native test proves the same latch, ownership, camera-follow, and reflection behavior, while the unmodified made-shot trace proves that `$B473` is called every flight frame without a false latch.
+
+Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, the `$B473` rim probe, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. Defensive steal/block arbitration and all remaining state `$03` vertical branches are still incomplete; general collision and misses therefore remain **Partial**, not Verified.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **62% Ghidra-to-C gameplay-loop coverage** and approximately **30% end-to-end match completeness**; these are intentionally separate measures.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **66% Ghidra-to-C gameplay-loop coverage** and approximately **46% end-to-end match completeness**; these are intentionally separate measures.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
 - Determine the full successful B timing window around the proven original-frame-2502 user jump.
-- Name and translate the steal, block, missed-shot, and remaining out-of-bounds branches after the initial inbound slice.
+- Name and translate the steal, block, remaining rim-contact, and out-of-bounds branches after the initial inbound slice.

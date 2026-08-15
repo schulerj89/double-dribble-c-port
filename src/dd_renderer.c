@@ -690,6 +690,37 @@ static uint32_t dd_gameplay_emit(const DDAssetPack *pack, const DDTipoffAssetsHe
                                     (uint8_t)screen_x, (uint8_t)screen_y, attributes);
 }
 
+static void dd_gameplay_patch_hud(uint8_t ppu[DD_PPU_SIZE], const DDGameplayState *state) {
+    static const uint8_t ordinal[4][3] = {
+        {0xDAu, 0xF5u, 0xF6u}, /* 1ST */
+        {0xDBu, 0xF0u, 0xE6u}, /* 2ND */
+        {0xDCu, 0xF4u, 0xE6u}, /* 3RD */
+        {0xDDu, 0xF6u, 0xE0u}  /* 4TH */
+    };
+    uint32_t table = 0x2000u;
+    uint32_t team;
+    uint8_t period = state->period == 0u ? 1u : state->period;
+    uint8_t minutes = state->clock_minutes;
+    uint8_t seconds = state->clock_seconds;
+    if (period > 4u) period = 4u;
+    ppu[table + 2u * 32u + 19u] = (uint8_t)(0xD9u + period);
+    ppu[table + 4u * 32u + 16u] = (uint8_t)(0xD9u + ((minutes >> 4u) & 0x0Fu));
+    ppu[table + 4u * 32u + 17u] = (uint8_t)(0xD9u + (minutes & 0x0Fu));
+    ppu[table + 4u * 32u + 18u] = 0xFDu;
+    ppu[table + 4u * 32u + 19u] = (uint8_t)(0xD9u + ((seconds >> 4u) & 0x0Fu));
+    ppu[table + 4u * 32u + 20u] = (uint8_t)(0xD9u + (seconds & 0x0Fu));
+    memcpy(ppu + table + 6u * 32u + 8u, ordinal[period - 1u], 3u);
+    for (team = 0u; team < 2u; ++team) {
+        uint32_t score = state->score[team] > 99u ? 99u : state->score[team];
+        uint32_t tens = score / 10u;
+        uint32_t ones = score % 10u;
+        uint32_t tens_column = team == 0u ? 3u : 26u;
+        uint32_t ones_column = tens_column + 1u;
+        ppu[table + 6u * 32u + tens_column] = tens == 0u ? 0x2Du : (uint8_t)(0xD9u + tens);
+        ppu[table + 6u * 32u + ones_column] = (uint8_t)(0xD9u + ones);
+    }
+}
+
 int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
                        uint32_t *pixels, uint32_t width, uint32_t height) {
     const DDTipoffAssetsHeader *assets;
@@ -705,6 +736,7 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
     if (state->scene_frame < 270u) return dd_render_tipoff(pack, pixels, width, height);
     assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
     memcpy(ppu, pack->tipoff_ppu, sizeof(ppu));
+    dd_gameplay_patch_hud(ppu, state);
     if (state->camera_chr_side == 0u) {
         memcpy(ppu + 0x1B00u, assets->court_chr_left, sizeof(assets->court_chr_left));
     } else if (state->camera_chr_side == 2u) {
