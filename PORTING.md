@@ -469,11 +469,51 @@ The frame-12430 miss supplies a dynamic branch for `$B377/$AF72/$AFDD`. `$B377` 
 
 Native shot flight now aims at the original hoop centers `$0048/$01B8`, evaluates the same result-1-through-4 boxes, sends misses through `$08/$09`, and reproduces the reverse/half and `$10`-gravity behavior. `$B473` is also translated as seven diagonal samples: left-side X runs `$45->$3F`, right-side X runs `$01BB->$01C1`, and the combined depth/height sample runs `$9E->$92`. A controlled, opt-in FCEUX probe at original frame 2601 placed ball state `$03` on the first left sample; the original wrote `$0490=1` at `$B4D4`, cleared owner `$005B` at `$B4D8`, retained camera-follow `$0048`, and negated injected velocity `+$0100 -> -$0100` at `$B4FB`. The equivalent native test proves the same latch, ownership, camera-follow, and reflection behavior, while the unmodified made-shot trace proves that `$B473` is called every flight frame without a false latch.
 
-Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, the `$B473` rim probe, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. Defensive steal/block arbitration and all remaining state `$03` vertical branches are still incomplete; general collision and misses therefore remain **Partial**, not Verified.
+Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, the `$B473` rim probe, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. Shot-block arbitration and all remaining state `$03` vertical branches are still incomplete; general collision and misses therefore remain **Partial**, not Verified.
+
+### Defensive contact and shooter recovery slice
+
+Headless Ghidra ties player state `$28` to bank-0 `$8D9C`: it decrements
+`$04F0+slot`, branches while the signed result is nonnegative, and writes state
+`$29` only after the counter underflows. The unmodified FCEUX window at original
+frames 6486-6552 confirms that `$04FA` begins at `$20`, reaches `$00` at frame
+6550, and becomes `$FF` with the `$28->$29` transition at frame 6552. Because
+that team is dispatched on alternating frames, the native handler performs 33
+scheduled updates, or 66 rendered frames. State `$29` at `$8DAB` copies ball
+target bytes `$05B0/$05C0` to the current player's `$05D0/$05E0` only when the
+rotating priority object `$004D` matches, then calls `$91FB`. The trace records
+the resulting `$B435` probes for slot `$0A` from frame 6554 onward while the
+player follows the loose ball.
+
+The defensive path begins at `$91A6` and `$9FA3`. Both use `$B435`, increment
+the per-object contact counter `$06A0+slot` against limit `$0068`, clear the
+counter when contact or eligibility fails, and branch to `$A347` when sustained
+contact qualifies. `$B435` uses exclusive player/ball half extents 4+6 on court
+X and depth, then accepts height when unsigned
+`player_height + $11 - ball_height < $22`. A controlled, opt-in FCEUX probe at
+frames 2602/2606/2608 holds opposing slots `$03/$07` in stable state `$3B` at
+the same coordinates with limit 3. The original calls `$A347` at frame 2608,
+changes owner/carrier `$07->$03`, installs carrier state `$02`, assigns the
+winning team `$40,$40,$3C,$3E`, and resets the other team to `$20`. The native
+translation applies those team roles, ownership, court direction, control, and
+contact-counter resets without emulating instructions.
+
+Repeated natural transitions additionally verify the rebound chain: `$2D->$2E`
+at frames 2942, 3693, 4675, 7606, 8337, 9249, and 10870; `$2E->$2F` two frames
+later after `$8E88` excludes ball states `$05/$06` and assigns owner/carrier;
+and `$2F->$30` after the direction-selected `$BD/$A1` return target is reached.
+The isolated native regression checks exercise the arrival, exclusion, claim,
+target, and hold branches. Selected-bank ROM offsets are `$8D9C->$0DAC`,
+`$8DAB->$0DBB`, `$91A6->$11B6`, `$9FA3->$1FB3`, `$A347->$2357`, and
+`$B435->$3445`.
+
+These additions promote player states `$28,$29,$2D,$2E,$2F` to Verified and
+defensive steals/blocks from Missing to Partial. Blocks and the remaining
+defensive eligibility rules are still outstanding.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **66% Ghidra-to-C gameplay-loop coverage** and approximately **46% end-to-end match completeness**; these are intentionally separate measures.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **70% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

@@ -6,8 +6,8 @@ $ErrorActionPreference = 'Stop'
 $components = @(
     [pscustomobject]@{
         Name = 'Player actions'; Weight = 0.30; Expected = 34
-        Verified = @('22','25','26','27','32','36','37','3C','3D','3E','40')
-        Partial = @('20','21','23','24','28','29','2A','2B','2C','2D','2E','2F','30','31','33','34','35','38','39','3A','3B','3F','41')
+        Verified = @('22','25','26','27','28','29','2D','2E','2F','32','36','37','3C','3D','3E','40')
+        Partial = @('20','21','23','24','2A','2B','2C','30','31','33','34','35','38','39','3A','3B','3F','41')
         Missing = @()
     },
     [pscustomobject]@{
@@ -17,17 +17,17 @@ $components = @(
         Missing = @()
     },
     [pscustomobject]@{
-        Name = 'Core loop'; Weight = 0.25; Expected = 10
-        Verified = @('objects','scheduler','targets','camera-chr','metasprites','dribble-audio')
+        Name = 'Core loop'; Weight = 0.25; Expected = 7
+        Verified = @('objects','scheduler','targets','dribble-audio')
         Partial = @('user-control','movement-physics','general-collision')
-        Missing = @('exact-oam-order')
+        Missing = @()
     },
     [pscustomobject]@{
         Name = 'Match rules'; Weight = 0.20; Expected = 13
         Verified = @('tipoff')
         Partial = @('user-control','cpu-choice','made-shot','rebound','inbound','possession-transfer',
-                    'clock','score-hud','periods','misses')
-        Missing = @('steals-blocks','fouls-out-of-bounds')
+                    'clock','score-hud','periods','misses','steals-blocks')
+        Missing = @('fouls-out-of-bounds')
     }
 )
 

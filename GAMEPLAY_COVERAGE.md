@@ -4,11 +4,11 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Ghidra-to-C gameplay-loop coverage: 66%**
+**Portable Ghidra-to-C gameplay-loop coverage: 70%**
 
-**End-to-end match completeness: approximately 46%**
+**End-to-end match completeness: approximately 50%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: clock, score, periods, and the observed result-four miss now have bounded native paths, while exact clock gating, final match end, steals, blocks, fouls, general out-of-bounds handling, and broad CPU decision coverage remain incomplete.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: clock, score, periods, the observed result-four miss, and sustained-contact steals now have bounded native paths, while exact clock gating, final match end, blocks, fouls, general out-of-bounds handling, and broad CPU decision coverage remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -16,23 +16,35 @@ Coverage statuses have fixed values:
 - **Partial (P) = 0.5**: the state is playable or scripted, but important original branches/helpers remain missing.
 - **Missing (M) = 0.0**: no native behavior corresponding to that original state or subsystem.
 
+The portable denominator excludes mapper/bank switching, PPU/CHR streaming,
+metasprite/OAM construction, and exact dynamic OAM ordering. Those renderer paths
+can still exist in the port, but they are NES presentation mechanisms rather than
+native gameplay behavior and do not count toward the user's 99% portable target.
+
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + core loop × 25% + match rules × 20% = 66.1%`, rounded to **66%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 70.0%`, rounded to **70%**.
 
-## Player action dispatcher — 66.2%
+## Player action dispatcher — 73.5%
 
 Ghidra anchor `$89B2` subtracts `$20` from player action `$0340+slot` and dispatches through the 34-entry table at `$89C0`. `ExportGameplayLoopEvidence.java` prints all entries so this denominator is reproducible.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 11 | `$22,$25,$26,$27,$32,$36,$37,$3C,$3D,$3E,$40` |
-| P | 23 | `$20,$21,$23,$24,$28,$29,$2A,$2B,$2C,$2D,$2E,$2F,$30,$31,$33,$34,$35,$38,$39,$3A,$3B,$3F,$41` |
+| V | 16 | `$22,$25,$26,$27,$28,$29,$2D,$2E,$2F,$32,$36,$37,$3C,$3D,$3E,$40` |
+| P | 18 | `$20,$21,$23,$24,$2A,$2B,$2C,$30,$31,$33,$34,$35,$38,$39,$3A,$3B,$3F,$41` |
 | M | 0 | none |
 
-Score: `(11 + 23 × 0.5) / 34 = 66.2%`.
+Score: `(16 + 18 × 0.5) / 34 = 73.5%`.
 
-Every table entry now has an explicit native handler. The partial group includes states that currently use bounded timing, movement, collision, or formation logic rather than every branch of the original handler. In particular, the full `$D99A` obstacle search and several `$D759-$DA39` CPU branches remain incomplete.
+Every table entry now has an explicit native handler. States `$28/$29` reproduce
+the traced `$20` countdown, rotating-priority ball target, immediate `$B435`
+contact, and `$A347` possession handoff. States `$2D-$2F` have repeated dynamic
+traces plus isolated native checks for target arrival, ball-state exclusions,
+possession claim, direction-dependent return target, and hold-state arrival. The
+partial group still uses bounded timing, movement, collision, or formation logic
+where important original branches remain, especially the full `$D99A` obstacle
+search and several `$D759-$DA39` CPU branches.
 
 ## Ball action dispatcher — 73.1%
 
@@ -48,29 +60,38 @@ Score: `(6 + 7 × 0.5) / 13 = 73.1%`.
 
 Every table entry now has an explicit native handler. Although states `$04-$09` are present, their current made-shot and loose-ball paths are bounded. General rim outcomes, misses, blocks, contested rebounds, and every branch of `$B377/$B473` are not complete.
 
-## Core per-frame loop — 75%
+## Portable core per-frame loop — 78.6%
 
-Ten tracked subsystems produce this score.
+Seven portable subsystems produce this score.
 
 | Status | Subsystems |
 | --- | --- |
-| V (6) | native object state, alternating 30 Hz team scheduler, packed target coordinates, camera/CHR streaming, metasprite rendering, state-driven dribble audio |
+| V (4) | native object state, alternating 30 Hz team scheduler, packed target coordinates, state-driven dribble audio |
 | P (3) | user control/control ownership, fixed-point height and movement physics, general player/ball collision resolution |
-| M (1) | exact full dynamic OAM/order behavior |
+| M (0) | none |
 
-Score: `(6 + 3 × 0.5) / 10 = 75%`.
+Score: `(4 + 3 × 0.5) / 7 = 78.6%`.
 
-## Match rules and possession flow — 46.2%
+Excluded NES-only presentation mechanisms: camera-driven CHR streaming,
+metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
+switching are likewise excluded globally and are not represented as gameplay
+coverage entries.
+
+## Match rules and possession flow — 50.0%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
 | V (1) | opening tip-off and possession award |
-| P (10) | live user control, CPU pass/shot choice, made-shot sequence, rebound sequence, inbound sequence, possession transfer, game clock, score/HUD updates, period transitions/end conditions, missed-shot outcomes |
-| M (2) | steals/blocks, fouls and general out-of-bounds rules |
+| P (11) | live user control, CPU pass/shot choice, made-shot sequence, rebound sequence, inbound sequence, possession transfer, game clock, score/HUD updates, period transitions/end conditions, missed-shot outcomes, defensive steals/blocks |
+| M (1) | fouls and general out-of-bounds rules |
 
-Score: `(1 + 10 × 0.5) / 13 = 46.2%`.
+Score: `(1 + 11 × 0.5) / 13 = 50.0%`.
+
+The defensive entry is Partial: the original sustained-contact steal path and
+immediate loose-ball possession arbitration are now native, but shot blocks and
+the remaining defensive eligibility branches are not yet complete.
 
 ## Evidence and update rules
 
@@ -93,7 +114,7 @@ When updating this ledger:
 
 ## Highest-value next coverage work
 
-1. Deepen the partial dispatcher handlers with dynamic FCEUX branch captures, especially `$21/$23/$24/$2D-$2F` and `$38-$3A`.
+1. Deepen the partial dispatcher handlers with dynamic FCEUX branch captures, especially `$21/$23/$24` and `$38-$3A`.
 2. Translate the remaining `$D99A` CPU decision/search branches and pass-lane rejection.
 3. Complete the remaining `$B473` hoop/rim sweep and contested-rebound branches behind ball `$03/$08/$09`.
 4. Match the clock's presentation-state call gaps and implement fourth-period/final match end conditions.

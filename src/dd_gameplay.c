@@ -14,6 +14,7 @@
 #define DD_FIRST_CLOCK_TICK_FRAME 296u
 #define DD_CLOCK_FRAMES_PER_SECOND 32u
 #define DD_PERIOD_RESET_DELAY 214u
+#define DD_POSSESSION_CONTACT_LIMIT 20u
 #define DD_NO_OWNER 0xFFu
 
 static const uint16_t DD_INITIAL_X[DD_GAMEPLAY_PLAYER_COUNT] = {
@@ -140,6 +141,74 @@ static int dd_jump_ball_contact(const DDGameplayState *state, uint32_t player_in
                                  0x0400, 0x0400);
 }
 
+/* $B435: ordinary possession contact uses player half extents 4, ball half
+   extents 6, then accepts a 34-unit unsigned window around player height+17. */
+static int dd_possession_ball_contact(const DDGameplayState *state, uint32_t player_index) {
+    const DDPlayerState *player;
+    uint8_t height_delta;
+    if (player_index >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
+    player = &state->players[player_index];
+    if (!dd_axis_boxes_overlap(state->ball.court_depth, player->court_depth,
+                               0x0600, 0x0400) ||
+        !dd_axis_boxes_overlap(state->ball.court_x, player->court_x,
+                               0x0600, 0x0400)) return 0;
+    height_delta = (uint8_t)(((player->height + 0x1100 - state->ball.height) >> 8) & 0xFF);
+    return height_delta < 0x22u;
+}
+
+/* $91A6/$9FA3 -> $A347: sustained opposing-team contact changes owner,
+   controlled player, attack direction, and every live player state together. */
+static void dd_transfer_contact_possession(DDGameplayState *state, uint32_t winner) {
+    static const uint8_t route_actions[4] = {
+        DD_PLAYER_LIVE_CPU, DD_PLAYER_LIVE_CPU,
+        DD_PLAYER_LIVE_CPU_CUT, DD_PLAYER_LIVE_CPU_ROUTE
+    };
+    uint32_t first = winner < 5u ? 0u : 5u;
+    uint32_t route = 0u;
+    uint32_t player;
+    state->carrier = (uint8_t)winner;
+    state->ball.owner = (uint8_t)winner;
+    state->ball.receiver = DD_NO_OWNER;
+    state->ball.action = DD_BALL_DRIBBLE;
+    state->ball.action_age = 0u;
+    state->ball.velocity_x = 0;
+    state->ball.velocity_depth = 0;
+    state->ball.velocity_height = 0;
+    state->possession_direction = winner < 5u ? 1u : 0u;
+    if (winner < 5u) state->controlled_player = (uint8_t)winner;
+    ++state->possession_count;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        DDPlayerState *object = &state->players[player];
+        object->action_age = 0u;
+        object->contact_age = 0u;
+        object->route_step = 0u;
+        if (player == winner) {
+            object->action = winner < 5u
+                ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_CARRIER;
+        } else if (player >= first && player < first + 5u) {
+            object->action = route_actions[route++];
+        } else {
+            object->action = player == state->controlled_player
+                ? DD_PLAYER_LIVE_USER : DD_PLAYER_LIVE_TEAMMATE;
+        }
+    }
+}
+
+static int dd_step_possession_contact(DDGameplayState *state, uint32_t player_index) {
+    DDPlayerState *player = &state->players[player_index];
+    uint32_t owner = state->ball.owner;
+    if (state->ball.action != DD_BALL_DRIBBLE || owner >= DD_GAMEPLAY_PLAYER_COUNT ||
+        owner == player_index || (owner < 5u) == (player_index < 5u) ||
+        !dd_possession_ball_contact(state, player_index)) {
+        player->contact_age = 0u;
+        return 0;
+    }
+    if (player->contact_age != UINT8_MAX) ++player->contact_age;
+    if (player->contact_age < DD_POSSESSION_CONTACT_LIMIT) return 0;
+    dd_transfer_contact_possession(state, player_index);
+    return 1;
+}
+
 /* $B377 only classifies the ball while its integer height is $34-$37.  It
    expands a box around the hoop from result 1 through result 4; result 1 is
    the clean make and 2-4 are progressively wider rim misses. */
@@ -188,10 +257,14 @@ static void dd_unpack_cpu_target(uint8_t packed, int32_t *x, int32_t *depth) {
 }
 
 /* $AB72 compresses the two court axes for region and occupancy decisions. */
-static uint8_t dd_pack_cpu_position(const DDPlayerState *player) {
-    uint32_t x = (uint32_t)dd_clamp(player->court_x >> 8, 0, 0x1FF);
-    uint32_t depth = (uint32_t)dd_clamp(player->court_depth >> 8, 0, 0x7F);
+static uint8_t dd_pack_cpu_coordinates(int32_t court_x, int32_t court_depth) {
+    uint32_t x = (uint32_t)dd_clamp(court_x >> 8, 0, 0x1FF);
+    uint32_t depth = (uint32_t)dd_clamp(court_depth >> 8, 0, 0x7F);
     return (uint8_t)(((depth << 1u) & 0xE0u) | ((x >> 4u) & 0x1Fu));
+}
+
+static uint8_t dd_pack_cpu_position(const DDPlayerState *player) {
+    return dd_pack_cpu_coordinates(player->court_x, player->court_depth);
 }
 
 /* Bank 0 $AC2A divides the packed court into seven decision regions. */
@@ -366,6 +439,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
     int32_t speed = 0x0180;
     ++player->cpu_updates;
     if (player->action_age != UINT16_MAX) ++player->action_age;
+    if (dd_step_possession_contact(state, player_index)) return;
     switch (player->action) {
         case DD_PLAYER_LIVE_CARRIER:
             speed = 0x0320;
@@ -414,11 +488,29 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             }
             break;
         case DD_PLAYER_LIVE_SHOOTER_RECOVER:
-        case DD_PLAYER_LIVE_SHOOTER_RESET:
+            /* $8D9C decrements the $20 value installed in $04F0 through
+               zero, changing $28->$29 only when the 33rd DEC makes it $FF.
+               This player is scheduled every other rendered frame. */
             speed = 0x0180;
-            if (player->action_age >= 32u) {
-                player->action = DD_PLAYER_LIVE_CPU;
+            if (player->action_age >= 33u) {
+                player->action = DD_PLAYER_LIVE_SHOOTER_RESET;
                 player->action_age = 0u;
+            }
+            break;
+        case DD_PLAYER_LIVE_SHOOTER_RESET:
+            /* $8DAB copies the ball's packed target only for rotating
+               priority object $004D, then $91FB performs an immediate
+               $B435 contact test and $A347 possession transfer. */
+            speed = 0x0180;
+            if (state->cpu_priority_player == player_index) {
+                player->target_x = state->ball.court_x;
+                player->target_depth = state->ball.court_depth;
+                player->target_zone = dd_pack_cpu_coordinates(state->ball.court_x,
+                                                               state->ball.court_depth);
+            }
+            if (dd_possession_ball_contact(state, player_index)) {
+                dd_transfer_contact_possession(state, player_index);
+                return;
             }
             break;
         case DD_PLAYER_TIP_CPU:

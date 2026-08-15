@@ -11,6 +11,7 @@ local jump_end = tonumber(os.getenv("DD_TIP_JUMP_END") or "-1")
 local jump_button = os.getenv("DD_TIP_JUMP_BUTTON") or "A"
 local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
+local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -70,7 +71,7 @@ dispatch:write("frame,object,slot,state,owner,carrier,clock_minutes,clock_second
 local clock_calls = assert(io.open(join_path(capture_root, "gameplay-clock-calls.csv"), "w"))
 clock_calls:write("frame,clock_minutes,clock_seconds,ball_state,phase\n")
 local collision_calls = assert(io.open(join_path(capture_root, "gameplay-collision-calls.csv"), "w"))
-collision_calls:write("frame,pc,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier\n")
+collision_calls:write("frame,pc,current_object,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier,contact_timer,contact_limit\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 local previous_ball_state = -1
 local previous_player_state = {}
@@ -136,15 +137,18 @@ end)
 local function record_collision_call(address, size, value)
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
-        collision_calls:write(string.format("%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
-            frame, address, memory.readbyte(0x0340), memory.readbyte(0x0360),
+        local object = memory.readbyte(0x004B)
+        collision_calls:write(string.format("%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+            frame, address, object, memory.readbyte(0x0340), memory.readbyte(0x0360),
             memory.readbyte(0x0370), memory.readbyte(0x03C0), memory.readbyte(0x0410),
             memory.readbyte(0x0490), memory.readbyte(0x0480), memory.readbyte(0x005B),
-            memory.readbyte(0x0048)))
+            memory.readbyte(0x0048), memory.readbyte(0x06A0 + object), memory.readbyte(0x0068)))
     end
 end
 memory.registerexecute(0xB377, 1, record_collision_call)
 memory.registerexecute(0xB473, 1, record_collision_call)
+memory.registerexecute(0xB435, 1, record_collision_call)
+memory.registerexecute(0xA347, 1, record_collision_call)
 
 local capture_frames = {
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
@@ -220,6 +224,33 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0050, 0x08)
         memory.writebyte(0x005B, 0x07)
         memory.writebyte(0x0048, 0x07)
+    end
+    if next_frame == inject_contact_frame then
+        -- Controlled probe for $B435 -> $9FA3 -> $A347 possession contact.
+        local player = 0x03
+        memory.writebyte(0x0340, 0x01)
+        memory.writebyte(0x005B, 0x07)
+        memory.writebyte(0x0048, 0x07)
+        memory.writebyte(0x0050, 0x08)
+        memory.writebyte(0x0068, 0x03)
+        memory.writebyte(0x0360, 0x00)
+        memory.writebyte(0x0370, 0x80)
+        memory.writebyte(0x03C0, 0x58)
+        memory.writebyte(0x0410, 0x10)
+        memory.writebyte(0x0360 + 0x07, 0x00)
+        memory.writebyte(0x0370 + 0x07, 0x80)
+        memory.writebyte(0x03C0 + 0x07, 0x58)
+        memory.writebyte(0x0410 + 0x07, 0x10)
+        memory.writebyte(0x0340 + 0x07, 0x3B)
+        memory.writebyte(0x0340 + player, 0x3B)
+        memory.writebyte(0x0350 + player, memory.readbyte(0x0350 + 0x07))
+        memory.writebyte(0x0360 + player, 0x00)
+        memory.writebyte(0x0370 + player, 0x80)
+        memory.writebyte(0x03C0 + player, 0x58)
+        memory.writebyte(0x0410 + player, 0x10)
+        memory.writebyte(0x0580 + player, 0x07)
+        memory.writebyte(0x0690 + player, 0x01)
+        memory.writebyte(0x06A0 + player, 0x00)
     end
     joypad.set(1, input)
     emu.frameadvance()

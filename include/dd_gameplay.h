@@ -100,6 +100,7 @@ typedef struct DDPlayerState {
     uint8_t role;
     uint8_t target_zone;
     uint8_t route_step;
+    uint8_t contact_age;
 } DDPlayerState;
 
 typedef struct DDBallState {

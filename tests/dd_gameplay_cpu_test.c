@@ -262,6 +262,48 @@ int main(int argc, char **argv) {
           "shared movement state $2C executes the $8BC5 continuation");
 
     dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
+    dispatch_state.players[5].action_age = 0u;
+    dispatch_state.ball.action = DD_BALL_HIDDEN;
+    for (player = 0u; player < 32u; ++player) {
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    }
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_SHOOTER_RECOVER &&
+          dispatch_state.players[5].action_age == 32u,
+          "player state $28 retains the original $04F0=$20 countdown through zero");
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_SHOOTER_RESET,
+          "player state $28 advances to $29 on its 33rd scheduled update");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_SHOOTER_RESET;
+    /* The even-team scheduler advances 9->5 immediately before slot 5. */
+    dispatch_state.cpu_priority_player = 9u;
+    dispatch_state.ball.action = DD_BALL_LOOSE_AIRBORNE;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x + 0x2000;
+    dispatch_state.ball.court_depth = dispatch_state.players[5].court_depth + 0x1000;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_SHOOTER_RESET &&
+          dispatch_state.players[5].target_x == dispatch_state.ball.court_x &&
+          dispatch_state.players[5].target_depth == dispatch_state.ball.court_depth,
+          "priority player state $29 copies the live ball target before chasing it");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_SHOOTER_RESET;
+    dispatch_state.ball.action = DD_BALL_REBOUND;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u &&
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER,
+          "player state $29 uses immediate $91FB/$B435 contact to run $A347 possession transfer");
+
+    dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_REBOUND_CHASE;
     dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
     dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
@@ -352,6 +394,36 @@ int main(int argc, char **argv) {
     check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD &&
           dispatch_state.ball.owner == 5u,
           "player state $41 claims the inbound ball and advances to $30");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.court_x = dispatch_state.players[1].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[1].court_depth;
+    dispatch_state.ball.height = dispatch_state.players[1].height + 0x0800;
+    dispatch_state.players[1].contact_age = 19u;
+    run_cpu_dispatch(&pack, &dispatch_state, 1u);
+    check(dispatch_state.carrier == 1u && dispatch_state.ball.owner == 1u &&
+          dispatch_state.controlled_player == 1u &&
+          dispatch_state.players[1].action == DD_PLAYER_LIVE_USER_CARRIER &&
+          dispatch_state.players[0].action == DD_PLAYER_LIVE_CPU &&
+          dispatch_state.players[3].action == DD_PLAYER_LIVE_CPU_CUT &&
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.possession_direction == 1u,
+          "$B435/$A347 sustained contact transfers possession, control, and both team states");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.court_x = dispatch_state.players[1].court_x + 0x0A00;
+    dispatch_state.ball.court_depth = dispatch_state.players[1].court_depth;
+    dispatch_state.ball.height = dispatch_state.players[1].height + 0x0800;
+    dispatch_state.players[1].contact_age = 19u;
+    run_cpu_dispatch(&pack, &dispatch_state, 1u);
+    check(dispatch_state.ball.owner == 5u && dispatch_state.players[1].contact_age == 0u,
+          "$B435's exclusive 10-unit court boundary resets the contact timer");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_PASS;
