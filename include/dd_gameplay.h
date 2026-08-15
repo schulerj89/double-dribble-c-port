@@ -171,8 +171,10 @@ typedef struct DDGameplayState {
     uint8_t cpu_entropy;
     uint8_t possession_direction;
     uint8_t possession_count;
+    uint8_t last_touch_player;
     uint8_t inbound_variant;
     uint8_t inbound_reason;
+    uint16_t rule_message_age;
     uint16_t rebound_formation_pending;
     uint8_t dead_ball_latch;
     uint8_t audio_event;
@@ -196,6 +198,9 @@ typedef struct DDGameplayState {
     uint8_t shot_value;
     uint8_t net_animation_phase;
     uint8_t net_basket_side;
+    uint8_t dunk_active;
+    uint8_t dunk_outcome;
+    uint16_t dunk_age;
     uint8_t foul_shooter;
     uint8_t foul_offender;
     uint8_t match_clock_pulse;

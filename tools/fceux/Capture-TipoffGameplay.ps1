@@ -28,7 +28,7 @@ param(
     [int]$BasketShotKind = 0,
     [int]$BlockFrame = -1,
     [int]$InboundRuleFrame = -1,
-    [ValidateRange(0, 3)]
+    [ValidateRange(0, 4)]
     [int]$InboundRuleCase = 0,
     [int]$ExceptionalReasonFrame = -1,
     [ValidateRange(0, 4)]
@@ -37,6 +37,7 @@ param(
     [int]$UserShotDepth = -1,
     [ValidateRange(-1, 65535)]
     [int]$UserShotX = -1,
+    [int]$UserPositionFrame = -1,
     [int]$ScoreAudioFreezeFrame = -1,
     [switch]$DisablePcCounts,
     [ValidateSet('A', 'B')]
@@ -79,6 +80,7 @@ $env:DD_INJECT_EXCEPTIONAL_REASON_FRAME = $ExceptionalReasonFrame.ToString([Glob
 $env:DD_INJECT_SHOT_KIND_CASE = $ShotKindCase.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_USER_SHOT_DEPTH = $UserShotDepth.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_USER_SHOT_X = $UserShotX.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_USER_POSITION_FRAME = $UserPositionFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_SCORE_AUDIO_FREEZE_FRAME = $ScoreAudioFreezeFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 
 $process = Start-Process -FilePath $FceuxPath `

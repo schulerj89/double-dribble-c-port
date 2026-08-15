@@ -265,8 +265,8 @@ int main(int argc, char **argv) {
           "native B timing reproduces original frame 2502 state $10->$11");
     check(dd_gameplay_advance_to(&pack, &jump_state, 330u, 0u), "advance to CPU contact");
     check(jump_state.carrier == 5u, "CPU slot wins the first contact frame");
-    check(jump_state.hud_split_y == 48u,
-          "tip contact changes the raster split so 1ST PERIOD START leaves the fixed HUD");
+    check(jump_state.hud_split_y == 64u,
+          "tip contact retains all eight native HUD rows for rule-message rendering");
     check(dd_gameplay_advance_to(&pack, &jump_state, 331u, 0u), "advance to user contact override");
     check(jump_state.carrier == 0u && jump_state.tip_winner == 0u,
           "well-timed user jump overrides possession on the next contact frame");
@@ -2353,6 +2353,118 @@ int main(int argc, char **argv) {
           dispatch_state.ball.velocity_depth == -0x0045 &&
           dispatch_state.ball.velocity_height == 0x0067,
           "ball state $0C shares $ACAB's integer-height clear without changing velocity");
+
+    /* Rule ownership is driven by the offending/last-touch team, matching
+       `$9651`'s side flip, rather than by the scrolling direction. */
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.ball.action = DD_BALL_HIDDEN;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.court_x = 0x010000;
+    dispatch_state.ball.court_depth = 0x001000;
+    dispatch_state.last_touch_player = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "call out of bounds after a user-side last touch");
+    check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
+          dispatch_state.inbound_reason == 0x16u &&
+          dispatch_state.possession_direction == 0u &&
+          dispatch_state.players[5].action == DD_PLAYER_INBOUNDER,
+          "$9635->$9651 awards OOB to the opponent of the last-touch team");
+    check(dispatch_state.rule_message_age == 0u,
+          "$94A5 rule-message flash begins with the text-visible phase");
+    for (player = 0u; player < 160u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance the bounded `$94A5` rule-message window");
+    }
+    check(dispatch_state.rule_message_age == UINT16_MAX,
+          "$94A5 clears the green-box message after forty four-frame gates");
+
+    /* A made-basket receiver outside the recovered near-rim window must
+       return to `$D759` instead of taking the old fixed-delay half-court shot. */
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.clock_minutes = 1u;
+    dispatch_state.clock_seconds = 0x30u;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    dispatch_state.players[5].route_step = 4u;
+    dispatch_state.players[5].action_age = 13u;
+    dispatch_state.players[5].court_x = 0x014000;
+    dispatch_state.players[5].court_depth = 0x005800;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.ball.action == DD_BALL_DRIBBLE &&
+          dispatch_state.players[5].action != DD_PLAYER_LIVE_CARRIER_DECIDE,
+          "post-inbound `$25` cannot launch a half-court shot after fourteen updates");
+
+    /* `$32` consumes the high phase bit over a window.  Starting after $80
+       proves the handler cannot freeze by missing one exact host frame. */
+    prepare_cpu_policy(&pack, &dispatch_state, 0x84u, 0x85u);
+    dispatch_state.players[5].route_step = 3u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action != DD_PLAYER_LIVE_CPU_SETUP,
+          "CPU setup exits after an arrived high-bit phase even when exact `$80` was skipped");
+
+    /* The recovered close-rim gate enters a held-ball dunk and resolves both
+       deterministic outcomes without routing through the ordinary parabola. */
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].court_x = 0x01B400;
+    dispatch_state.players[0].court_depth = 0x005700;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "start the recovered right-rim dunk gate");
+    check(dispatch_state.dunk_active != 0u &&
+          dispatch_state.ball.action == DD_BALL_SHOT_GATHER,
+          "close-rim B press enters the native bank-2-derived dunk gather");
+    dispatch_state.dunk_outcome = 1u;
+    for (player = 0u; player < 20u && dispatch_state.dunk_active != 0u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance dunk make animation to rim contact");
+    }
+    check(dispatch_state.ball.action == DD_BALL_SCORE &&
+          dispatch_state.net_animation_phase == 2u &&
+          dispatch_state.audio_event == 0x18u,
+          "dunk make enters score/net/audio flow at the rim");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].court_x = 0x01B400;
+    dispatch_state.players[0].court_depth = 0x005700;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "start close-rim dunk miss proof");
+    dispatch_state.dunk_outcome = 4u;
+    for (player = 0u; player < 20u && dispatch_state.dunk_active != 0u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance dunk miss animation to rim contact");
+    }
+    check(dispatch_state.ball.action == DD_BALL_LOOSE_LAUNCH &&
+          dispatch_state.ball.outcome == 4u,
+          "dunk miss enters `$AF72` loose-ball launch rather than scoring");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "advance `$AF72` dunk miss initializer");
+    check(dispatch_state.audio_event == 0x14u,
+          "dunk miss requests the original loose-ball SFX `$14`");
 
     period_state = dispatch_base;
     period_state.clock_minutes = 0u;

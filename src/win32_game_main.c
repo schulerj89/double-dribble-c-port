@@ -220,6 +220,11 @@ static void dd_update_gameplay_audio(void) {
                 ? g_three_basket_score_wav : g_score_wav;
             sfx_frames = g_pack.tipoff_meta.score_audio_frames;
             g_basket_score_audio_active = 1;
+        } else if (g_gameplay.audio_event == 0x0Au && g_gameplay_wav != NULL) {
+            /* `$AEC3/$AF66/$AFF7` all request the recovered bank-1 ball
+               contact stream as a one-shot rather than a continuous loop. */
+            sfx_wav = g_gameplay_wav;
+            sfx_frames = g_pack.tipoff_meta.gameplay_audio_frames;
         }
         if (sfx_wav != NULL) {
             PlaySoundA((LPCSTR)sfx_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);

@@ -1569,6 +1569,87 @@ Coverage remains **92.6% unrounded (93% displayed)** and match rules remain
 **80.8%**. These corrections close defects inside already-verified dispatcher
 states rather than adding new states to the denominator.
 
+### Rule calls, CPU shot gating, native dunk, and bounce audio
+
+Status: **implemented and regression-verified**, with the specialized NES dunk
+cinematic still classified Partial presentation rather than being counted as a
+new portable gameplay state.
+
+The out-of-bounds follow starts in switched bank 0 at `$95E0` (ROM `$15F0`).
+The boundary branch reaches `$9635` (ROM `$1645`), stores reason `$16`, and
+enters `$9651` (ROM `$1661`). That common setup calls `$9395`, XORs possession
+bit `$0050` by `$48`, resets formation roles through fixed `$D6BD`, finds the
+new receiving role zero through `$9097`, and selects the boundary target through
+`$9763`. Back pass reaches the same setup from fixed `$9583/$95C4-$95CD` with
+reason `$15`. Native setup now derives the receiver from the offending or
+last-touch team, then writes the corresponding portable possession direction;
+camera direction can no longer accidentally award the throw-in to the offender.
+
+The message handler at bank-0 `$94A5` (ROM `$14B5`) reads `$0059`, toggles its
+high bit every four frames, and clears it after `$006B` reaches `$28`. A
+controlled FCEUX rule-`$16` capture writes `$0059=16` at PC `$9635`, installs
+state `$41` at `$965A`, and visibly renders `OUT OF BOUNDS`; the existing
+rule-`$15` capture renders `BACK PASS`. The native renderer gives gameplay the
+full 64-pixel green HUD, clears the 20-tile message span, and reproduces that
+160-frame flash. The prior 48-pixel split and invented period ordinal were the
+reason the message box was clipped and overwritten.
+
+The CPU repair follows fixed-bank `$D759` (ROM `$1D769`). That decision tree
+forces a shot only in the last five clock seconds or when the possession tick
+reaches 24; otherwise it classifies the packed court region, checks arrival and
+decision timers, and may search for a pass. The earlier native post-inbound
+route bypassed this policy and shot unconditionally after 14 updates, even from
+half court. It now returns through the translated policy, with only a bounded
+near-rim lane allowed to enter a direct finish. State `$32` also consumes the
+high phase bit as a window instead of requiring host frame exactly `$80`, so a
+skipped host tick cannot freeze a CPU player indefinitely. Tests start after
+`$80` and prove the setup exits, and place a carrier at half court and prove it
+retains dribble instead of launching a shot.
+
+A controlled close-rim original run starts the shot at ball packed position
+`$01B4/$57`, then uniquely executes fixed `$D40F-$D428` and `$D5F9-$D60C` plus
+switched bank 2 `$8000-$8287`. Headless Ghidra shows `$D40F` calling `$D5F9`,
+advancing subcounter `$003E` to `$0E`, advancing cinematic frame `$0039`, and
+requesting `$1D` or `$1A` at frame five before clearing objects `$0D-$0F` and
+returning to match state `$0E`. Bank-2 `$808E` iterates those three objects,
+loads metasprite pointers from `$90C4`, calls the `$801A` decoder, and fills
+unused OAM with `$F4`. The native portable path retains the recovered close-rim
+eligibility, a held-ball rise to the active rim, facing-specific shot sprite,
+and deterministic make/miss returns to the normal score/net or `$AF72`
+loose-ball dispatchers. It deliberately uses the ordinary pack-backed gameplay
+metasprites rather than mapper-driven objects `$0D-$0F`; exact reproduction of
+the separate blue-screen cinematic remains presentation work and receives no
+coverage credit.
+
+The ball sound follow is exact at the portable dispatcher boundary. Bank 0
+`$AEC3-$AEC8` (ROM `$2ED3`), `$AF66-$AF6B` (`$2F76`), and `$AFF7-$B001`
+(`$3007`) each request event `$0A` on their first bounce/landing wrap;
+`$AF72-$AF83` (`$2F82`) requests event `$14` for the loose launch. Native ball
+states now issue those same event IDs. Event `$0A` uses the already recovered
+DDAP v18 `gameplay.audio` stream from switched bank 1, and every asset-pack
+build exports the exact native playback path as `build/ball-bounce-0a.wav` for
+audible and waveform inspection. No ROM audio or WAV is committed.
+
+Reproduce the ignored evidence with:
+
+```powershell
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
+.\tools\ghidra\Run-DunkAnalysis.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2588 -FinalFrame 2660 -CaptureName evidence-rule-16 -InboundRuleFrame 2600 -InboundRuleCase 4 -DisablePcCounts
+.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+.\build\double_dribble_port.exe --render-gameplay-rule .\build\double-dribble.assetpack oob .\captures\native-rules-dunk\out-of-bounds.bmp
+.\build\double_dribble_port.exe --render-gameplay-rule .\build\double-dribble.assetpack backpass .\captures\native-rules-dunk\back-pass.bmp
+.\build\double_dribble_port.exe --render-gameplay-dunk .\build\double-dribble.assetpack make airborne .\captures\native-rules-dunk\dunk-airborne.bmp
+.\build\double_dribble_port.exe --render-gameplay-dunk .\build\double-dribble.assetpack make result .\captures\native-rules-dunk\dunk-make.bmp
+.\build\double_dribble_port.exe --render-gameplay-dunk .\build\double-dribble.assetpack miss result .\captures\native-rules-dunk\dunk-miss.bmp
+```
+
+Coverage remains **92.6% unrounded (93% displayed)**: player and ball action
+dispatchers are **100%**, core loop is **85.7%**, and match rules are **80.8%**.
+These changes repair behavior inside already-catalogued Verified or Partial
+entries; the honest score does not rise merely because the same states gained
+more faithful side effects.
+
 ## Open research questions
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
@@ -1577,4 +1658,5 @@ The current implementation percentage and its reproducible scoring rules are mai
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
 - Determine the full successful B timing window around the proven original-frame-2502 user jump.
-- Model the remaining `$001D/$0056` contest gates, block SFX `$10/$20`, rim-contact eligibility, and out-of-bounds branches.
+- Model the remaining `$001D/$0056` contest gates, block SFX `$10/$20`, and
+  ordinary-shot rim-contact eligibility branches.

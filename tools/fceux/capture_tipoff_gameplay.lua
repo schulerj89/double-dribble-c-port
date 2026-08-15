@@ -43,6 +43,7 @@ local inject_exceptional_reason_frame = tonumber(os.getenv("DD_INJECT_EXCEPTIONA
 local inject_shot_kind_case = tonumber(os.getenv("DD_INJECT_SHOT_KIND_CASE") or "0")
 local user_shot_depth = tonumber(os.getenv("DD_USER_SHOT_DEPTH") or "-1")
 local user_shot_x = tonumber(os.getenv("DD_USER_SHOT_X") or "-1")
+local user_position_frame = tonumber(os.getenv("DD_USER_POSITION_FRAME") or "-1")
 local score_audio_freeze_frame = tonumber(os.getenv("DD_SCORE_AUDIO_FREEZE_FRAME") or "-1")
 
 local function join_path(left, right)
@@ -125,6 +126,7 @@ exceptional_calls:write("frame,current,clock_gate,ball_state,input,current_targe
 local shot_animation = assert(io.open(join_path(capture_root, "gameplay-shot-animation.csv"), "w"))
 shot_animation:write("frame,pc,current_object,player_state,facing,metasprite,animation_phase,player_height,script_low,script_high,script_value,release_gate,ball_state,ball_owner,carrier,ball_x,ball_depth,ball_height,outcome\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
+local bank_counts = {}
 local previous_ball_state = -1
 local previous_player_state = {}
 
@@ -172,9 +174,21 @@ end)
 if enable_pc_counts then
     memory.registerexecute(0x8000, 0x4000, function(address, size, value)
         local frame = emu.framecount()
-        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
-            local phase = phase_for_frame(frame)
-            counts[phase][address] = (counts[phase][address] or 0) + 1
+        if frame >= trace_start and frame <= trace_end then
+            local bank = current_switch_bank()
+            bank_counts[bank] = bank_counts[bank] or {}
+            bank_counts[bank][address] = (bank_counts[bank][address] or 0) + 1
+            if bank == 0 then
+                local phase = phase_for_frame(frame)
+                counts[phase][address] = (counts[phase][address] or 0) + 1
+            end
+        end
+    end)
+    memory.registerexecute(0xC000, 0x4000, function(address, size, value)
+        local frame = emu.framecount()
+        if frame >= trace_start and frame <= trace_end then
+            bank_counts[7] = bank_counts[7] or {}
+            bank_counts[7][address] = (bank_counts[7][address] or 0) + 1
         end
     end)
 end
@@ -517,7 +531,7 @@ while emu.framecount() < final_frame do
     if next_frame >= move_start and next_frame <= move_end and move_direction ~= "none" then
         input[move_direction] = true
     end
-    if next_frame == pass_frame - 1 and user_shot_depth >= 0 then
+    if next_frame == pass_frame - 1 and user_position_frame < 0 and user_shot_depth >= 0 then
         -- Controlled full-path shooting probe.  Only the user carrier's court
         -- depth is changed before the real B-button edge; $AA75, $A504,
         -- $B189, $AE25 and $B377 remain unmodified and decide the outcome.
@@ -527,8 +541,17 @@ while emu.framecount() < final_frame do
             memory.writebyte(0x0370 + 0x02, user_shot_x % 0x100)
         end
     end
+    if next_frame == user_position_frame and user_shot_depth >= 0 and user_shot_x >= 0 then
+        -- Dynamic dunk probe: preload the carrier several live frames before
+        -- B so the original run vector and near-basket eligibility chain can
+        -- execute naturally instead of teleporting on the shot edge.
+        memory.writebyte(0x0360 + 0x02, math.floor(user_shot_x / 0x100))
+        memory.writebyte(0x0370 + 0x02, user_shot_x % 0x100)
+        memory.writebyte(0x03C0 + 0x02, user_shot_depth)
+    end
     if next_frame == inject_inbound_rule_frame and inject_inbound_rule_case ~= 0 then
-        -- Controlled proofs for $A1CC reasons $13/$14 and $9583 reason $15.
+        -- Controlled proofs for $A1CC reasons $13/$14, $9583 reason $15,
+        -- and $95E0-$9635 reason $16.
         -- Object $02 is the user carrier; the ball remains safely inside the
         -- sloped $95E0 boundary so only the requested possession rule fires.
         local player = 0x02
@@ -551,6 +574,19 @@ while emu.framecount() < final_frame do
             inject_inbound_rule_case == 1 and 0x0A or
             (inject_inbound_rule_case == 2 and 0x18 or 0x00))
         memory.writebyte(0x06B3, inject_inbound_rule_case == 3 and 0x01 or 0x00)
+        if inject_inbound_rule_case == 4 then
+            memory.writebyte(0x0340, 0x07)
+            memory.writebyte(0x005B, 0xFF)
+            memory.writebyte(0x0048, 0xFF)
+            memory.writebyte(0x0360, 0x00)
+            memory.writebyte(0x0370, 0x80)
+            memory.writebyte(0x03C0, 0x10)
+            memory.writebyte(0x0410, 0x00)
+            memory.writebyte(0x0390, 0x00)
+            memory.writebyte(0x03E0, 0x00)
+            memory.writebyte(0x0430, 0x00)
+            memory.writebyte(0x0440, 0x00)
+        end
     end
     if next_frame + 1 == inject_exceptional_reason_frame then
         -- Put the user carrier into the dispatcher one frame before the
@@ -830,4 +866,12 @@ for phase, phase_counts in pairs(counts) do
     end
 end
 count_file:close()
+local bank_count_file = assert(io.open(join_path(capture_root, "gameplay-bank-pc-counts.csv"), "w"))
+bank_count_file:write("bank,address,count\n")
+for bank, addresses in pairs(bank_counts) do
+    for address, count in pairs(addresses) do
+        bank_count_file:write(string.format("%d,%04X,%d\n", bank, address, count))
+    end
+end
+bank_count_file:close()
 emu.exit()

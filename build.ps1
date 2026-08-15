@@ -31,6 +31,7 @@ $whistleWav = Join-Path $buildDir 'whistle-2c.wav'
 $threeCallWav = Join-Path $buildDir 'three-call-09.wav'
 $threeScoreWav = Join-Path $buildDir 'three-score-25.wav'
 $scoreWav = Join-Path $buildDir 'basket-score-18-1f-22.wav'
+$bounceWav = Join-Path $buildDir 'ball-bounce-0a.wav'
 $include = Join-Path $root 'include'
 $commonSources = @(
     (Join-Path $root 'src\dd_asset_pack.c'),
@@ -86,6 +87,10 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $threeScoreWav -PathTyp
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $scoreWav -PathType Leaf)) {
     throw 'Made-basket scoring WAV synthesis failed.'
 }
+& $cli --dump-ball-bounce-wav $assetPack $bounceWav
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $bounceWav -PathType Leaf)) {
+    throw 'Ball-bounce $0A WAV synthesis failed.'
+}
 
 & (Join-Path $root 'tools\Measure-GameplayCoverage.ps1')
 if ($LASTEXITCODE -ne 0) {
@@ -101,3 +106,4 @@ Write-Host "  Whistle:   $whistleWav"
 Write-Host "  3PT call:  $threeCallWav"
 Write-Host "  3PT score: $threeScoreWav"
 Write-Host "  Basket:    $scoreWav"
+Write-Host "  Bounce:    $bounceWav"

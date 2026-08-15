@@ -726,18 +726,36 @@ static uint32_t dd_gameplay_emit(const DDAssetPack *pack, const DDTipoffAssetsHe
     return sprite;
 }
 
+static uint8_t dd_gameplay_hud_tile(char value) {
+    if (value >= 'A' && value <= 'Z') return (uint8_t)(0xE3u + value - 'A');
+    if (value >= '0' && value <= '9') return (uint8_t)(0xD9u + value - '0');
+    if (value == '.') return 0xFCu;
+    return 0x2Du;
+}
+
+static const char *dd_gameplay_rule_message(uint8_t reason) {
+    switch (reason) {
+        case 0x0Fu: return "TRAVELING";
+        case 0x12u: return "5S.VIOLATION";
+        case 0x13u: return "5S.VIOLATION";
+        case 0x14u: return "24S.VIOLATION";
+        case 0x15u: return "BACK PASS";
+        case 0x16u: return "OUT OF BOUNDS";
+        case 0x17u:
+        case 0x1Au: return "FOUL";
+        default: return NULL;
+    }
+}
+
 static void dd_gameplay_patch_hud(uint8_t ppu[DD_PPU_SIZE], const DDGameplayState *state) {
-    static const uint8_t ordinal[4][3] = {
-        {0xDAu, 0xF5u, 0xF6u}, /* 1ST */
-        {0xDBu, 0xF0u, 0xE6u}, /* 2ND */
-        {0xDCu, 0xF4u, 0xE6u}, /* 3RD */
-        {0xDDu, 0xF6u, 0xE0u}  /* 4TH */
-    };
     uint32_t table = 0x2000u;
     uint32_t team;
     uint8_t period = state->period == 0u ? 1u : state->period;
     uint8_t minutes = state->clock_minutes;
     uint8_t seconds = state->clock_seconds;
+    const char *message = dd_gameplay_rule_message(state->inbound_reason);
+    uint32_t message_length = message == NULL ? 0u : (uint32_t)strlen(message);
+    uint32_t column;
     static const uint8_t game_set[8] = {
         0xE9u, 0xE3u, 0xEFu, 0xE7u, 0x57u, 0xF5u, 0xE7u, 0xF6u
     };
@@ -752,7 +770,18 @@ static void dd_gameplay_patch_hud(uint8_t ppu[DD_PPU_SIZE], const DDGameplayStat
     ppu[table + 4u * 32u + 18u] = 0xFDu;
     ppu[table + 4u * 32u + 19u] = (uint8_t)(0xD9u + ((seconds >> 4u) & 0x0Fu));
     ppu[table + 4u * 32u + 20u] = (uint8_t)(0xD9u + (seconds & 0x0Fu));
-    memcpy(ppu + table + 6u * 32u + 8u, ordinal[period - 1u], 3u);
+    /* `$94A5->$C724` owns row six while a rule is active.  The previous port
+       wrote an invented period ordinal here, directly over the green message
+       box.  Clear its full safe span, then reproduce the four-frame flash. */
+    memset(ppu + table + 6u * 32u + 6u, 0x2Du, 20u);
+    if (message != NULL && state->rule_message_age < 160u &&
+        ((state->rule_message_age >> 2u) & 1u) == 0u) {
+        if (message_length > 20u) message_length = 20u;
+        column = 6u + (20u - message_length) / 2u;
+        while (*message != '\0' && column < 26u) {
+            ppu[table + 6u * 32u + column++] = dd_gameplay_hud_tile(*message++);
+        }
+    }
     for (team = 0u; team < 2u; ++team) {
         uint32_t score = state->score[team] > 99u ? 99u : state->score[team];
         uint32_t tens = score / 10u;
@@ -790,6 +819,7 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
     uint8_t oam[256];
     uint32_t sprite = 1u;
     uint32_t player;
+    int32_t world_top;
     int32_t camera;
     if (pack == NULL || state == NULL || pack->tipoff_ppu == NULL ||
         pack->tipoff_ppu_size != DD_PPU_SIZE || pack->tipoff_assets == NULL ||
@@ -815,22 +845,22 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
     for (player = 0u; player < 64u; ++player) oam[player * 4u] = 0xF4u;
     oam[0] = 0x38u; oam[1] = 0xFEu; oam[2] = 0x30u; oam[3] = 0x20u;
     camera = state->camera_x >> 8;
+    world_top = state->hud_split_y < 64u
+        ? (int32_t)state->hud_split_y + 8 : (int32_t)state->hud_split_y;
     sprite = dd_gameplay_emit(pack, assets, oam, sprite, 2u,
                               (state->ball.court_x >> 8) - camera,
                               0xF0 - ((state->ball.court_depth >> 8) + 2), 0u,
-                              (int32_t)state->hud_split_y + 8,
-                              (int32_t)state->hud_split_y + 8);
+                              world_top, world_top);
     sprite = dd_gameplay_emit(pack, assets, oam, sprite, state->ball.animation,
                               (state->ball.court_x >> 8) - camera,
                               0xF0 - (state->ball.court_depth >> 8) - (state->ball.height >> 8),
-                              state->ball.attributes, (int32_t)state->hud_split_y + 8,
-                              (int32_t)state->hud_split_y + 8);
+                              state->ball.attributes, world_top, world_top);
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         const DDPlayerState *object = &state->players[player];
         sprite = dd_gameplay_emit(pack, assets, oam, sprite, object->animation,
                                   (object->court_x >> 8) - camera,
                                   0xF0 - (object->court_depth >> 8) - (object->height >> 8),
-                                  object->attributes, (int32_t)state->hud_split_y + 8,
+                                  object->attributes, world_top,
                                   0x60);
     }
     while (sprite < 64u) {

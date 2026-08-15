@@ -24,6 +24,8 @@ static void dd_usage(void) {
     puts("  --render-gameplay-block <input.assetpack> <contact|landing> <output.bmp>");
     puts("  --render-gameplay-shot <input.assetpack> <make|miss> <gather|release|result|chase|pickup|inbound|receive> <output.bmp>");
     puts("  --render-gameplay-moving-shot <input.assetpack> <takeoff|held|airborne> <output.bmp>");
+    puts("  --render-gameplay-rule <input.assetpack> <oob|backpass> <output.bmp>");
+    puts("  --render-gameplay-dunk <input.assetpack> <make|miss> <gather|airborne|result> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
@@ -31,6 +33,7 @@ static void dd_usage(void) {
     puts("  --dump-end-wav <input.assetpack> <output.wav>");
     puts("  --dump-tipoff-wav <input.assetpack> <output.wav>");
     puts("  --dump-gameplay-wav <input.assetpack> <output.wav>");
+    puts("  --dump-ball-bounce-wav <input.assetpack> <output.wav>");
     puts("  --dump-whistle-wav <input.assetpack> <output.wav>");
     puts("  --dump-three-call-wav <input.assetpack> <output.wav>");
     puts("  --dump-three-score-wav <input.assetpack> <output.wav>");
@@ -152,6 +155,7 @@ int main(int argc, char **argv) {
     if (argc == 4 && (strcmp(argv[1], "--dump-end-wav") == 0 ||
                       strcmp(argv[1], "--dump-tipoff-wav") == 0 ||
                       strcmp(argv[1], "--dump-gameplay-wav") == 0 ||
+                      strcmp(argv[1], "--dump-ball-bounce-wav") == 0 ||
                       strcmp(argv[1], "--dump-whistle-wav") == 0 ||
                       strcmp(argv[1], "--dump-three-call-wav") == 0 ||
                       strcmp(argv[1], "--dump-three-score-wav") == 0 ||
@@ -419,6 +423,103 @@ int main(int argc, char **argv) {
              dd_render_gameplay(&pack, &state, pixels,
                                 pack.tipoff_meta.width, pack.tipoff_meta.height) &&
              dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-gameplay-rule") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t player;
+        int backpass = strcmp(argv[3], "backpass") == 0;
+        int ok = backpass || strcmp(argv[3], "oob") == 0;
+        if (!ok || !dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+        if (ok) {
+            state.phase = DD_GAMEPLAY_LIVE;
+            state.possession_direction = 1u;
+            state.controlled_player = 0u;
+            state.carrier = 0u;
+            state.ball.owner = 0u;
+            state.last_touch_player = 0u;
+            state.ball.action = backpass ? DD_BALL_DRIBBLE : DD_BALL_HIDDEN;
+            state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+            if (backpass) {
+                state.players[0].court_x = 0x00E000;
+                state.players[0].court_depth = 0x005800;
+            }
+            state.ball.court_x = backpass ? 0x00F000 : 0x010000;
+            state.ball.court_depth = backpass ? 0x005800 : 0x001000;
+            state.backcourt_latched = (uint8_t)backpass;
+            for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+            }
+            ok = dd_gameplay_step(&pack, &state, 0u) &&
+                 state.phase == DD_GAMEPLAY_INBOUND &&
+                 state.inbound_reason == (backpass ? 0x15u : 0x16u);
+        }
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 6 && strcmp(argv[1], "--render-gameplay-dunk") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t player;
+        uint32_t steps;
+        int make = strcmp(argv[3], "make") == 0;
+        int checkpoint;
+        int ok = make || strcmp(argv[3], "miss") == 0;
+        if (strcmp(argv[4], "gather") == 0) checkpoint = 0;
+        else if (strcmp(argv[4], "airborne") == 0) checkpoint = 1;
+        else if (strcmp(argv[4], "result") == 0) checkpoint = 2;
+        else return 1;
+        if (!ok || !dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+        if (ok) {
+            state.phase = DD_GAMEPLAY_LIVE;
+            state.possession_direction = 1u;
+            state.controlled_player = 0u;
+            state.carrier = 0u;
+            state.ball.action = DD_BALL_DRIBBLE;
+            state.ball.owner = 0u;
+            state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+            state.players[0].facing = 0u;
+            state.players[0].court_x = 0x01B400;
+            state.players[0].court_depth = 0x005700;
+            state.players[0].height = 0x1000;
+            for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+            }
+            ok = dd_gameplay_step(&pack, &state, DD_INPUT_B) &&
+                 state.dunk_active != 0u;
+            state.dunk_outcome = make ? 1u : 4u;
+            steps = checkpoint == 0 ? 0u : checkpoint == 1 ? 9u : 20u;
+            for (player = 0u; ok && player < steps &&
+                 (checkpoint != 2 || state.dunk_active != 0u); ++player) {
+                ok = dd_gameplay_step(&pack, &state, 0u);
+            }
+            if (checkpoint == 2) {
+                ok = ok && state.dunk_active == 0u &&
+                    state.ball.action == (make ? DD_BALL_SCORE : DD_BALL_LOOSE_LAUNCH);
+            }
+        }
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[5], pixels, pack.tipoff_meta.width,
                           pack.tipoff_meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);
