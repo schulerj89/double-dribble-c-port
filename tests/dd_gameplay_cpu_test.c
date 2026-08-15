@@ -35,6 +35,38 @@ static void run_cpu_dispatch(const DDAssetPack *pack, DDGameplayState *state,
           "isolated CPU dispatcher state receives its scheduled update");
 }
 
+static void set_packed_position(DDPlayerState *player, uint8_t packed) {
+    player->court_x = (int32_t)((((uint32_t)packed & 0x1Fu) << 4u) + 8u) << 8u;
+    player->court_depth = (int32_t)((((uint32_t)packed >> 1u) & 0x70u) + 8u) << 8u;
+}
+
+static void prepare_cpu_policy(const DDAssetPack *pack, DDGameplayState *state,
+                               uint8_t phase, uint8_t carrier_packed) {
+    memset(state, 0, sizeof(*state));
+    check(dd_gameplay_advance_to(pack, state, 356u, 0u),
+          "prepare isolated fixed-bank CPU policy");
+    state->carrier = 5u;
+    state->ball.owner = 5u;
+    state->ball.action = DD_BALL_DRIBBLE;
+    state->ball.height = 0x1000;
+    state->clock_minutes = 1u;
+    state->clock_seconds = 0x30u;
+    state->possession_direction = 0u;
+    state->cpu_global_frame = (uint8_t)(phase - 1u);
+    state->players[5].action = DD_PLAYER_LIVE_CPU_SETUP;
+    state->players[5].role = 0u;
+    state->players[5].route_step = 0u;
+    state->players[5].decision_timer = 10u;
+    state->players[5].paired_player = 0u;
+    set_packed_position(&state->players[5], carrier_packed);
+    state->players[5].target_x = state->players[5].court_x;
+    state->players[5].target_depth = state->players[5].court_depth;
+    state->players[5].target_zone = carrier_packed;
+    state->ball.court_x = state->players[5].court_x;
+    state->ball.court_depth = state->players[5].court_depth;
+    set_packed_position(&state->players[0], 0x42u);
+}
+
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
         0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Cu, 0x3Eu
@@ -257,16 +289,148 @@ int main(int argc, char **argv) {
           "off-ball cut state $3C continues moving after the inbound reception");
 
     memset(&pass_state, 0, sizeof(pass_state));
-    check(dd_gameplay_advance_to(&pack, &pass_state, 356u, 0u), "prepare far-court pass decision");
-    pass_state.players[5].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
-    pass_state.players[5].court_x = 0x015000;
-    pass_state.ball.court_x = pass_state.players[5].court_x;
-    pass_state.ball.court_depth = pass_state.players[5].court_depth;
-    check(dd_gameplay_step(&pack, &pass_state, 0u) && dd_gameplay_step(&pack, &pass_state, 0u),
-          "run far-court CPU decision turn");
-    check(pass_state.ball.action == DD_BALL_PASS && pass_state.ball.receiver >= 5u &&
-          pass_state.ball.receiver < DD_GAMEPLAY_PLAYER_COUNT,
-          "carrier decision selects a teammate pass outside the shooting region");
+    check(dd_gameplay_advance_to(&pack, &pass_state, 356u, 0u),
+          "prepare fixed-bank CPU pass decision");
+    pass_state.carrier = 5u;
+    pass_state.ball.owner = 5u;
+    pass_state.ball.action = DD_BALL_DRIBBLE;
+    pass_state.ball.court_x = 0x005800;
+    pass_state.ball.court_depth = 0x005800;
+    pass_state.clock_minutes = 1u;
+    pass_state.clock_seconds = 0x30u;
+    pass_state.possession_direction = 0u;
+    pass_state.cpu_global_frame = 0x7Fu;
+    pass_state.players[5].action = DD_PLAYER_LIVE_CPU_SETUP;
+    pass_state.players[5].role = 0u;
+    pass_state.players[5].court_x = 0x005800;
+    pass_state.players[5].court_depth = 0x005800;
+    pass_state.players[5].target_x = 0x005800;
+    pass_state.players[5].target_depth = 0x005800;
+    pass_state.players[5].target_zone = 0xA5u;
+    pass_state.players[5].decision_timer = 10u;
+    pass_state.players[5].paired_player = 0u;
+    pass_state.players[0].court_x = 0x010800;
+    pass_state.players[0].court_depth = 0x003800;
+    pass_state.players[9].role = 4u;
+    pass_state.players[9].court_x = 0x00C800;
+    pass_state.players[9].court_depth = 0x007800;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run natural $001A=$80 CPU pass branch");
+    check(pass_state.ball.action == DD_BALL_AWARDED &&
+          pass_state.ball.owner == 5u && pass_state.ball.receiver == 9u &&
+          pass_state.players[5].action == DD_PLAYER_INBOUND_READY &&
+          pass_state.players[5].release_timer == 8u &&
+          pass_state.players[9].action == DD_PLAYER_LIVE_SET &&
+          pass_state.cpu_pass_cooldown == 2u,
+          "$D8FA/$D94E selects role four in a different region and $9018 queues the pass");
+    for (player = 0u; player < 4u; ++player) run_cpu_dispatch(&pack, &pass_state, 5u);
+    check(pass_state.ball.action == DD_BALL_PASS && pass_state.ball.receiver == 9u,
+          "$8FE0 releases the queued CPU pass on timer four instead of launching immediately");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x22u, 0x4Cu);
+    pass_state.players[8].role = 3u;
+    set_packed_position(&pass_state.players[8], 0x4Du);
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run region-three packed route selection");
+    check(pass_state.ball.action == DD_BALL_DRIBBLE &&
+          pass_state.players[5].action == DD_PLAYER_LIVE_CPU_SETUP &&
+          pass_state.players[5].target_zone == 0x4Bu &&
+          pass_state.players[5].decision_timer == 9u,
+          "$D8B9/$D8D5 selects target $4B while $D94E rejects a same-region role-three pass");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x22u, 0x53u);
+    pass_state.possession_direction = 1u;
+    pass_state.players[8].role = 3u;
+    set_packed_position(&pass_state.players[8], 0x52u);
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run mirrored region-three packed route selection");
+    check(pass_state.players[5].target_zone == 0x54u,
+          "$AC64 mirrors the recovered $4B policy target to $54 for the opposite basket");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x54u, 0x6Du);
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run region-two center-lane reservation");
+    check(pass_state.players[5].target_zone == 0x85u &&
+          pass_state.players[5].decision_timer == 10u,
+          "$D77B-$D7C2 reserves packed center target $85 without consuming the decision timer");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x22u, 0x48u);
+    pass_state.cpu_entropy = 0u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run region-six lane target selection");
+    check(pass_state.players[5].target_zone == 0x88u,
+          "$D834 keeps the packed column and clamps the ball depth band to $80");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x22u, 0x44u);
+    pass_state.cpu_entropy = 0xC5u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run entropy-selected high lane target");
+    check(pass_state.players[5].target_zone == 0xE4u,
+          "$C02B/$0063 high bits feed $D834's recovered $E4 lane target");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x20u, 0x85u);
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run region-five shooting decision");
+    check(pass_state.players[5].action == DD_PLAYER_LIVE_CARRIER_ROUTE,
+          "$D7C8-$D7CC converts a region-five arrival into shot state $26");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x44u, 0xA5u);
+    pass_state.players[8].role = 3u;
+    set_packed_position(&pass_state.players[8], 0xECu);
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run natural $001A=$44 role-three pass branch");
+    check(pass_state.ball.action == DD_BALL_AWARDED &&
+          pass_state.ball.receiver == 8u,
+          "$D8FA selects role three while phase bit seven is clear");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x80u, 0xA6u);
+    pass_state.players[5].target_zone = 0x85u;
+    pass_state.players[5].target_x = 0x008800;
+    pass_state.players[5].target_depth = 0x005800;
+    pass_state.players[9].role = 4u;
+    set_packed_position(&pass_state.players[9], 0xECu);
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run phase-gated moving-carrier pass branch");
+    check(pass_state.ball.action == DD_BALL_AWARDED &&
+          pass_state.ball.receiver == 9u,
+          "$D885's $001A=$80 gate tries $D8FA before the moving carrier's region-four shot");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x44u, 0xA5u);
+    pass_state.players[8].role = 3u;
+    set_packed_position(&pass_state.players[8], 0xECu);
+    pass_state.cpu_pass_cooldown = 1u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run CPU pass cooldown rejection");
+    check(pass_state.ball.action == DD_BALL_DRIBBLE &&
+          pass_state.cpu_pass_cooldown == 0u,
+          "$D8F1 decrements nonzero $005C and suppresses that pass decision");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x20u, 0x4Cu);
+    pass_state.clock_minutes = 0u;
+    pass_state.clock_seconds = 0x04u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run last-five-seconds forced shot decision");
+    check(pass_state.players[5].action == DD_PLAYER_LIVE_CARRIER_ROUTE &&
+          pass_state.ball.action == DD_BALL_DRIBBLE,
+          "$D759 forces state $26 when the match clock is below five seconds");
+    run_cpu_dispatch(&pack, &pass_state, 5u);
+    check(pass_state.players[5].action == DD_PLAYER_LIVE_CARRIER_DECIDE &&
+          pass_state.ball.action == DD_BALL_SHOT_GATHER,
+          "$8D1F follows the forced $26 decision with state $27 and ball $04");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x20u, 0x4Cu);
+    pass_state.possession_rule_age = 24u * 64u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run 24-tick possession forced shot decision");
+    check(pass_state.players[5].action == DD_PLAYER_LIVE_CARRIER_ROUTE,
+          "$D763-$D768 forces state $26 at coarse possession tick $18");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x22u, 0x4Cu);
+    pass_state.players[5].decision_timer = 0u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run expired CPU route countdown");
+    check(pass_state.players[5].action == DD_PLAYER_LIVE_CARRIER_ROUTE,
+          "$D810-$D813 treats the $04F0 decrement to $FF as a shot decision");
 
     memset(&dispatch_base, 0, sizeof(dispatch_base));
     check(dd_gameplay_advance_to(&pack, &dispatch_base, 356u, 0u),
@@ -357,6 +521,7 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].court_x = 0x010800;
     dispatch_state.players[5].court_depth = 0x005800;
     dispatch_state.players[5].facing = 4u;
+    dispatch_state.players[5].paired_player = 0u;
     dispatch_state.players[5].target_zone = 0xD4u;
     dispatch_state.players[0].court_x = 0x00F800;
     dispatch_state.players[0].court_depth = 0x005800;

@@ -120,6 +120,7 @@ typedef struct DDPlayerState {
     uint8_t height_script_index;
     uint8_t height_script_reverse;
     uint8_t release_timer;
+    uint8_t decision_timer;
     uint8_t hold_timer;
     uint8_t paired_timer;
     uint8_t paired_player;
@@ -159,6 +160,8 @@ typedef struct DDGameplayState {
     uint8_t cpu_global_frame;
     uint8_t object_phase;
     uint8_t cpu_priority_player;
+    uint8_t cpu_pass_cooldown;
+    uint8_t cpu_entropy;
     uint8_t possession_direction;
     uint8_t possession_count;
     uint8_t inbound_variant;

@@ -356,7 +356,10 @@ The no-input FCEUX trace gives the following deterministic checkpoints. â€œLiveâ
 | 3553 | 996 | Inbound pass begins in ball state `$02`. |
 | 3572 | 1015 | Original slot 8 receives in state `$25`; ball resumes `$01`. |
 
-The native CPU decision is intentionally bounded to what this trace proves. A carrier in the recovered shooting region chooses the `$04` shot chain; a carrier outside that region selects the most advanced same-team receiver and enters pass state `$02`. It does not yet claim to reproduce every branch of fixed-bank `$D759-$D8B0`, `$D978`, or `$D99A`.
+This first CPU decision was initially bounded to the opening trace: the shooting
+region chose `$04`, while other positions selected the most advanced teammate.
+That historical approximation has now been replaced by the complete
+`$D759-$DA39` policy documented in **Complete CPU pass/shot decision policy**.
 
 ### Camera CHR stream and moving-goal fix
 
@@ -640,9 +643,9 @@ Their ROM offsets are `$ADF2->$2E02`, `$AF72->$2F82`, `$AFDD->$2FED`, and `$ACAB
 
 `tests/dd_gameplay_cpu_test.c` now isolates the added target-arrival, jump/landing, rebound-claim, route, no-op, inbounder, bounce-pass, loose-ball, launch, and hidden-ball paths. These checks prove that the native dispatcher is total and that its bounded transitions are deterministic. Coverage therefore promotes the 14 missing player entries and four missing ball entries from **M** to **P**, not **V**: player coverage rises from 45.6% to 66.2%, ball coverage from 57.7% to 73.1%, and the weighted gameplay-loop headline from 51.8% to 61.8%.
 
-### Next implementation slice
+### Next implementation slice (historical)
 
-1. Trace the next possession beyond the first inbound, including the full `$D99A` obstacle/search decisions and pass-lane rejection.
+1. Trace the next possession beyond the first inbound, including the full `$D99A` obstacle/search decisions and pass-lane rejection. **Completed below.**
 2. Name and translate steal, block, missed-shot, and non-scripted out-of-bounds branches.
 3. Port game-clock/HUD updates and the remaining defensive action states.
 
@@ -771,7 +774,8 @@ object `$07`, facing `$04`, position `$B0`, linked object `$02` at `$AF`, global
 phase `$DE`, and direction `$08` change target `$D4->$70` at return `$DA36`.
 The same trace records 83 no-change returns at `$DA38`. Native isolated checks
 reproduce both outcomes. This helper now runs in carrier `$25` and CPU setup
-`$32`; the surrounding region/timer policy in `$D759-$D8B0` remains Partial.
+`$32`; the surrounding region/timer policy in `$D759-$D8B0` and receiver gate
+through `$D94E` are now translated and Verified in the later CPU-policy slice.
 
 Ball launch state `$0A` is a one-frame initializer at `$B017`, not a wait state.
 The unmodified trace changes `$0A->$05` at frames 2470-2471 and shows vertical
@@ -973,9 +977,60 @@ a pixel-equality claim. The logical 256x224 crop reports 11,441/57,344 differing
 pixels (19.9515%) at contact and 6,919/57,344 (12.0658%) after landing; the
 repeatable diff makes that remaining visual gap explicit rather than hiding it.
 
+## Complete CPU pass/shot decision policy
+
+Status: **Verified**. The previous native choice used only longitudinal distance
+and selected the most advanced teammate. The fixed-bank routine is a
+seven-region, phase-driven policy, so that approximation has been replaced by a
+named native decision tree.
+
+The Ghidra headless exporter now forces every meaningful basic-block entry in
+`$D759-$D94D`, prints the tables at `$D8B9`, `$D8D5`, and `$D94E`, and includes
+the bank-0 helpers `$8BF8/$AC2A/$AC5C/$AC64`. The recovered mapping is:
+
+| Ghidra/ASM | Behavior | Native C |
+| --- | --- | --- |
+| fixed `$D759-$D771` | force a shot below five seconds or at coarse possession tick `$18` | `dd_cpu_decide_possession` urgent-shot gates |
+| fixed `$D772-$D81F` | classify the mirrored packed region, select a phase/height route through `$D8B9/$D8D5`, decrement `$04F0`, and try a pass | `dd_cpu_policy_target`, `decision_timer`, and the at-target branch |
+| fixed `$D820-$D854` | region-four obstacle response and region-six/entropy-band lane target | `dd_cpu_avoid_ball_or_defender` and `dd_cpu_set_lane_target` |
+| fixed `$D862-$D8B6` | moving-carrier lookahead, phase `$80/$C0` pass gates, region-four/five shots, and priority refresh tail | moving branch of `dd_cpu_decide_possession` |
+| fixed `$D8F1-$D92E` | decrement two-decision pass cooldown and reject an ineligible receiver | `cpu_pass_cooldown` and `dd_cpu_try_region_pass` |
+| fixed `$D8FA-$D94D`, table `$D94E` | choose role three when phase bit seven is clear, role four when set; accept only a different nonzero region | `dd_team_role` plus `dd_cpu_try_region_pass` |
+| bank 0 `$9018`, fixed `$D92F` | queue passer `$31`, receiver `$37`, attached ball `$00`, and release timer eight | `dd_queue_cpu_pass` plus the shared `$31` release handler |
+| fixed `$D99A-$DA39` | predict one facing step against the ball or the player's `$0580` paired defender, then test four two-step escape directions | `dd_cpu_avoid_ball_or_defender` using `paired_player` |
+
+Fixed `$C02B-$C033` continuously mixes global phase `$001A` into entropy byte
+`$0063`; `$D834` consumes its high band. Native `cpu_entropy` advances once per
+rendered frame and supplies the same bit bands without reproducing the NES busy
+loop or instruction timing.
+
+The fixed-bank ROM-file mappings, including the 16-byte iNES header, are
+`$C02B->$1C03B`, `$D759->$1D769`, `$D8B9->$1D8C9`, `$D8D5->$1D8E5`, `$D8F1->$1D901`,
+`$D92F->$1D93F`, `$D94E->$1D95E`, `$D99A->$1D9AA`, and `$DA39->$1DA49`.
+Selected-bank-0 `$9018` maps to `$1028`. The native runtime does not load those
+addresses or execute their bytes; the compact behavior tables and algorithms
+are ordinary C policy constants and state.
+
+The checked-in FCEUX hooks now include every decision boundary. This fresh
+natural run reaches 320 `$D759` roots, six `$D8FA` receiver searches, seven
+`$D92F` pass initializers, eleven `$D7CC` shot selections, and 463 `$D99A`
+lookaheads (one accepted escape and 462 clear/rejected returns):
+
+```powershell
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2500 -FinalFrame 12000 -CaptureName original-cpu-decision-complete -JumpStart 2502 -JumpEnd 2515 -JumpButton B -DisablePcCounts
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
+```
+
+`tests/dd_gameplay_cpu_test.c` proves the two receiver roles, different-region
+acceptance, same-region rejection, cooldown, original delayed pass release,
+mirrored route-table output, lane targeting, region-five shots, clock and
+possession forced shots, decision-timer underflow, and the paired-defender
+lookahead. The existing deterministic opening and post-inbound checkpoints also
+remain unchanged.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **92% portable Ghidra-to-C gameplay-loop coverage** (91.8% unrounded), **76.9% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

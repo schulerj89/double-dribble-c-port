@@ -4,11 +4,11 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 92%**
+**Portable Ghidra-to-C gameplay-loop coverage: 93%**
 
-**Match-rules completeness: 76.9%**
+**Match-rules completeness: 80.8%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, the CPU shot-block path, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, user-triggered contests, free-throw formation movement, and broad CPU decision coverage remain incomplete.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, the CPU shot-block path, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, user-triggered contests, and free-throw formation movement remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 91.8%`, rounded to **92%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 92.6%`, rounded to **93%**.
 
 ## Player action dispatcher — 100%
 
@@ -190,17 +190,27 @@ metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
 switching are likewise excluded globally and are not represented as gameplay
 coverage entries.
 
-## Match rules and possession flow — 76.9%
+## Match rules and possession flow — 80.8%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
-| V (7) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions; live user control; inbound sequence |
-| P (6) | CPU pass/shot choice, rebound sequence, possession transfer, game clock, defensive steals/blocks, fouls and remaining exceptional dead-ball rules |
+| V (8) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions; live user control; inbound sequence; CPU pass/shot choice |
+| P (5) | rebound sequence, possession transfer, game clock, defensive steals/blocks, fouls/free-throw continuation |
 | M (0) | none |
 
-Score: `(7 + 6 × 0.5) / 13 = 76.9%`.
+Score: `(8 + 5 × 0.5) / 13 = 80.8%`.
+
+CPU pass/shot choice is Verified. Headless Ghidra covers fixed-bank
+`$D759-$DA39`, including the `$D8B9/$D8D5` route tables and `$D94E` receiver
+eligibility rows. A fresh natural FCEUX run through frame 12000 reaches 320
+decision roots, six pass searches, seven pass initializers, eleven forced or
+region shots, and 463 obstacle lookaheads. Native checks cover both phase-based
+receiver roles, different-region acceptance, same-region rejection, the
+two-decision cooldown, eight-tick queued release, mirrored route tables,
+region-five and last-five-seconds shots, the 24-tick possession limit, decision
+timer underflow, lane targeting, and paired-defender avoidance.
 
 The inbound entry is Verified. Ghidra `$A780/$A129/$A21F/$A482` and natural
 FCEUX frames 3004-3051 prove directional receiver selection, held-ball
@@ -295,7 +305,6 @@ When updating this ledger:
 ## Highest-value next coverage work
 
 1. Translate the free-throw formation states `$42-$4A`, starting with `$8594/$85BE/$860A/$8682`.
-2. Translate the remaining CPU decision branches and pass-lane rejection.
-3. Translate the user-defender `$A3E2->$A607` contest trigger, contested-rebound, and remaining rim-contact eligibility branches.
-4. Match the clock's presentation-state call gaps.
-5. Translate the exceptional `$17/$1A` dead-ball bypass and connect whistle SFX `$2C`.
+2. Translate the user-defender `$A3E2->$A607` contest trigger, contested-rebound, and remaining rim-contact eligibility branches.
+3. Match the clock's presentation-state call gaps.
+4. Complete free-throw formation movement and the remaining foul eligibility branches.
