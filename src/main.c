@@ -23,7 +23,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay-switch-block <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-block <input.assetpack> <contact|landing> <output.bmp>");
     puts("  --render-gameplay-shot <input.assetpack> <make|miss> <gather|release|result|pickup|inbound> <output.bmp>");
-    puts("  --render-gameplay-moving-shot <input.assetpack> <takeoff|airborne> <output.bmp>");
+    puts("  --render-gameplay-moving-shot <input.assetpack> <takeoff|held|airborne> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
@@ -374,10 +374,11 @@ int main(int argc, char **argv) {
         uint32_t *pixels;
         uint32_t player;
         uint32_t start_x;
-        int airborne;
+        int checkpoint;
         int ok;
-        if (strcmp(argv[3], "takeoff") == 0) airborne = 0;
-        else if (strcmp(argv[3], "airborne") == 0) airborne = 1;
+        if (strcmp(argv[3], "takeoff") == 0) checkpoint = 0;
+        else if (strcmp(argv[3], "held") == 0) checkpoint = 1;
+        else if (strcmp(argv[3], "airborne") == 0) checkpoint = 2;
         else return 1;
         if (!dd_asset_pack_load(argv[2], &pack)) return 1;
         memset(&state, 0, sizeof(state));
@@ -401,11 +402,16 @@ int main(int argc, char **argv) {
             }
             ok = dd_gameplay_step(&pack, &state, DD_INPUT_RIGHT | DD_INPUT_B);
             start_x = (uint32_t)state.players[0].court_x;
-            for (player = 0u; ok && airborne && player < 8u; ++player) {
-                ok = dd_gameplay_step(&pack, &state, 0u);
+            for (player = 0u; ok && checkpoint != 0 && player < 8u; ++player) {
+                ok = dd_gameplay_step(&pack, &state,
+                                      checkpoint == 1 ? DD_INPUT_B : 0u);
             }
             ok = ok && state.players[0].action == DD_PLAYER_USER_SHOOT &&
-                (!airborne || (uint32_t)state.players[0].court_x > start_x);
+                (checkpoint != 1 ||
+                 (state.ball.action == DD_BALL_SHOT_GATHER &&
+                  state.ball.owner == 0u &&
+                  state.ball.height == state.players[0].height + 0x1200)) &&
+                (checkpoint == 0 || (uint32_t)state.players[0].court_x > start_x);
         }
         pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
                                     pack.tipoff_meta.height * sizeof(uint32_t));

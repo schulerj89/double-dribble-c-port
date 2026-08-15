@@ -574,7 +574,7 @@ result at release, and verify reciprocal pairs after frame-3572 reception.
 User-side reception follows `$AD58`; CPU-side reception alone runs `$AD6D`'s
 role-3/role-4 route setup.
 
-The bounded inbound inventory is **100%**: all 31 portable branches/helpers are
+The bounded inbound inventory is **100%**: all 32 portable branches/helpers are
 Verified. Mapper switching and PPU/OAM presentation are excluded. Rebuilt original/native inbound screenshot
 differences are **4.8671%**, **4.7189%**, **5.1252%**, **5.2734%**, and
 **5.6536%** at setup, hold, release-ready, pass, and reception respectively.
@@ -1456,6 +1456,55 @@ The corrected fixed-point math, held-ball axes, inbound initialization, and
 net state strengthen those verified entries. Core movement physics remains
 Partial because route interpolation still uses the documented cadence adapter
 and lacks a dynamic original court-boundary rejection capture.
+
+### Held-shot release gate and bounded inbound tracking
+
+Status: **implemented and verified**. A fresh FCEUX input interval holds NES B
+from original frame 2600 through 2612. Player object `$02` remains state `$03`,
+ball object zero remains attached in state `$04`, and the player's integer
+height rises `$10,$15,$19,$1C,$1F,$21`; after B clears, the next scheduled
+player dispatch launches ball `$05` at frame 2614. This follows bank-0
+`$A504-$A528` (ROM `$2514-$2538`): `$A516` requires release gate
+`$04E0+X != 0`, then `$A51B-$A520` waits while controller byte `$0670+X` still
+has bit `$40` set. Only the clear-bit branch reaches `$B189` and `$A7EA`.
+
+Holding through the height-script landing follows the separate
+`$A52B-$A540` branch: request SFX `$05`, detect ball `$04`, request whistle
+`$2C`, store inbound reason `$0F`, and jump into `$9651`. Native C now retains
+the ball in gather for the complete B-held interval, releases on the B-up
+frame, and reproduces the reason-`$0F` turnover rather than firing an arbitrary
+two ticks after takeoff or auto-launching after landing.
+
+The inbound tracking correction follows player `$41` at `$8C6B` and formation
+movement `$36` at `$904D`. Both call fixed-bank `$D978`, which compares current
+packed bytes `$05B0/$05C0` with target bytes `$05D0/$05E0`; their movement tail
+reaches `$D98D->$A84C->$9CA0/$9CF6`. The nominal center of packed column `$1F`
+is world X `$01F8`, but `$9CA0` legally accepts only `$0010-$01F1`. The
+original unit-vector walker therefore enters packed cell `$1F` and claims it
+before a later integration can leave the court. The native cadence adapter now
+uses the same packed edge arrival, validates the extended depth band on the
+`$2F->$30` return, and passes every CPU target step through the recovered axis
+bounds. Only the inbound retriever is allowed to occupy the baseline pickup
+cell; the other `$36->$37` players remain on legal formation coordinates.
+
+Deterministic regressions hold B for six native frames and require ball `$04`
+to remain attached, release to `$05` only on B-up, cover the reason-`$0F`
+landing branch, reject a `$2F` X-only false arrival, and prove a `$41` edge
+pickup stops at X `$01F0` instead of chasing `$01F8`. Reproduce the ignored
+evidence and screenshot checkpoints with:
+
+```powershell
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2588 -FinalFrame 2640 -CaptureName original-user-shot-held -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2612 -PassButton B -DisablePcCounts
+.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+.\build\double_dribble_port.exe --render-gameplay-moving-shot .\build\double-dribble.assetpack held .\captures\native-shooting\held-shot.bmp
+.\build\double_dribble_port.exe --render-gameplay-shot .\build\double-dribble.assetpack miss inbound .\captures\native-shooting\bounded-inbound.bmp
+```
+
+Coverage remains **92.6% unrounded (93% displayed)**, with **80.8%** match-rule
+completeness. The verified player/ball dispatcher entries do not gain duplicate
+credit; this repair strengthens user shooting and inbound, while universal
+route interpolation and general collision remain Partial.
 
 ## Open research questions
 

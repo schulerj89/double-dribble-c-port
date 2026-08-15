@@ -82,6 +82,7 @@ int main(int argc, char **argv) {
     DDGameplayState dispatch_base;
     DDGameplayState dispatch_state;
     DDGameplayState contest_state;
+    DDGameplayState held_shot_state;
     DDGameplayState free_throw_state;
     DDGameplayState period_state;
     DDGameplayState net_state;
@@ -954,6 +955,19 @@ int main(int argc, char **argv) {
           "player state $2F advances to held state $30 at its return point");
 
     dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_REBOUND_RETURN;
+    dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
+    dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth + 0x2000;
+    dispatch_state.players[5].target_zone = (uint8_t)(
+        (((uint32_t)(dispatch_state.players[5].target_depth >> 8) << 1u) & 0xE0u) |
+        (((uint32_t)dispatch_state.players[5].target_x >> 12u) & 0x1Fu));
+    dispatch_state.players[5].velocity_x = 0;
+    dispatch_state.players[5].velocity_depth = 0x000Cu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_REBOUND_RETURN,
+          "$8EBF/$D978 does not enter inbound hold while only the X target matches");
+
+    dispatch_state = dispatch_base;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         dispatch_state.players[player].action = DD_PLAYER_LIVE_SET;
     }
@@ -1165,6 +1179,80 @@ int main(int argc, char **argv) {
           dispatch_state.ball.court_depth == dispatch_state.players[5].court_depth - 0x0100 &&
           dispatch_state.ball.height == 0x10C0,
           "$8C6B->$AD0E->$B035 claims the inbound ball at facing-zero X/depth offsets before state $30");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_INBOUND;
+    dispatch_state.players[5].action = DD_PLAYER_INBOUNDER;
+    dispatch_state.players[5].facing = 0u;
+    dispatch_state.players[5].court_x = 0x01F000;
+    dispatch_state.players[5].court_depth = 0x000800;
+    dispatch_state.players[5].target_x = 0x01F800;
+    dispatch_state.players[5].target_depth = 0x000800;
+    dispatch_state.players[5].target_zone = 0x1Fu;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD &&
+          dispatch_state.players[5].court_x == 0x01F000 &&
+          dispatch_state.players[5].court_x <= 0x01F100 &&
+          dispatch_state.ball.owner == 5u,
+          "$8C6B/$D978 claims an edge-cell inbound before chasing its unreachable $1F8 center");
+
+    held_shot_state = dispatch_base;
+    held_shot_state.phase = DD_GAMEPLAY_LIVE;
+    held_shot_state.possession_direction = 1u;
+    held_shot_state.controlled_player = 0u;
+    held_shot_state.carrier = 0u;
+    held_shot_state.cpu_global_frame = 0u;
+    held_shot_state.ball.action = DD_BALL_DRIBBLE;
+    held_shot_state.ball.owner = 0u;
+    held_shot_state.ball.receiver = 0xFFu;
+    held_shot_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    held_shot_state.players[0].facing = 0u;
+    held_shot_state.players[0].court_x = 0x00F700;
+    held_shot_state.players[0].court_depth = 0x006100;
+    held_shot_state.players[0].height = 0x1000;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        held_shot_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &held_shot_state, DD_INPUT_B),
+          "start held user shot through $AA75");
+    for (player = 0u; player < 6u; ++player) {
+        check(dd_gameplay_step(&pack, &held_shot_state, DD_INPUT_B),
+              "keep NES B held through $A504 release gate");
+    }
+    check(held_shot_state.players[0].action == DD_PLAYER_USER_SHOOT &&
+          held_shot_state.ball.action == DD_BALL_SHOT_GATHER &&
+          held_shot_state.ball.owner == 0u &&
+          held_shot_state.ball.height == held_shot_state.players[0].height + 0x1200,
+          "$A516-$A520 keeps ball $04 attached while controller bit $40 remains held");
+    check(dd_gameplay_step(&pack, &held_shot_state, 0u),
+          "release NES B through $A522->$B189");
+    check(held_shot_state.ball.action == DD_BALL_AIRBORNE,
+          "clearing controller bit $40 launches the held shot on release");
+
+    held_shot_state = dispatch_base;
+    held_shot_state.phase = DD_GAMEPLAY_LIVE;
+    held_shot_state.possession_direction = 1u;
+    held_shot_state.controlled_player = 0u;
+    held_shot_state.carrier = 0u;
+    held_shot_state.cpu_global_frame = 0u;
+    held_shot_state.ball.action = DD_BALL_DRIBBLE;
+    held_shot_state.ball.owner = 0u;
+    held_shot_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        held_shot_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &held_shot_state, DD_INPUT_B),
+          "start long-held user shot");
+    for (player = 0u; player < 80u && held_shot_state.phase == DD_GAMEPLAY_LIVE; ++player) {
+        check(dd_gameplay_step(&pack, &held_shot_state, DD_INPUT_B),
+              "hold user shot through landing");
+    }
+    check(held_shot_state.phase == DD_GAMEPLAY_INBOUND &&
+          held_shot_state.inbound_reason == 0x0Fu &&
+          held_shot_state.audio_event == 0x2Cu,
+          "$A52B-$A540 turns an unreleased landing into reason-$0F inbound with whistle $2C");
 
     dispatch_state = dispatch_base;
     dispatch_state.carrier = 5u;

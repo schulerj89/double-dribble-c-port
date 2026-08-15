@@ -214,7 +214,9 @@ while fresh steering is disabled. `$A896` resolves state `$03` through the
 pointer table at `$A8E6` and selects one of
 `$22,$28,$23,$27,$21,$25,$24,$26` from `$A9DC` by facing. CPU
 `$8D1F->$AAEE->$AA98->$B503` faces the active hoop, stops court motion, and
-uses the same pose table in state `$27`. `$A504->$B189` releases to ball state
+uses the same pose table in state `$27`. `$A516-$A520` keeps ball `$04`
+attached while controller bit `$40` remains held; clearing B reaches
+`$A522->$B189` and releases to ball state
 `$05`; `$AE25->$B377` produces result `$01` for a make or results `$02-$04`
 for `$08->$09` miss/rebound handling. DDAP v18 stores the eight recovered pose
 indices, six four-tile net frames, and `$8503/$8507` post-basket formation
@@ -314,11 +316,11 @@ the recovered inbound paths; it excludes only mapper, PPU, and OAM machinery.
 
 | Status | Count | Capabilities |
 | --- | ---: | --- |
-| V | 31 | sequence/dispatch (10): `$2D` chase, `$2E` claim, `$2F` return, standard `$30`, alternate `$30`, `$002C` `$30`, `$31` release, user `$0D`, ball `$02` flight/contact, reception/control; placement/helpers (10): direction flip, `$9395`, `$D6BD`, `$9097`, `$9763`, ninth packed bit, opposite role-zero offset, lane clamp, receiving role-one offset, `$ABCD/$D978/$D98D` refresh/walk/arrival; causes/rules (8): `$12`, `$13`, `$14`, `$15`, `$16`, rebound-state preservation, exact SFX `$2C`, exceptional `$17/$1A`; role/ownership (3): `$AD6D` actions, `$99D9` role swap, `$9A31` reciprocal pair swap |
+| V | 32 | sequence/dispatch (10): `$2D` chase, `$2E` claim, `$2F` return, standard `$30`, alternate `$30`, `$002C` `$30`, `$31` release, user `$0D`, ball `$02` flight/contact, reception/control; placement/helpers (10): direction flip, `$9395`, `$D6BD`, `$9097`, `$9763`, ninth packed bit, opposite role-zero offset, lane clamp, receiving role-one offset, `$ABCD/$D978/$D98D` refresh/walk/arrival; causes/rules (9): held-shot landing `$0F`, `$12`, `$13`, `$14`, `$15`, `$16`, rebound-state preservation, exact SFX `$2C`, exceptional `$17/$1A`; role/ownership (3): `$AD6D` actions, `$99D9` role swap, `$9A31` reciprocal pair swap |
 | P | 0 | none |
 | M | 0 | none |
 
-Score: `31 / 31 = 100%`.
+Score: `32 / 32 = 100%`.
 
 SFX `$2C` is no longer a marker-only request. Fixed `$C141` banks through
 `$CC99`; the bank-1 driver resolves streams `$86F7/$8702/$870D`. Controlled

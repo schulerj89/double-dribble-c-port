@@ -20,7 +20,7 @@ Run the native port:
 .\build\double_dribble_game.exe .\build\double-dribble.assetpack
 ```
 
-Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro; the selected words continue flashing at the original eight-frame cadence until the scene changes. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot, plays its acceptance cue, and advances through the opening tip. Press Z (NES B) to jump for the tip. Once live, the flashing 1UP player moves with the arrow keys; Z shoots and X (NES A) passes while that player carries the ball. Escape exits.
+Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro; the selected words continue flashing at the original eight-frame cadence until the scene changes. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot, plays its acceptance cue, and advances through the opening tip. Press Z (NES B) to jump for the tip. Once live, the flashing 1UP player moves with the arrow keys; hold Z to gather a shot and release Z to launch it, or press X (NES A) to pass while that player carries the ball. Escape exits.
 
 The original no-input gameplay trace does not run a continuous background song. Its live audio driver repeatedly queues pulse/triangle/noise streams while the ball is in dribble state `$01`, then falls silent during dead-ball and other non-dribble intervals. The native port follows that state-driven behavior.
 
@@ -49,7 +49,9 @@ Reproduce the reference and native captures:
 .\tools\Compare-DefenseBlockCaptures.ps1
 .\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2815 -CaptureName original-user-shot-make-final -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -UserShotDepth 0x61 -UserShotX 0xF7 -DisablePcCounts
 .\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2820 -CaptureName original-user-shot-miss-final -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2588 -FinalFrame 2640 -CaptureName original-user-shot-held -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2612 -PassButton B -DisablePcCounts
 .\tools\Capture-NativeShooting.ps1
+.\build\double_dribble_port.exe --render-gameplay-moving-shot .\build\double-dribble.assetpack held .\captures\native-shooting\held-shot.bmp
 .\build\double_dribble_port.exe --dump-gameplay-wav .\build\double-dribble.assetpack .\build\gameplay-dribble.wav
 # Render the same live frame while holding Right (input mask 2).
 .\tools\Capture-NativeGameplay.ps1 -TransitionFrames 399 -HeldInputMask 2

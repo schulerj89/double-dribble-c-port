@@ -594,6 +594,24 @@ static uint16_t dd_pack_extended_coordinates(int32_t court_x, int32_t court_dept
         ((depth << 1u) & 0xE0u) | ((x >> 4u) & 0x1Fu));
 }
 
+/* `$D978` compares both bytes of the packed current/target coordinate.  The
+   high byte matters for baseline routes because `$ABAB` can expand the ninth
+   depth bit, while the packed cell can be reached before its nominal center
+   (for example, the rightmost `$1F8` center lies beyond `$9CA0`'s `$1F1`
+   longitudinal limit). */
+static int dd_player_at_extended_target(const DDPlayerState *player) {
+    return dd_pack_extended_coordinates(player->court_x, player->court_depth) ==
+        dd_pack_extended_coordinates(player->target_x, player->target_depth);
+}
+
+static int dd_player_at_extended_target_depth(const DDPlayerState *player) {
+    uint16_t current = dd_pack_extended_coordinates(player->court_x,
+                                                      player->court_depth);
+    uint16_t target = dd_pack_extended_coordinates(player->target_x,
+                                                     player->target_depth);
+    return ((current ^ target) & 0x01E0u) == 0u;
+}
+
 /* $AC64 mirrors the five-bit packed court column when direction bit $40 is set. */
 static uint8_t dd_mirror_packed_target(uint8_t packed) {
     return (uint8_t)((packed & 0xE0u) | (0x1Fu - (packed & 0x1Fu)));
@@ -705,6 +723,18 @@ static int dd_cpu_at_target(const DDPlayerState *player, int32_t tolerance) {
            dd_absolute(player->target_depth - player->court_depth) <= tolerance;
 }
 
+/* The native 30 Hz cadence adapter reaches ordinary `$41` targets at the
+   already-traced center tolerance.  Packed edge centers can be outside the
+   legal integrator interval, so those must use `$D978` equality directly. */
+static int dd_inbounder_at_target(const DDPlayerState *player,
+                                  int32_t tolerance) {
+    int target_center_outside = player->target_x < 0x001000 ||
+        player->target_x > 0x01F100 || player->target_depth < 0x000500 ||
+        player->target_depth > 0x009800;
+    return dd_cpu_at_target(player, tolerance) ||
+        (target_center_outside && dd_player_at_extended_target(player));
+}
+
 static int dd_cpu_target_occupied(const DDGameplayState *state, uint32_t player,
                                   uint8_t target) {
     uint32_t other;
@@ -753,10 +783,21 @@ static void dd_move_cpu_player(DDPlayerState *player, uint32_t player_index,
         player->route_facing = dd_facing_from_angle(angle);
         desired_x = dd_approach(player->court_x, player->target_x, speed);
         desired_depth = dd_approach(player->court_depth, player->target_depth, speed);
+        /* The packed center for column `$1F` is `$01F8`, beyond `$9CA0`'s
+           legal `$01F1` endpoint.  The original unit-vector walk enters that
+           packed cell before its next rejected integration; the cadence
+           adapter must likewise stop at a legal coordinate inside the cell. */
+        desired_x = dd_clamp(desired_x, 0x001000, 0x01F100);
+        desired_depth = dd_clamp(desired_depth, 0x000500, 0x009800);
         player->velocity_x = desired_x - player->court_x;
         player->velocity_depth = desired_depth - player->court_depth;
-        player->court_x = desired_x;
-        player->court_depth = desired_depth;
+        /* `$D98D->$A84C` ultimately reaches the same bounded axis helpers as
+           ball and user motion.  Retain the native cadence adapter's one-step
+           target delta, but never assign a coordinate that `$9CA0/$9CF6`
+           would reject.  This is especially important for packed edge-cell
+           centers used by inbound formations. */
+        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
+        dd_integrate_depth(&player->court_depth, &player->velocity_depth);
         player->facing = dd_facing_from_velocity(player->velocity_x,
                                                  player->velocity_depth,
                                                  player->facing);
@@ -820,6 +861,18 @@ static void dd_claim_loose_ball(DDGameplayState *state, uint32_t player_index) {
     player->action_age = 0u;
     dd_reset_possession_rules(state);
     ++state->possession_count;
+}
+
+static void dd_complete_inbound_pickup(DDGameplayState *state,
+                                       uint32_t player_index) {
+    DDPlayerState *player = &state->players[player_index];
+    dd_claim_loose_ball(state, player_index);
+    state->ball.court_x = player->court_x;
+    state->ball.court_depth = player->court_depth;
+    player->action = DD_PLAYER_INBOUND_HOLD;
+    player->action_age = 0u;
+    player->velocity_x = 0;
+    player->velocity_depth = 0;
 }
 
 /* Bank-0 $9ABD interprets the signed height stream selected through the
@@ -1910,14 +1963,15 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             }
             break;
         case DD_PLAYER_REBOUND_RETURN:
-            /* `$8EBF->$D978` tests packed equality before `$D98D` integrates
-               the existing vectors twice.  Native interpolation stops at the
-               target center crossing that reproduces the observed `$BD`
-               arrival frame; the small depth term reverses around its lane. */
+            /* `$8EBF->$D978` tests both packed bytes before `$D98D` integrates
+               the existing vectors twice.  The native cadence adapter retains
+               its traced longitudinal crossing, but now also requires the
+               original extended depth band instead of ignoring that axis. */
             speed = 0;
-            if ((player->velocity_x < 0 && player->court_x <= player->target_x) ||
-                (player->velocity_x > 0 && player->court_x >= player->target_x) ||
-                (player->velocity_x == 0 && player->court_x == player->target_x)) {
+            if (((player->velocity_x < 0 && player->court_x <= player->target_x) ||
+                 (player->velocity_x > 0 && player->court_x >= player->target_x) ||
+                 (player->velocity_x == 0 && player->court_x == player->target_x)) &&
+                dd_player_at_extended_target_depth(player)) {
                 player->action = DD_PLAYER_INBOUND_HOLD;
                 player->action_age = 0u;
                 player->hold_timer = 0x40u;
@@ -2061,18 +2115,13 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             player->velocity_height = 0;
             break;
         case DD_PLAYER_INBOUNDER:
-            /* $8C6B tests the extended packed arrival through $D978, writes
-               owner/carrier, copies player coordinates to the ball, and enters $30.
-               The native route interpolation retains its calibrated sub-cell
-               tolerance so this boundary lands on the observed frame. */
+            /* `$8C6B->$D978` tests the extended packed cell, not distance to
+               `$ABAB`'s expanded center.  On equality it writes owner/carrier,
+               copies player coordinates to the ball, and enters `$30`. */
             speed = 0x01BC;
-            if (dd_cpu_at_target(player, speed)) {
+            if (dd_inbounder_at_target(player, speed)) {
                 speed = 0;
-                dd_claim_loose_ball(state, player_index);
-                state->ball.court_x = player->court_x;
-                state->ball.court_depth = player->court_depth;
-                player->action = DD_PLAYER_INBOUND_HOLD;
-                player->action_age = 0u;
+                dd_complete_inbound_pickup(state, player_index);
             }
             break;
         default:
@@ -2095,6 +2144,10 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         dd_pack_cpu_position(player) == player->target_zone) {
         player->action = DD_PLAYER_LIVE_SET;
         player->action_age = 0u;
+    }
+    if (player->action == DD_PLAYER_INBOUNDER &&
+        dd_inbounder_at_target(player, 0x01BC)) {
+        dd_complete_inbound_pickup(state, player_index);
     }
 }
 
@@ -2404,7 +2457,8 @@ static void dd_begin_rebound_formation(DDGameplayState *state) {
     state->rebound_formation_pending = (1u << DD_GAMEPLAY_PLAYER_COUNT) - 1u;
 }
 
-static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *state) {
+static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *state,
+                         uint32_t input_mask) {
     DDBallState *ball = &state->ball;
     if (ball->action_age != UINT16_MAX) ++ball->action_age;
     switch (ball->action) {
@@ -2462,11 +2516,18 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         {
             int cpu_apex = 0;
             int user_release = 0;
+            int user_shot = 0;
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
                 dd_attach_ball(assets, state, 2u);
                 ball->height = state->players[ball->owner].height + 0x1200;
-                user_release = state->players[ball->owner].action ==
+                user_shot = state->players[ball->owner].action ==
                     DD_PLAYER_USER_SHOOT;
+                /* `$A516-$A520` requires the `$04E0` release gate and waits
+                   until controller bit `$40` (NES B) clears.  The ball remains
+                   in attached state `$04` for the entire held interval. */
+                user_release = user_shot &&
+                    state->players[ball->owner].release_timer != 0u &&
+                    (input_mask & DD_INPUT_B) == 0u;
                 cpu_apex = state->players[ball->owner].action ==
                                DD_PLAYER_LIVE_CARRIER_DECIDE &&
                     state->players[ball->owner].height_script_index <
@@ -2474,9 +2535,8 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                     (uint8_t)assets->height_scripts[
                         state->players[ball->owner].height_script_index] == 0x81u;
             }
-            if ((ball->owner < DD_GAMEPLAY_PLAYER_COUNT &&
-                 user_release &&
-                 ball->action_age >= 2u) || cpu_apex || ball->action_age > 26u) {
+            if ((ball->owner < DD_GAMEPLAY_PLAYER_COUNT && user_release) ||
+                cpu_apex || (!user_shot && ball->action_age > 26u)) {
                 /* The recovered opening `$27->$05` trace launches ball slot
                    zero at $005700/$004B00/$38C0. The native route cadence
                    reaches the same packed cell without the NES sub-cell, so
@@ -2837,7 +2897,7 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
     if (state->inbound_age != UINT16_MAX) ++state->inbound_age;
     /* The ball dispatcher precedes the player dispatcher.  A pass launched by
        state $31 therefore receives its first $AD41 flight update next frame. */
-    dd_step_ball(assets, state);
+    dd_step_ball(assets, state, 0u);
     ++state->cpu_global_frame;
     if ((state->cpu_global_frame & 1u) != 0u) {
         cpu_start = 0u;
@@ -2916,7 +2976,7 @@ static void dd_step_free_throw(const DDTipoffAssetsHeader *assets,
         state->players[shooter].height = 0x1000;
         state->players[shooter].action = DD_PLAYER_FREE_THROW_FOLLOW;
     }
-    dd_step_ball(assets, state);
+    dd_step_ball(assets, state, 0u);
     if (state->free_throw_age > 348u && ball->action == DD_BALL_DRIBBLE &&
         ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
         uint32_t winner = ball->owner;
@@ -3064,11 +3124,29 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                                   &controlled->velocity_x);
         controlled->animation = assets->shot_animation[controlled->facing & 7u];
         if (dd_step_player_height_script(assets, controlled)) {
-            controlled->action = DD_PLAYER_LIVE_USER;
-            controlled->action_age = 0u;
-            controlled->animation = dd_animation_for_facing(
-                controlled->facing, live_frame / 3u);
+            if (state->ball.action == DD_BALL_SHOT_GATHER &&
+                state->ball.owner == state->controlled_player) {
+                /* Held through landing: `$A52B-$A540` requests SFX `$05`,
+                   sees ball `$04`, requests whistle `$2C`, stores reason
+                   `$0F`, and enters the shared `$9651` inbound setup. */
+                dd_request_audio_event(state, 0x05u);
+                dd_begin_common_inbound(state, 0x0Fu);
+            } else {
+                controlled->action = DD_PLAYER_LIVE_USER;
+                controlled->action_age = 0u;
+                controlled->animation = dd_animation_for_facing(
+                    controlled->facing, live_frame / 3u);
+            }
         }
+    }
+    if (state->phase == DD_GAMEPLAY_INBOUND) {
+        dd_update_camera(state);
+        state->controlled_flash_palette = (uint8_t)(((live_frame / 2u) & 1u) == 0u);
+        state->players[state->controlled_player].attributes =
+            state->controlled_flash_palette;
+        state->live_frame = live_frame;
+        state->previous_input = input_mask;
+        return;
     }
     if (controlled->action == DD_PLAYER_USER_CONTEST_RECOVER &&
         (state->cpu_global_frame & 1u) == 0u) {
@@ -3124,7 +3202,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             }
         }
     }
-    dd_step_ball(assets, state);
+    dd_step_ball(assets, state, input_mask);
     if (dd_step_possession_rules(state)) {
         dd_update_camera(state);
         state->controlled_flash_palette = (uint8_t)(((live_frame / 2u) & 1u) == 0u);
