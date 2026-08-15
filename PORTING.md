@@ -1512,11 +1512,14 @@ Status: **implemented and regression-verified**. Fresh headless Ghidra reports
 confirm that `$8491->$ABCD` installs the inbound retriever's route vector,
 `$8E71->$D98D` consumes that vector in state `$2D`, and `$D990->$A896` still
 runs the common facing/metasprite tail. State `$2F` follows the same pattern at
-`$8EBF`: it consumes the vector installed after `$8E88` rather than repeatedly
-aiming at the expanded packed-cell center. The previous native adapter reversed
-each component around that center and skipped the animation tail, producing the
-visible shake/frozen pose. The C path now preserves the installed direction and
-advances the facing-specific run frames until packed arrival.
+`$8EBF` after `$8E88->$ABCD`. Both handlers also contain a narrower correction:
+`$8E7C-$8E82` and `$8ED6-$8EDC` rerun `$ABCD` only when current player `$004B`
+equals rotating priority `$004D`. The first native repair removed every refresh
+and retained approximate hardcoded `$00FF/$000C` components; diagonal chasers
+could therefore miss their packed target and stop at a court bound. The corrected
+C path installs `$9D2D->$9BB0`'s exact vector initially, refreshes only priority
+`$004D`, tests packed arrival before refreshing, and advances facing-specific run
+frames through `$D990->$A896`.
 
 The original deliberately starts dribble state `$01` through `$8E88->$AD0E`
 when the inbounder claims the loose scoring ball. Native code retains that
@@ -1532,11 +1535,25 @@ zero.
 
 Gameplay rendering no longer emulates the NES eight-sprites-per-scanline
 secondary-OAM dropout. Every bounded DDAP metasprite record is drawn during
-live native play, so clustered players remain complete. The limit remains on
-for the reference tip-off renderer because its acceptance captures explicitly
-verify the original overflow pattern. A pixel-union regression places three
-non-overlapping player metasprites on one scanline and proves the combined
-native frame contains every piece.
+live native play, so clustered players remain complete. That change exposed a
+native-only bug in the shared intro emitter: signed off-court coordinates were
+cast to OAM bytes, so individual records could wrap into the fixed scoreboard.
+The gameplay emitter now decodes the same bounded DDAP record stream with signed
+coordinates, culls player anchors above logical court line `$60`, and clips
+remaining records at the HUD raster before writing OAM. The limit remains
+on for the reference tip-off renderer because its acceptance captures explicitly
+verify the original overflow pattern. Regressions both union three same-scanline
+players and sweep every projected base Y while requiring the HUD/raster pixels to
+remain identical to a no-object baseline.
+
+User loose-ball acquisition follows the fallthrough that was missing from the
+first contest translation. At `$A3E2-$A426`, rebound/loose ball states `$07/$09`
+enter `$A607` only when the mutable `$0580` opponent is in `$26/$27/$03`. If that
+paired-state test fails, execution continues at `$A42D`: contact result three
+calls `$B435`, then ordinary success reaches `$A44B`'s possession reset. Native
+`dd_try_user_loose_ball_pickup` now performs that ground-contact fallback, so an
+unpaired loose ball becomes user-owned dribble state `$01` without requiring a
+button edge. The jump/apex branch remains unchanged for linked shooter contests.
 
 Reproduce the rebuilt ignored screenshots with:
 

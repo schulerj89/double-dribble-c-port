@@ -677,17 +677,53 @@ int dd_render_tipoff(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, 
 
 static uint32_t dd_gameplay_emit(const DDAssetPack *pack, const DDTipoffAssetsHeader *assets,
                                  uint8_t oam[256], uint32_t sprite, uint8_t animation,
-                                 int32_t screen_x, int32_t screen_y, uint8_t attributes) {
+                                 int32_t screen_x, int32_t screen_y, uint8_t attributes,
+                                 int32_t clip_top, int32_t anchor_top) {
     uint32_t offset;
     uint32_t size;
+    uint32_t record;
+    size_t position = 1u;
+    uint8_t record_attributes = attributes;
     if (animation >= DD_GAMEPLAY_METASPRITE_COUNT || screen_x < -32 || screen_x > 287 ||
+        screen_y < anchor_top ||
         screen_y < -32 || screen_y > 255) return sprite;
     offset = assets->metasprite_offset[animation];
     size = assets->metasprite_size[animation];
     if (offset < sizeof(*assets) || offset > pack->tipoff_assets_size ||
         size == 0u || size > pack->tipoff_assets_size - offset) return sprite;
-    return dd_intro_emit_metasprite(oam, sprite, pack->tipoff_assets + offset,
-                                    (uint8_t)screen_x, (uint8_t)screen_y, attributes);
+    /* Gameplay uses native signed screen coordinates. Feeding them through
+       the intro's byte-wrapping emitter made a player just below/left of the
+       viewport wrap individual metasprite records into the scoreboard once
+       the NES scanline cap was removed. Decode the same records, cull player
+       anchors before the court line, and clip signed record positions before
+       writing bounded OAM bytes. */
+    {
+        const uint8_t *metasprite = pack->tipoff_assets + offset;
+        for (record = 0u; record < metasprite[0] && sprite < 64u; ++record) {
+            uint8_t lead;
+            uint8_t tile;
+            int32_t sprite_x;
+            int32_t sprite_y;
+            if (position + 2u > size) break;
+            lead = metasprite[position++];
+            tile = metasprite[position++];
+            if ((lead & 1u) == 0u) {
+                if (position >= size) break;
+                record_attributes = (uint8_t)((attributes | metasprite[position++]) & 0xE3u);
+            }
+            if (position >= size) break;
+            sprite_x = screen_x + (int8_t)metasprite[position++];
+            sprite_y = screen_y + ((int8_t)lead >> 1);
+            if (sprite_x < 0 || sprite_x >= 256 ||
+                sprite_y < clip_top || sprite_y >= 240) continue;
+            oam[sprite * 4u] = (uint8_t)sprite_y;
+            oam[sprite * 4u + 1u] = tile;
+            oam[sprite * 4u + 2u] = record_attributes;
+            oam[sprite * 4u + 3u] = (uint8_t)sprite_x;
+            ++sprite;
+        }
+    }
+    return sprite;
 }
 
 static void dd_gameplay_patch_hud(uint8_t ppu[DD_PPU_SIZE], const DDGameplayState *state) {
@@ -781,17 +817,21 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
     camera = state->camera_x >> 8;
     sprite = dd_gameplay_emit(pack, assets, oam, sprite, 2u,
                               (state->ball.court_x >> 8) - camera,
-                              0xF0 - ((state->ball.court_depth >> 8) + 2), 0u);
+                              0xF0 - ((state->ball.court_depth >> 8) + 2), 0u,
+                              (int32_t)state->hud_split_y + 8,
+                              (int32_t)state->hud_split_y + 8);
     sprite = dd_gameplay_emit(pack, assets, oam, sprite, state->ball.animation,
                               (state->ball.court_x >> 8) - camera,
                               0xF0 - (state->ball.court_depth >> 8) - (state->ball.height >> 8),
-                              state->ball.attributes);
+                              state->ball.attributes, (int32_t)state->hud_split_y + 8,
+                              (int32_t)state->hud_split_y + 8);
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         const DDPlayerState *object = &state->players[player];
         sprite = dd_gameplay_emit(pack, assets, oam, sprite, object->animation,
                                   (object->court_x >> 8) - camera,
                                   0xF0 - (object->court_depth >> 8) - (object->height >> 8),
-                                  object->attributes);
+                                  object->attributes, (int32_t)state->hud_split_y + 8,
+                                  0x60);
     }
     while (sprite < 64u) {
         oam[sprite * 4u] = 0xF4u;

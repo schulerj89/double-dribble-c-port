@@ -638,6 +638,20 @@ static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed) {
     dd_unpack_cpu_target(packed, &player->target_x, &player->target_depth);
 }
 
+/* `$ABCD->$9D2D->$9BB0` expands the installed packed target into the exact
+   signed 8.8 walk vector and its facing.  States `$2D/$2F` consume this
+   vector directly through `$D98D`; the native target mover is not involved. */
+static void dd_install_cpu_route_vector(DDPlayerState *player) {
+    uint8_t angle = dd_target_motion_vector(player->court_x, player->court_depth,
+                                            player->target_x, player->target_depth,
+                                            &player->route_velocity_x,
+                                            &player->route_velocity_depth);
+    player->route_facing = dd_facing_from_angle(angle);
+    player->velocity_x = player->route_velocity_x;
+    player->velocity_depth = player->route_velocity_depth;
+    player->facing = player->route_facing;
+}
+
 /* $ABAB consumes the ninth packed-coordinate bit from $05E0.  It extends
    court depth by $80 while the low byte keeps the ordinary packed target. */
 static void dd_set_cpu_extended_target(DDPlayerState *player, uint16_t packed) {
@@ -930,6 +944,22 @@ static int dd_user_contest_eligible(const DDGameplayState *state,
     return paired_action == DD_PLAYER_LIVE_CARRIER_ROUTE ||
            paired_action == DD_PLAYER_LIVE_CARRIER_DECIDE ||
            paired_action == DD_PLAYER_USER_SHOOT;
+}
+
+/* If `$A3E2` cannot enter the linked-opponent jump branch, `$A42D` still
+   calls ordinary result-three contact `$B435`.  A ground-level loose/rebound
+   ball therefore transfers through `$A44B` as soon as the user overlaps it;
+   no button edge or paired shooter state is required for this fallback. */
+static int dd_try_user_loose_ball_pickup(DDGameplayState *state,
+                                         uint32_t player_index) {
+    if (state == NULL || player_index >= 5u ||
+        state->phase != DD_GAMEPLAY_LIVE ||
+        state->players[player_index].action != DD_PLAYER_LIVE_USER ||
+        (state->ball.action != DD_BALL_REBOUND &&
+         state->ball.action != DD_BALL_LOOSE_AIRBORNE) ||
+        !dd_possession_ball_contact(state, player_index)) return 0;
+    dd_transfer_contact_possession(state, player_index);
+    return 1;
 }
 
 /* `$A607` initializes the signed `$9B26->$9B34` height stream.  `$A638`
@@ -1595,10 +1625,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         if (action == DD_PLAYER_REBOUND_CHASE) {
             /* `$8491->$ABCD` installs the slow `$2D` return vector before the
                state handler begins consuming it on alternating updates. */
-            player->velocity_x = player->target_x < player->court_x
-                ? -0x00FF : 0x00FF;
-            player->velocity_depth = player->target_depth < player->court_depth
-                ? -0x000C : 0x000C;
+            dd_install_cpu_route_vector(player);
         }
         state->rebound_formation_pending = (uint16_t)(
             state->rebound_formation_pending & ~(1u << player_index));
@@ -1937,17 +1964,20 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_REBOUND_CHASE:
             /* `$8E71->$D978/$D98D` compares the packed target, then
-               integrates the already-installed `$FF01/$000C` vectors twice. */
+               conditionally refreshes `$ABCD` for rotating priority `$004D`
+               and integrates the installed vector twice. */
             speed = 0;
             if (dd_pack_cpu_position(player) == player->target_zone) {
                 player->action = DD_PLAYER_REBOUND_CLAIM;
                 player->action_age = 0u;
             } else {
-                /* `$8491->$ABCD` installs this vector once. `$8E71` then
-                   consumes it through `$D98D`; it does not point the vector
-                   back at the expanded cell center on every dispatch. Doing
-                   that in native code made the facing alternate at the target
-                   edge, which appeared as a stationary shaking metasprite. */
+                /* `$8491` performs the initial install. `$8E7C-$8E82` repeats
+                   `$ABCD` only for the current priority object, not for every
+                   player on every dispatch. Packed arrival is tested first,
+                   so this correction cannot oscillate around a reached cell. */
+                if (state->cpu_priority_player == player_index) {
+                    dd_install_cpu_route_vector(player);
+                }
                 integrate_existing_velocity = 1;
             }
             break;
@@ -1959,13 +1989,9 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 state->ball.action != DD_BALL_SCORE) {
                 dd_claim_loose_ball(state, player_index);
                 dd_set_cpu_target(player, state->possession_direction == 0u ? 0xBDu : 0xA1u);
-                /* `$8E88->$D98D` leaves the recovered fixed-point walk terms
-                   installed for `$8EBF`; the observed `$A1` return uses
-                   `$FF01` longitudinally and a signed `$000C` depth term. */
-                player->velocity_x = player->target_x < player->court_x
-                    ? -0x00FF : 0x00FF;
-                player->velocity_depth = player->target_depth < player->court_depth
-                    ? -0x000C : 0x000C;
+                /* `$8EB9->$ABCD` installs the exact diagonal return vector
+                   before `$8EBC->$D990` enters state `$2F`. */
+                dd_install_cpu_route_vector(player);
                 player->action = DD_PLAYER_REBOUND_RETURN;
                 player->action_age = 0u;
                 return;
@@ -1987,9 +2013,11 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 player->velocity_x = 0;
                 player->velocity_depth = 0;
             } else {
-                /* `$8E88->$ABCD` likewise leaves a stable return vector for
-                   `$8EBF->$D98D`. Preserve its direction until the extended
-                   packed boundary target is reached. */
+                /* `$8ED6-$8EDC` mirrors state `$2D`: only rotating priority
+                   `$004D` refreshes `$ABCD` before the shared movement tail. */
+                if (state->cpu_priority_player == player_index) {
+                    dd_install_cpu_route_vector(player);
+                }
                 integrate_existing_velocity = 1;
             }
             break;
@@ -3133,6 +3161,8 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     if (dd_user_contest_eligible(state, state->controlled_player, pressed)) {
         dd_begin_user_contest(controlled);
         started_user_contest = 1;
+    } else if (dd_try_user_loose_ball_pickup(state, state->controlled_player)) {
+        controlled = &state->players[state->controlled_player];
     }
     if (dd_step_user_exceptional_contact(state, input_mask)) {
         dd_update_camera(state);

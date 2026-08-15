@@ -81,6 +81,7 @@ static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
     DDGameplayState view;
     uint32_t changed = 0u;
     uint32_t player;
+    int hud_clean = 1;
     size_t pixel;
     int rendered = baseline != NULL && expected != NULL && solo != NULL && combined != NULL;
     memset(&base, 0, sizeof(base));
@@ -119,6 +120,34 @@ static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
     check(rendered && changed != 0u &&
           memcmp(expected, combined, pixel_count * sizeof(*expected)) == 0,
           "native gameplay draws every metasprite piece past the NES eight-sprites-per-scanline limit");
+    /* Live objects use signed projected coordinates. Exercise every base Y
+       around the viewport: player anchors above the $60 court line are fully
+       culled, and no remaining record may byte-wrap into the fixed HUD/gap. */
+    for (player = 0u; rendered && player <= 287u; ++player) {
+        uint32_t row;
+        int32_t base_y = (int32_t)player - 32;
+        view = base;
+        view.players[0].animation = 0x1Bu;
+        view.players[0].court_x = 0x008000;
+        view.players[0].court_depth =
+            (240 - base_y - 16) * 256;
+        view.players[0].height = 0x1000;
+        rendered = dd_render_gameplay(pack, &view, solo, width, height);
+        if (rendered && base_y < 0x60 &&
+            memcmp(solo, baseline, pixel_count * sizeof(*solo)) != 0) {
+            hud_clean = 0;
+        }
+        for (row = 0u; rendered && row < base.hud_split_y + 8u; ++row) {
+            if (memcmp(solo + (size_t)row * width,
+                       baseline + (size_t)row * width,
+                       width * sizeof(*solo)) != 0) {
+                hud_clean = 0;
+                break;
+            }
+        }
+    }
+    check(rendered && hud_clean,
+          "signed gameplay metasprites clip at the court raster instead of wrapping into the scoreboard");
     free(combined);
     free(solo);
     free(expected);
@@ -150,7 +179,9 @@ int main(int argc, char **argv) {
     int32_t pass_release_x;
     int32_t pass_release_depth;
     uint32_t inbound_receiver;
+    uint32_t moved_count;
     uint32_t player;
+    int links_reciprocal;
     if (argc != 2 || !dd_asset_pack_load(argv[1], &pack)) {
         fputs("usage: dd_gameplay_cpu_test <assetpack>\n", stderr);
         return 2;
@@ -998,25 +1029,28 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_REBOUND_CHASE;
-    dispatch_state.players[5].target_x = dispatch_state.players[5].court_x + 0x3000;
-    dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.players[5].court_x = 0x011000;
+    dispatch_state.players[5].court_depth = 0x002000;
+    dispatch_state.players[5].target_x = 0x012000;
+    dispatch_state.players[5].target_depth = 0x001800;
     dispatch_state.players[5].target_zone = (uint8_t)(
         (((uint32_t)(dispatch_state.players[5].target_depth >> 8) << 1u) & 0xE0u) |
         (((uint32_t)dispatch_state.players[5].target_x >> 12u) & 0x1Fu));
-    dispatch_state.players[5].velocity_x = 0x00FF;
+    dispatch_state.players[5].velocity_x = 0;
     dispatch_state.players[5].velocity_depth = 0;
     dispatch_state.players[5].animation = 0x21u;
+    dispatch_state.cpu_priority_player = 5u;
     inbound_receiver = 0u;
     for (player = 0u; player < 96u &&
          dispatch_state.players[5].action == DD_PLAYER_REBOUND_CHASE; ++player) {
         run_cpu_dispatch(&pack, &dispatch_state, 5u);
         if (dispatch_state.players[5].animation != 0x21u) inbound_receiver = 1u;
         check(dispatch_state.players[5].velocity_x >= 0 &&
-              dispatch_state.players[5].velocity_depth == 0,
-              "$8E71 preserves $ABCD's installed vector instead of shaking across the target center");
+              dispatch_state.players[5].velocity_depth <= 0,
+              "$8E71 refreshes only priority $004D with a stable exact diagonal toward the loose ball");
     }
     check(dispatch_state.players[5].action == DD_PLAYER_REBOUND_CLAIM,
-          "$8E71 reaches rebound claim with its stable installed vector");
+          "$8E71 reaches rebound claim with the recovered $ABCD vector");
     check(inbound_receiver != 0u,
           "$8E71->$D98D->$D990 advances a run animation while approaching the loose ball");
 
@@ -1856,6 +1890,13 @@ int main(int argc, char **argv) {
     check(dispatch_state.players[5].action == DD_PLAYER_REBOUND_CHASE &&
           dispatch_state.players[0].action == DD_PLAYER_INBOUND_FORMATION,
           "$AE25->$8491 assigns the receiving CPU role zero to $2D after a user make");
+    check(dispatch_state.players[5].velocity_x ==
+              dispatch_state.players[5].route_velocity_x &&
+          dispatch_state.players[5].velocity_depth ==
+              dispatch_state.players[5].route_velocity_depth &&
+          (dispatch_state.players[5].velocity_x != 0 ||
+           dispatch_state.players[5].velocity_depth != 0),
+          "$8491->$ABCD installs the exact fixed-point chase vector before state $2D runs");
     for (player = 0u; player < 600u &&
          dispatch_state.ball.action != DD_BALL_PASS; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
@@ -1884,6 +1925,32 @@ int main(int argc, char **argv) {
     check(dispatch_state.players[dispatch_state.controlled_player].role == 0u &&
           dispatch_state.players[dispatch_state.controlled_player].action == DD_PLAYER_LIVE_USER,
           "post-score reception keeps user control on the defending role-zero player");
+    links_reciprocal = 1;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        uint32_t linked = dispatch_state.players[player].paired_player;
+        if (linked >= DD_GAMEPLAY_PLAYER_COUNT ||
+            dispatch_state.players[linked].paired_player != player) {
+            links_reciprocal = 0;
+        }
+        live_start_x[player] = dispatch_state.players[player].court_x;
+        live_start_depth[player] = dispatch_state.players[player].court_depth;
+    }
+    check(links_reciprocal,
+          "$8F6C/$AD6D role swaps leave every mutable $0580 opponent link reciprocal");
+    for (player = 0u; player < 20u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance resumed post-score possession before the carrier decision");
+    }
+    moved_count = 0u;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        if (dispatch_state.players[player].court_x != live_start_x[player] ||
+            dispatch_state.players[player].court_depth != live_start_depth[player]) {
+            ++moved_count;
+        }
+    }
+    check(moved_count >= 2u && dispatch_state.ball.action == DD_BALL_DRIBBLE &&
+          dispatch_state.carrier == inbound_receiver,
+          "post-score reception resumes multiple off-ball routes while the CPU carrier keeps possession");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -2013,6 +2080,25 @@ int main(int argc, char **argv) {
     }
     check(contest_state.players[0].action == DD_PLAYER_LIVE_USER,
           "$A5D0 returns normal live state $0F on the next user dispatch");
+
+    contest_state = dispatch_base;
+    contest_state.phase = DD_GAMEPLAY_LIVE;
+    contest_state.controlled_player = 0u;
+    contest_state.carrier = 0xFFu;
+    contest_state.players[0].action = DD_PLAYER_LIVE_USER;
+    contest_state.players[5].action = DD_PLAYER_ROUTE_WAIT;
+    contest_state.ball.action = DD_BALL_REBOUND;
+    contest_state.ball.owner = 0xFFu;
+    contest_state.ball.receiver = 0xFFu;
+    contest_state.ball.court_x = contest_state.players[0].court_x;
+    contest_state.ball.court_depth = contest_state.players[0].court_depth;
+    contest_state.ball.height = contest_state.players[0].height + 0x0800;
+    check(dd_gameplay_step(&pack, &contest_state, 0u),
+          "step user ground contact with an unpaired loose ball");
+    check(contest_state.carrier == 0u && contest_state.ball.owner == 0u &&
+          contest_state.ball.action == DD_BALL_DRIBBLE &&
+          contest_state.players[0].action == DD_PLAYER_LIVE_USER_CARRIER,
+          "$A3E2->$A42D->$B435->$A44B lets the user pick up a loose ball without a shooter pair");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;

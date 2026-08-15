@@ -374,16 +374,20 @@ Buffered PPU queue mechanics remain excluded as NES-only presentation
 machinery.
 
 Post-score inbound verification now covers the complete portable handoff, not
-only the release boundary. `$8491->$ABCD->$8E71/$8EBF` retains its installed
-route vector and reaches `$2E/$30` with the `$D990->$A896` run-animation tail;
+only the release boundary. `$8491->$ABCD` installs the exact `$9D2D->$9BB0`
+route vector; `$8E71/$8EBF` refresh it only for rotating priority `$004D` and
+reach `$2E/$30` with the `$D990->$A896` run-animation tail;
 `$8EE2->$9018` retains the original claim-time dribble and releases ball `$02`;
 and `$AD41->$AD6D` performs the receiving role/link swap plus `$38/$3C/$3E/$25`
 action restoration before returning to dribble `$01`. `$8F8D->$9097` is also
-tested with role zero deliberately moved away from physical slot zero. Live
-native rendering draws all DDAP metasprite pieces without the NES scanline
-dropout, while the pre-jump fidelity renderer keeps its separately verified
-overflow behavior. These strengthen existing Verified entries, so the weighted
-coverage remains **92.6%** rather than gaining duplicate credit.
+tested with role zero deliberately moved away from physical slot zero. The user
+contest translation now includes `$A3E2->$A42D->$B435->$A44B` ground pickup when
+the loose ball has no eligible paired shooter. Live native rendering draws all
+DDAP metasprite pieces without the NES scanline dropout and clips signed
+off-court records before they can wrap into the HUD, while the pre-jump fidelity
+renderer keeps its separately verified overflow behavior. These strengthen
+existing Verified entries, so the weighted coverage remains **92.6%** rather
+than gaining duplicate credit.
 
 Period transitions/end conditions are Verified. The earlier long trace proves
 the delayed period-one reset to a second-period formation. The final-match trace
