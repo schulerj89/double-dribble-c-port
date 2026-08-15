@@ -5,11 +5,13 @@
   "baseline": {
     "catalogued_weighted_coverage_percent": 92.6,
     "catalogued_match_rules_percent": 80.8,
-    "comprehensive_portable_coverage_percent": null,
-    "status": "classification_required",
+    "comprehensive_portable_coverage_percent": 60.0,
+    "status": "routine_annotation_required",
     "recursive_routine_graph_count": 223,
-    "recursive_routine_graph_unclassified": 223,
-    "note": "The existing percentage measures the current catalog. The recursive graph now establishes candidate routines, but comprehensive coverage remains unset until phase 0 classifies every node."
+    "recursive_routine_graph_unclassified": 0,
+    "recursive_routine_graph_portable": 216,
+    "recursive_routine_graph_excluded_nes": 7,
+    "note": "The existing percentage measures the old component catalog. The comprehensive routine score starts conservatively with all 216 portable nodes Partial until per-routine symbols, evidence, and regressions justify promotion."
   },
   "scope": {
     "included": [
@@ -74,6 +76,27 @@
       ],
       "coverage_change_percent": 0.0,
       "reason": "The comprehensive denominator now has 223 candidate nodes, but coverage remains intentionally unset until all nodes are classified as portable or NES-only and annotated with evidence/status."
+    },
+    {
+      "milestone": "phase-0b-portable-boundary-classification",
+      "status": "verified",
+      "completed": [
+        "216 portable gameplay or presentation nodes",
+        "7 excluded bank-switch/APU register-driver nodes",
+        "initial conservative routine score with every portable node Partial"
+      ],
+      "coverage_change_percent": 50.0,
+      "reason": "Comprehensive coverage becomes calculable at 50.0%; promotion above Partial now requires routine-level evidence, native symbols, and regressions."
+    },
+    {
+      "milestone": "phase-0c-dispatch-handler-annotations",
+      "status": "verified",
+      "completed": [
+        "31 unique player state `$20-$41` handler entries",
+        "12 unique ball state `$00-$0C` handler entries"
+      ],
+      "coverage_change_percent": 10.0,
+      "reason": "43 of 216 portable graph nodes now have explicit dispatcher evidence, native symbols, and regression-suite mappings."
     },
     {
       "milestone": "phase-1a-visible-continuity",

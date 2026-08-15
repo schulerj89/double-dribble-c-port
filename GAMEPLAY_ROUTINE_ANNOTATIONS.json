@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "groups": [
+    {
+      "name": "player_action_dispatch_handlers_20_41",
+      "status": "verified",
+      "routines": [
+        "bank0:8195", "bank0:81A2", "bank0:8266", "bank0:8297",
+        "bank0:829E", "bank0:8371", "bank0:83C5", "bank0:8460",
+        "bank0:8A16", "bank0:8A3A", "bank0:8A98", "bank0:8AF4",
+        "bank0:8B12", "bank0:8B5A", "bank0:8BC5", "bank0:8C6B",
+        "bank0:8D1F", "bank0:8D57", "bank0:8D9C", "bank0:8DAB",
+        "bank0:8DD2", "bank0:8DF7", "bank0:8E71", "bank0:8E88",
+        "bank0:8EBF", "bank0:8EE2", "bank0:8FE0", "bank0:904D",
+        "bank0:9094", "fixed7:D6FD", "fixed7:D759"
+      ],
+      "evidence": [
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": ["dd_update_cpu_player"],
+      "regression_tests": ["tests/dd_gameplay_cpu_test.c player dispatcher suite"]
+    },
+    {
+      "name": "ball_action_dispatch_handlers_00_0c",
+      "status": "verified",
+      "routines": [
+        "bank0:ACAB", "bank0:ACB6", "bank0:ACD6", "bank0:AD41",
+        "bank0:ADF2", "bank0:AE0C", "bank0:AE25", "bank0:AEDE",
+        "bank0:AF46", "bank0:AF72", "bank0:AFDD", "bank0:B017"
+      ],
+      "evidence": [
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": ["dd_step_ball"],
+      "regression_tests": ["tests/dd_gameplay_cpu_test.c ball dispatcher suite"]
+    }
+  ]
+}

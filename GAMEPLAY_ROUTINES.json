@@ -98,10 +98,15 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": null,
-    "reason": "Inventory classification and implementation/evidence annotations are incomplete.",
+    "comprehensive_percent": 60.0,
+    "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
-    "unclassified_count": 223
+    "portable_count": 216,
+    "excluded_count": 7,
+    "verified_count": 43,
+    "partial_count": 173,
+    "missing_count": 0,
+    "unclassified_count": 0
   },
   "routines": [
     {
@@ -113,11 +118,19 @@
         "8468"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8195",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -135,11 +148,19 @@
         "825F",
         "841B"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:81A2",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -148,9 +169,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:825F"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -164,11 +187,19 @@
         "AC2A"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8266",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -177,11 +208,19 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8297",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -203,11 +242,19 @@
         "836B",
         "8491"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:829E",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -223,9 +270,11 @@
       "tail_calls": [
         "8491"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:834D"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -240,9 +289,11 @@
       "tail_calls": [
         "8491"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8368"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -255,9 +306,11 @@
       "tail_calls": [
         "8491"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:836B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -272,11 +325,19 @@
         "AC5C"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8371",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -293,11 +354,19 @@
       "tail_calls": [
         "8429"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:83C5",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -310,9 +379,11 @@
       "tail_calls": [
         "8429"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:841B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -325,9 +396,11 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8429"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -341,9 +414,11 @@
         "AC5C"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:842F"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -356,11 +431,19 @@
         "B503"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8460",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -375,9 +458,11 @@
       "tail_calls": [
         "8472"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8468"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -391,9 +476,11 @@
         "AC58"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8472"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -408,9 +495,11 @@
       "tail_calls": [
         "ABCD"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8491"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -424,9 +513,11 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8594"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -437,9 +528,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:85BE"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -453,9 +546,11 @@
         "AD0E"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:860A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -466,9 +561,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8682"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -481,9 +578,11 @@
         "91A6"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:89B2"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -499,11 +598,19 @@
         "9139"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8A16",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -514,11 +621,19 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8A3A",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -530,9 +645,11 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8A57"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -552,11 +669,19 @@
       "tail_calls": [
         "8491"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8A98",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -567,11 +692,19 @@
         "B503"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8AF4",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -586,11 +719,19 @@
       "tail_calls": [
         "9208"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8B12",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -606,11 +747,19 @@
         "8BB9",
         "8BBF"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8B5A",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -622,9 +771,11 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8BB9"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -638,9 +789,11 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8BBF"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -651,11 +804,19 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8BC5",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -666,9 +827,11 @@
         "8C02"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8BF8"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -679,9 +842,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8C02"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -696,11 +861,19 @@
         "AD0E"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8C6B",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -709,9 +882,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8CF3"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -726,11 +901,19 @@
         "B503"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8D1F",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -746,11 +929,19 @@
       "tail_calls": [
         "8D99"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8D57",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -759,9 +950,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8D99"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -772,11 +965,19 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8D9C",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -788,11 +989,19 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8DAB",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -801,11 +1010,19 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8DD2",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -820,11 +1037,19 @@
       "tail_calls": [
         "92BD"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8DF7",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -835,11 +1060,19 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8E71",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -852,11 +1085,19 @@
         "AD0E"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8E88",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -868,11 +1109,19 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8EBF",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -892,11 +1141,19 @@
         "8FB6",
         "8FB9"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8EE2",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -905,9 +1162,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8F9A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -918,9 +1177,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8FB6"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -935,9 +1196,11 @@
       "tail_calls": [
         "8F9A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:8FB9"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -950,11 +1213,19 @@
       "tail_calls": [
         "8F9A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:8FE0",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -967,9 +1238,11 @@
       "tail_calls": [
         "B0B8"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9018"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -985,11 +1258,19 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:904D",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -998,11 +1279,19 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:9094",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1011,9 +1300,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9097"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1028,9 +1319,11 @@
         "AA98"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:90B3"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1043,9 +1336,11 @@
       "tail_calls": [
         "9B42"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9102"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1056,9 +1351,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9139"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1081,9 +1378,11 @@
         "B503"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:91A6"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1106,9 +1405,11 @@
         "B503"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:91FB"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1129,9 +1430,11 @@
         "B503"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9208"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1146,9 +1449,11 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:92BD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1159,9 +1464,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9395"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1174,9 +1481,11 @@
         "9651"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9635"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1193,9 +1502,11 @@
       "tail_calls": [
         "98A3"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9645"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1212,9 +1523,11 @@
       "tail_calls": [
         "98A3"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9651"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1225,9 +1538,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:98A3"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1240,9 +1555,11 @@
         "990A"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:98B5"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1253,9 +1570,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:990A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1266,9 +1585,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:99CA"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1281,9 +1602,11 @@
         "99CA"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:99D9"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1296,9 +1619,11 @@
         "99CA"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9A31"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1313,9 +1638,11 @@
       "tail_calls": [
         "9ABD"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9ABD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1326,9 +1653,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9AFB"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1339,9 +1668,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9AFD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1352,9 +1683,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9B0E"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1365,9 +1698,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9B42"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1378,9 +1713,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9B84"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1399,9 +1736,11 @@
         "9BF6",
         "9C06"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9BB0"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1420,9 +1759,11 @@
         "9BF6",
         "9C06"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9BB2"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1433,9 +1774,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9BF6"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1446,9 +1789,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9BF8"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1461,9 +1806,11 @@
       "tail_calls": [
         "9BF8"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9C06"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1474,9 +1821,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9C0B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1487,9 +1836,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9CA0"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1500,9 +1851,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9CF6"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1517,9 +1870,11 @@
         "9D55",
         "9D9A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9D2D"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1534,9 +1889,11 @@
         "9D55",
         "9D9A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9D35"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1550,9 +1907,11 @@
         "9D55",
         "9D9A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9D55"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1565,9 +1924,11 @@
       "tail_calls": [
         "9D9A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:9D9A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1578,9 +1939,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A014"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1596,9 +1959,11 @@
       "tail_calls": [
         "A0D0"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A0B2"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1612,9 +1977,11 @@
         "A896"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A0C3"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1628,9 +1995,11 @@
         "A896"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A0D0"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1641,9 +2010,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A0D9"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1654,9 +2025,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A0DA"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1667,9 +2040,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A129"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1693,9 +2068,11 @@
         "A280",
         "AA75"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A1CC"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1716,9 +2093,11 @@
         "A280",
         "AA75"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A21F"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1733,9 +2112,11 @@
         "A896"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A280"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1752,9 +2133,11 @@
         "A33D",
         "A342"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A29D"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1765,9 +2148,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A33D"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1778,9 +2163,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A342"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1793,9 +2180,11 @@
       "tail_calls": [
         "9645"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A347"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1808,9 +2197,11 @@
       "tail_calls": [
         "9645"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A37D"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1837,9 +2228,11 @@
         "A500",
         "A607"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A3E2"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1857,9 +2250,11 @@
         "AD0E"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A44B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1873,9 +2268,11 @@
         "9097"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A482"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1888,9 +2285,11 @@
         "8491"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A500"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1912,9 +2311,11 @@
         "9651",
         "A555"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A504"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1925,9 +2326,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A555"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1938,9 +2341,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A556"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1958,9 +2363,11 @@
         "ABCD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A557"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1977,9 +2384,11 @@
         "A624",
         "A85A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A5D0"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -1995,9 +2404,11 @@
       "tail_calls": [
         "A85A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A607"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2013,9 +2424,11 @@
       "tail_calls": [
         "A85A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A624"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2035,9 +2448,11 @@
       "tail_calls": [
         "A44B"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A638"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2051,9 +2466,11 @@
         "9B42",
         "A6F4"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A6C3"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2066,9 +2483,11 @@
       "tail_calls": [
         "9B42"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A6F4"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2086,9 +2505,11 @@
       "tail_calls": [
         "A85A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A712"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2104,9 +2525,11 @@
         "AA98"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A765"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2125,9 +2548,11 @@
         "9651",
         "A7D4"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A780"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2142,9 +2567,11 @@
         "AA07"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A7D4"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2155,9 +2582,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A7EA"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2173,9 +2602,11 @@
       "tail_calls": [
         "9CA0"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A84C"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2189,9 +2620,11 @@
         "AA4A"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A85A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2202,9 +2635,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:A896"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2215,9 +2650,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AA07"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2228,9 +2665,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AA20"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2241,9 +2680,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AA4A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2254,9 +2695,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AA75"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2267,9 +2710,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AA98"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2282,9 +2727,11 @@
         "9D2D"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AAEE"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2297,9 +2744,11 @@
         "AB72"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AB53"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2310,9 +2759,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AB72"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2325,9 +2776,11 @@
         "ABAB"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AB96"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2338,9 +2791,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:ABAB"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2356,9 +2811,11 @@
         "AB96"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:ABCD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2371,9 +2828,11 @@
         "AC64"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AC2A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2384,9 +2843,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AC58"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2397,9 +2858,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AC5C"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2410,9 +2873,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AC64"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2425,9 +2890,11 @@
         "AB53"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AC83"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2442,11 +2909,19 @@
       "tail_calls": [
         "B400"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:ACAB",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2459,11 +2934,19 @@
       "tail_calls": [
         "B400"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:ACB6",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2479,11 +2962,19 @@
       "tail_calls": [
         "ACD6"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:ACD6",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2495,9 +2986,11 @@
         "B400"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AD0E"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2511,9 +3004,11 @@
         "B400"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AD12"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2536,11 +3031,19 @@
         "AD12",
         "ADBB"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:AD41",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2555,9 +3058,11 @@
       "tail_calls": [
         "ADC7"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:ADBB"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2570,9 +3075,11 @@
         "B3E9"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:ADC7"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2589,11 +3096,19 @@
         "B473"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:ADF2",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2605,11 +3120,19 @@
         "B400"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:AE0C",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2625,11 +3148,19 @@
         "AEAE",
         "AEDA"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:AE25",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2645,9 +3176,11 @@
         "B473"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AEAE"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2660,9 +3193,11 @@
         "B3E9"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AEDA"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2678,11 +3213,19 @@
       "tail_calls": [
         "AF6E"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:AEDE",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2697,11 +3240,19 @@
         "B412"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:AF46",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2712,9 +3263,11 @@
         "B3E9"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:AF6E"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2730,11 +3283,19 @@
         "B501"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:AF72",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2750,11 +3311,19 @@
         "B473"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:AFDD",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2765,11 +3334,19 @@
         "B501"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node bank0:B017",
+        "Ghidra ball dispatcher `$AC83/$AC91`, all states `$00-$0C`",
+        "GAMEPLAY_COVERAGE.md ball-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball dispatcher suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2778,9 +3355,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B035"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2796,9 +3375,11 @@
         "B035"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B0AB"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2813,9 +3394,11 @@
         "AA98"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B0B8"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2828,9 +3411,11 @@
         "AA20"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B11F"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2843,9 +3428,11 @@
       "tail_calls": [
         "9B42"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B138"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2856,9 +3443,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B167"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2876,9 +3465,11 @@
         "B280",
         "B2A0"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B189"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2892,9 +3483,11 @@
         "B280",
         "B2A0"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B280"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2907,9 +3500,11 @@
       "tail_calls": [
         "B2A0"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B2A0"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2924,9 +3519,11 @@
       "tail_calls": [
         "B3DF"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B377"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2937,9 +3534,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B3DF"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2953,9 +3552,11 @@
         "B11F"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B3E9"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2966,9 +3567,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B400"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2979,9 +3582,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B412"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -2994,9 +3599,11 @@
         "9B42"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B435"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3010,9 +3617,11 @@
         "9B42"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B473"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3023,9 +3632,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B501"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3036,9 +3647,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node bank0:B503"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3051,9 +3664,11 @@
       "tail_calls": [
         "C02B"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C02B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3068,9 +3683,11 @@
         "CC99"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C141"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3081,9 +3698,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "excluded_nes_mechanism",
+      "status": "excluded",
+      "evidence": [
+        "Ghidra recursive node fixed7:C15E"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3096,9 +3715,11 @@
         "C15E"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "excluded_nes_mechanism",
+      "status": "excluded",
+      "evidence": [
+        "Ghidra recursive node fixed7:C16A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3111,9 +3732,11 @@
         "C15E"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "excluded_nes_mechanism",
+      "status": "excluded",
+      "evidence": [
+        "Ghidra recursive node fixed7:C17B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3126,9 +3749,11 @@
         "C4B7"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C477"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3139,9 +3764,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C4B7"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3152,9 +3779,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C68B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3165,9 +3794,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C694"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3178,9 +3809,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C6A5"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3198,9 +3831,11 @@
         "C6CD",
         "C6EE"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C6AD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3216,9 +3851,11 @@
         "C68B",
         "C6EE"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C6CD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3231,9 +3868,11 @@
       "tail_calls": [
         "C68B"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C6EE"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3247,9 +3886,11 @@
         "C785"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C724"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3260,9 +3901,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C783"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3273,9 +3916,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:C785"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3288,9 +3933,11 @@
         "CCC1"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "excluded_nes_mechanism",
+      "status": "excluded",
+      "evidence": [
+        "Ghidra recursive node fixed7:CC1A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3304,9 +3951,11 @@
         "CD9B"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "excluded_nes_mechanism",
+      "status": "excluded",
+      "evidence": [
+        "Ghidra recursive node fixed7:CC99"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3319,9 +3968,11 @@
         "CD9B"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "excluded_nes_mechanism",
+      "status": "excluded",
+      "evidence": [
+        "Ghidra recursive node fixed7:CCC1"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3332,9 +3983,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "excluded_nes_mechanism",
+      "status": "excluded",
+      "evidence": [
+        "Ghidra recursive node fixed7:CD9B"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3345,9 +3998,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D368"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3358,9 +4013,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D3C4"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3371,9 +4028,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_presentation",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D3D5"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3386,9 +4045,11 @@
         "D6CD"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D6BD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3399,9 +4060,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D6CD"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3414,11 +4077,19 @@
         "D978"
       ],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node fixed7:D6FD",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -3439,11 +4110,19 @@
         "D98A",
         "D98D"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
-      "native_symbols": [],
-      "regression_tests": []
+      "classification": "portable_logic",
+      "status": "verified",
+      "evidence": [
+        "Ghidra recursive node fixed7:D759",
+        "Ghidra player dispatcher `$89B2/$89C0`, all states `$20-$41`",
+        "GAMEPLAY_COVERAGE.md player-action state-by-state evidence"
+      ],
+      "native_symbols": [
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c player dispatcher suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -3454,9 +4133,11 @@
       "tail_calls": [
         "D98D"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D7CC"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3473,9 +4154,11 @@
         "D98A",
         "D98D"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D7DE"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3488,9 +4171,11 @@
       "tail_calls": [
         "D7DE"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D857"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3508,9 +4193,11 @@
         "D857",
         "D98A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D862"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3525,9 +4212,11 @@
         "D857",
         "D98A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D867"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3540,9 +4229,11 @@
       "tail_calls": [
         "D98A"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D8B0"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3555,9 +4246,11 @@
       "tail_calls": [
         "D92D"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D8F1"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3568,9 +4261,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D8FA"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3581,9 +4276,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D92D"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3594,9 +4291,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D978"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3607,9 +4306,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D98A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3620,9 +4321,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D98D"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3636,9 +4339,11 @@
         "DA04",
         "DA38"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:D99A"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3651,9 +4356,11 @@
       "tail_calls": [
         "DA04"
       ],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:DA04"
+      ],
       "native_symbols": [],
       "regression_tests": []
     },
@@ -3664,9 +4371,11 @@
       "truncated": false,
       "calls": [],
       "tail_calls": [],
-      "classification": "unclassified",
-      "status": "inventory_pending",
-      "evidence": [],
+      "classification": "portable_logic",
+      "status": "partial",
+      "evidence": [
+        "Ghidra recursive node fixed7:DA38"
+      ],
       "native_symbols": [],
       "regression_tests": []
     }

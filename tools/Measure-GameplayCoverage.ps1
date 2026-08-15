@@ -19,8 +19,26 @@ if (Test-Path -LiteralPath $routineManifestPath -PathType Leaf) {
         $routineManifest.coverage.unclassified_count -ne $unclassified) {
         throw 'GAMEPLAY_ROUTINES.json coverage counts do not match its routine records.'
     }
+    $portable = @($routineManifest.routines | Where-Object {
+        $_.classification -ne 'excluded_nes_mechanism'
+    })
+    $verifiedRoutineCount = @($portable | Where-Object { $_.status -eq 'verified' }).Count
+    $partialRoutineCount = @($portable | Where-Object { $_.status -eq 'partial' }).Count
+    $missingRoutineCount = @($portable | Where-Object { $_.status -eq 'missing' }).Count
+    $computedComprehensive = [Math]::Round(
+        100.0 * ($verifiedRoutineCount + 0.5 * $partialRoutineCount) / $portable.Count, 1)
+    if ($routineManifest.coverage.portable_count -ne $portable.Count -or
+        $routineManifest.coverage.verified_count -ne $verifiedRoutineCount -or
+        $routineManifest.coverage.partial_count -ne $partialRoutineCount -or
+        $routineManifest.coverage.missing_count -ne $missingRoutineCount -or
+        [Math]::Abs($routineManifest.coverage.comprehensive_percent - $computedComprehensive) -gt 0.001) {
+        throw 'GAMEPLAY_ROUTINES.json comprehensive coverage does not match its routine statuses.'
+    }
     Write-Host ('  Routine graph    {0} nodes ({1} awaiting classification)' -f
         $routineKeys.Count, $unclassified)
+    Write-Host ('  Comprehensive   {0,5:N1}%  (V {1}, P {2}, M {3}, excluded {4})' -f
+        $computedComprehensive, $verifiedRoutineCount, $partialRoutineCount,
+        $missingRoutineCount, $routineManifest.coverage.excluded_count)
 }
 
 $components = @(

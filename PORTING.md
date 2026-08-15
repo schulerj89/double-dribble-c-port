@@ -1753,13 +1753,25 @@ walks direct calls and tail calls in Ghidra, and generates
 42 fixed-bank routines (223 total)**. The build validates unique bank/address
 keys and the manifest's summary counts.
 
-All 223 records deliberately begin as `unclassified` / `inventory_pending`.
+The first boundary review classifies **216 nodes as portable** and excludes
+only **7 fixed-bank bank-switch/APU register-driver nodes** whose gameplay-
+visible event selection is represented by their portable callers. Portable
+score/HUD, animation, timing, audio-event selection, and CPU routines remain
+in scope. All 216 included records deliberately begin Partial, producing a
+conservative comprehensive score of **50.0%**. Promotion now requires explicit
+Ghidra/FCEUX evidence, native symbols, and regression annotations per routine.
 The older 92.6% number remains visible only as the bounded, hand-catalogued
-baseline; comprehensive coverage is `null`, not 0% or 100%, until every graph
-node is classified as portable behavior, portable presentation/data support,
-or an excluded NES mechanism and portable nodes receive Ghidra/FCEUX,
-native-symbol, and regression annotations. This prevents dispatcher counts
-from concealing uncatalogued helper routines.
+baseline. This prevents dispatcher counts from concealing uncatalogued helper
+routines or treating a broad playable approximation as Verified.
+
+The first annotation pass promotes the **31 unique handler entries** behind
+player states `$20-$41` and the **12 unique handler entries** behind ball
+states `$00-$0C`. `GAMEPLAY_ROUTINE_ANNOTATIONS.json` ties those 43 nodes to
+their dispatcher evidence, native `dd_update_cpu_player` / `dd_step_ball`
+symbols, and the state-by-state regression suite. This raises the comprehensive
+routine score from its 50.0% Partial floor to **60.0% (43 Verified, 173 Partial,
+7 excluded)**. Shared helpers and user/rule/free-throw handlers do not inherit
+credit merely because a verified dispatcher calls them.
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
