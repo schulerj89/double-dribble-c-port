@@ -81,6 +81,7 @@ int main(int argc, char **argv) {
     DDGameplayState inbound_pass_state;
     DDGameplayState dispatch_base;
     DDGameplayState dispatch_state;
+    DDGameplayState contest_state;
     DDGameplayState free_throw_state;
     DDGameplayState period_state;
     const DDTipoffAssetsHeader *assets;
@@ -111,6 +112,15 @@ int main(int argc, char **argv) {
           pack.whistle_audio[4].period == 52u && pack.whistle_audio[5].channel == 3u &&
           pack.whistle_audio[5].period == 6u && pack.whistle_audio[5].volume == 3u,
           "asset pack exposes exact $2C pulse/noise whistle playback data");
+    check(pack.tipoff_meta.three_call_audio_frames == 189u && pack.three_call_audio_count == 3u &&
+          pack.three_call_audio[0].period == 256u && pack.three_call_audio[0].reserved == 1u &&
+          pack.three_call_audio[1].frame == 95u && pack.three_call_audio[1].period == 163u &&
+          pack.three_call_audio[1].reserved == 2u && pack.three_call_audio[2].frame == 188u,
+          "asset pack exposes exact $09 down/up three-point call sweep");
+    check(pack.tipoff_meta.three_score_audio_frames == 42u && pack.three_score_audio_count == 78u &&
+          pack.three_score_audio[2].frame == 1u && pack.three_score_audio[2].period == 592u &&
+          pack.three_score_audio[2].channel == 1u && pack.three_score_audio[2].volume == 15u,
+          "asset pack exposes the controlled $25 two-pulse scoring cue");
     check((uint8_t)assets->height_scripts[10] == 0x80u &&
           assets->height_scripts[11] == 5 &&
           (uint8_t)assets->height_scripts[24] == 0x81u,
@@ -194,6 +204,16 @@ int main(int argc, char **argv) {
     check(dd_gameplay_advance_to(&pack, &state, 548u, 0u), "advance to shot release");
     check(state.live_frame == 192u && state.ball.action == DD_BALL_AIRBORNE,
           "live 192 follows $AE25 into airborne shot state $05");
+    check(state.ball.court_x == 0x005700 && state.ball.court_depth == 0x004B00 &&
+          state.ball.height == 0x3800 &&
+          state.ball.velocity_x == -0x00BD &&
+          state.ball.velocity_depth == 0x00AB &&
+          state.ball.flight_angle == 0x62u &&
+          state.shot_value == 2u &&
+          state.ball.flight_duration == 0x14u &&
+          state.ball.flight_curve == 0x05u &&
+          state.ball.velocity_height == 0x0200,
+          "$B189 short shot matches the frame-2749 $B29C/$B376 vector, duration, and arc");
     check(dd_gameplay_advance_to(&pack, &state, 569u, 0u), "advance to scoring result");
     check(state.live_frame == 213u && state.ball.action == DD_BALL_SCORE,
           "live 213 reaches original score/rim state $06");
@@ -266,10 +286,10 @@ int main(int argc, char **argv) {
     check(state.clock_minutes == 0x04u && state.clock_seconds == 0x26u,
           "native HUD clock matches original frame 3572 at 04:26");
     check(state.players[5].role == 1u && state.players[6].role == 0u &&
-          state.players[5].paired_player == 0u &&
-          state.players[0].paired_player == 5u &&
-          state.players[6].paired_player == 4u &&
-          state.players[4].paired_player == 6u,
+          state.players[5].paired_player == 4u &&
+          state.players[4].paired_player == 5u &&
+          state.players[6].paired_player == 0u &&
+          state.players[0].paired_player == 6u,
           "$993A/$99D9/$9A31 preserve inbound role and reciprocal pair swaps");
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         check_checkpoint(&state, 1015u, player,
@@ -435,6 +455,53 @@ int main(int argc, char **argv) {
     memset(&dispatch_base, 0, sizeof(dispatch_base));
     check(dd_gameplay_advance_to(&pack, &dispatch_base, 356u, 0u),
           "prepare isolated dispatcher checks");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.action = DD_BALL_HIDDEN;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CPU_CUT_RUN;
+    dispatch_state.players[5].court_x = 0x011000;
+    dispatch_state.players[5].court_depth = 0x002000;
+    dispatch_state.players[5].target_x = 0x012000;
+    dispatch_state.players[5].target_depth = 0x001800;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].route_velocity_x == 0x00E1 &&
+          dispatch_state.players[5].route_velocity_depth == -0x0078 &&
+          dispatch_state.players[5].route_facing == 1u,
+          "$ABCD installs $9D2D/$AA98/$9BB0 route vector $00E1/$FF88 and facing one");
+
+    {
+        static const uint32_t input[8] = {
+            DD_INPUT_RIGHT, DD_INPUT_RIGHT | DD_INPUT_DOWN, DD_INPUT_DOWN,
+            DD_INPUT_LEFT | DD_INPUT_DOWN, DD_INPUT_LEFT,
+            DD_INPUT_LEFT | DD_INPUT_UP, DD_INPUT_UP,
+            DD_INPUT_RIGHT | DD_INPUT_UP
+        };
+        static const int16_t expected_x[8] = {
+            0x0130, 0x00C0, 0, -0x00C0, -0x0140, -0x00C0, 0, 0x00C0
+        };
+        static const int16_t expected_depth[8] = {
+            0, -0x00C0, -0x0100, -0x00C0, 0, 0x00C0, 0x0100, 0x00C0
+        };
+        uint32_t direction;
+        for (direction = 0u; direction < 8u; ++direction) {
+            dispatch_state = dispatch_base;
+            dispatch_state.carrier = 0xFFu;
+            dispatch_state.ball.owner = 0xFFu;
+            dispatch_state.ball.action = DD_BALL_HIDDEN;
+            dispatch_state.controlled_player = 0u;
+            dispatch_state.players[0].action = DD_PLAYER_LIVE_USER;
+            dispatch_state.players[0].court_x = 0x010000;
+            dispatch_state.players[0].court_depth = 0x005800;
+            check(dd_gameplay_step(&pack, &dispatch_state, input[direction]),
+                  "step one exact $AA07/$9E4C user direction");
+            check(dispatch_state.players[0].velocity_x == expected_x[direction] &&
+                  dispatch_state.players[0].velocity_depth == expected_depth[direction] &&
+                  dispatch_state.players[0].facing == direction,
+                  "$AA07/$9E2D installs the exact cardinal/diagonal 8.8 user vector");
+        }
+    }
 
     dispatch_state = dispatch_base;
     dispatch_state.carrier = 0xFFu;
@@ -1143,6 +1210,23 @@ int main(int argc, char **argv) {
           "$AEDE counter $08 awards one point while the foul shot is active");
 
     dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.ball.action = DD_BALL_SCORE;
+    dispatch_state.ball.action_age = 3u;
+    dispatch_state.ball.height = 0x3200;
+    dispatch_state.last_shooter = 0u;
+    dispatch_state.shot_value = 3u;
+    dispatch_state.score[0] = 0u;
+    dispatch_state.audio_event = 0u;
+    dispatch_state.audio_event_serial = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "advance a three-point make to $AEDE counter $08");
+    check(dispatch_state.score[0] == 3u &&
+          dispatch_state.audio_event == 0x25u &&
+          dispatch_state.audio_event_serial != 0u,
+          "$AEDE shot kind $01 awards three points and queues SFX $25");
+
+    dispatch_state = dispatch_base;
     dispatch_state.carrier = 5u;
     dispatch_state.ball.owner = 5u;
     dispatch_state.ball.action = DD_BALL_DRIBBLE;
@@ -1180,13 +1264,13 @@ int main(int argc, char **argv) {
     dispatch_state.ball.action = DD_BALL_PASS;
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.ball.receiver = 0u;
-    dispatch_state.ball.action_age = 18u;
+    dispatch_state.ball.action_age = 0u;
     dispatch_state.ball.court_x = dispatch_state.players[0].court_x;
     dispatch_state.ball.court_depth = dispatch_state.players[0].court_depth;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u),
-          "step pass at the original reception age inside $B138 boxes");
+          "step a new pass already inside $B138 receiver boxes");
     check(dispatch_state.ball.action == DD_BALL_DRIBBLE && dispatch_state.ball.owner == 0u,
-          "ball state $02 catches only after $B138 reports receiver overlap");
+          "ball state $02 catches immediately when $B138 reports receiver overlap");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -1221,6 +1305,10 @@ int main(int argc, char **argv) {
           dispatch_state.players[4].action == DD_PLAYER_USER_PASS_RECEIVE &&
           dispatch_state.controlled_player == 0u,
           "$A129 selects the later left-side teammate while $AD41 keeps control on the passer in flight");
+    check(dispatch_state.ball.velocity_x == -0x04F6 &&
+          dispatch_state.ball.velocity_depth == 0x007D &&
+          dispatch_state.players[0].facing == 4u,
+          "$B0AB multiplies the signed $FF02/$0019 unit vector by five with 16-bit wrap");
     live_start_x[0] = dispatch_state.players[0].court_x;
     check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT),
           "hold movement during user pass recovery");
@@ -1240,7 +1328,7 @@ int main(int argc, char **argv) {
     live_start_x[4] = dispatch_state.players[4].court_x;
     check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT),
           "move the newly controlled receiver");
-    check(dispatch_state.players[4].court_x == live_start_x[4] + 0x0140 &&
+    check(dispatch_state.players[4].court_x == live_start_x[4] + 0x0130 &&
           dispatch_state.controlled_player == 4u,
           "the dynamic CPU scheduler skips the passed-to user instead of continuing to drive it");
 
@@ -1311,10 +1399,190 @@ int main(int argc, char **argv) {
           dispatch_state.ball.owner == 0u && dispatch_state.carrier == 0xFFu,
           "$8A98->$9139 starts the contest as $B189 releases owned ball state $05");
     check(dispatch_state.ball.velocity_x == -0x00FF &&
-          dispatch_state.ball.velocity_depth == 0x000C &&
-          dispatch_state.ball.flight_curve == 0x2Fu &&
-          dispatch_state.ball.velocity_height == 0x027Cu,
-          "$B189->$9D2D/$9BB0 installs the table vector and divider-derived long-shot arc");
+          dispatch_state.ball.velocity_depth == -0x000C &&
+          dispatch_state.shot_value == 3u &&
+          dispatch_state.audio_event == 0x09u &&
+          dispatch_state.ball.flight_duration == 0xB9u &&
+          dispatch_state.ball.flight_curve == 0x2Eu &&
+          dispatch_state.ball.velocity_height == 0x027Au &&
+          dispatch_state.ball.height == 0x2200,
+          "$B189->$A7EA->$9D2D/$9BB0 marks the cross-half-court shot as three and installs its arc");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.cpu_global_frame = 0u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].court_x = 0x018000;
+    dispatch_state.players[0].court_depth = 0x005800;
+    dispatch_state.players[0].height = 0x1000;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B) &&
+          dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "launch an inside user-side field goal");
+    check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.shot_value == 2u && dispatch_state.audio_event != 0x09u,
+          "$A7EA user-side depth-$58 ball X beyond boundary $40 is a two");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.cpu_global_frame = 0u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.action = DD_BALL_SHOT_GATHER;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action_age = 0u;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+    dispatch_state.players[5].height_script_index = 24u;
+    dispatch_state.players[5].height_script_reverse = 0u;
+    dispatch_state.players[5].court_x = 0x00E000;
+    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[5].height = 0x1000;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        if (player != 5u) dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "launch an outside CPU-side field goal");
+    check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.shot_value == 3u && dispatch_state.audio_event == 0x09u,
+          "$A7EA CPU-side depth-$58 ball X beyond mirrored boundary $C0 is a three");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.cpu_global_frame = 0u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.action = DD_BALL_SHOT_GATHER;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action_age = 0u;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+    dispatch_state.players[5].height_script_index = 24u;
+    dispatch_state.players[5].height_script_reverse = 0u;
+    dispatch_state.players[5].court_x = 0x008000;
+    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[5].height = 0x1000;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        if (player != 5u) dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "launch an inside CPU-side field goal");
+    check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.shot_value == 2u && dispatch_state.audio_event != 0x09u,
+          "$A7EA CPU-side depth-$58 ball X inside mirrored boundary $C0 is a two");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].court_x = 0x012000;
+    dispatch_state.players[0].court_depth = 0x005800;
+    dispatch_state.players[0].height = 0x1000;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B) &&
+          dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "launch a cross-court user shot");
+    check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.shot_value == 3u &&
+          dispatch_state.ball.flight_duration == 0xD8u &&
+          dispatch_state.ball.flight_curve == 0x36u &&
+          dispatch_state.ball.velocity_height == 0x0207,
+          "$B343-$B373 applies the cross-court duration/curve/base override");
+
+    contest_state = dispatch_base;
+    contest_state.phase = DD_GAMEPLAY_LIVE;
+    contest_state.cpu_global_frame = 0u;
+    contest_state.controlled_player = 0u;
+    contest_state.carrier = 5u;
+    contest_state.ball.action = DD_BALL_SHOT_GATHER;
+    contest_state.ball.owner = 5u;
+    contest_state.players[0].action = DD_PLAYER_LIVE_USER;
+    check(contest_state.players[0].paired_player == 5u &&
+          contest_state.players[5].paired_player == 0u,
+          "$0582=$07/$0587=$02 converts to reciprocal native opening pair 0/5");
+    contest_state.players[5].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+    check(dd_gameplay_step(&pack, &contest_state, 0u),
+          "reject a held-button user contest without A");
+    check(contest_state.players[0].action == DD_PLAYER_LIVE_USER,
+          "$A3E2 requires input bit 7 for ball gather state $04");
+    check(dd_gameplay_step(&pack, &contest_state, DD_INPUT_A),
+          "start the user defender contest through A");
+    check(contest_state.players[0].action == DD_PLAYER_USER_CONTEST &&
+          contest_state.players[0].height_script_index == 11u &&
+          contest_state.players[0].height_script_reverse == 0u &&
+          contest_state.players[0].release_timer == 1u,
+          "$A3E2->$A607 installs user state $11 and the $9B26 jump stream");
+    contest_state.carrier = 0xFFu;
+    contest_state.ball.action = DD_BALL_REBOUND;
+    contest_state.ball.owner = 0xFFu;
+    contest_state.ball.velocity_x = 0;
+    contest_state.ball.velocity_depth = 0;
+    contest_state.ball.velocity_height = 0;
+    contest_state.ball.court_x = contest_state.players[0].court_x + 0x0600;
+    contest_state.ball.court_depth = contest_state.players[0].court_depth;
+    contest_state.ball.height = 0x2E00;
+    contest_state.players[5].action = DD_PLAYER_ROUTE_WAIT;
+    for (player = 0u; player < 64u &&
+         contest_state.ball.action != DD_BALL_AWARDED; ++player) {
+        check(dd_gameplay_step(&pack, &contest_state, 0u),
+              "advance the user contest to apex contact");
+    }
+    check(contest_state.players[0].action == DD_PLAYER_USER_CONTEST &&
+          contest_state.ball.action == DD_BALL_AWARDED &&
+          contest_state.ball.owner == 0u && contest_state.carrier == 0xFFu &&
+          contest_state.audio_event == 0x20u &&
+          contest_state.audio_event_serial != 0u,
+          "$A638 apex->$A6C3 contact owns ball state $00 and queues SFX $20 without early transfer");
+    for (player = 0u; player < 64u && contest_state.carrier != 0u; ++player) {
+        check(dd_gameplay_step(&pack, &contest_state, 0u),
+              "advance the owned user contest through landing");
+    }
+    check(contest_state.carrier == 0u && contest_state.ball.owner == 0u &&
+          contest_state.ball.action == DD_BALL_DRIBBLE &&
+          contest_state.controlled_player == 0u &&
+          contest_state.players[0].action == DD_PLAYER_LIVE_USER_CARRIER,
+          "$A693->$92BD->$A44B delays full possession transfer until contest landing");
+
+    contest_state = dispatch_base;
+    contest_state.phase = DD_GAMEPLAY_LIVE;
+    contest_state.cpu_global_frame = 0u;
+    contest_state.controlled_player = 0u;
+    contest_state.carrier = 0xFFu;
+    contest_state.ball.action = DD_BALL_REBOUND;
+    contest_state.ball.owner = 0xFFu;
+    contest_state.ball.velocity_height = 0;
+    contest_state.ball.court_x = contest_state.players[0].court_x + 0x4000;
+    contest_state.ball.court_depth = contest_state.players[0].court_depth;
+    contest_state.ball.height = 0x2E00;
+    contest_state.players[0].action = DD_PLAYER_LIVE_USER;
+    contest_state.players[5].action = DD_PLAYER_LIVE_CARRIER_ROUTE;
+    check(dd_gameplay_step(&pack, &contest_state, 0u),
+          "start the input-free rebound contest");
+    check(contest_state.players[0].action == DD_PLAYER_USER_CONTEST,
+          "$A3E2 accepts rebound state $07 without an A-button edge");
+    contest_state.players[5].action = DD_PLAYER_ROUTE_WAIT;
+    for (player = 0u; player < 64u &&
+         contest_state.players[0].action != DD_PLAYER_USER_CONTEST_RECOVER; ++player) {
+        check(dd_gameplay_step(&pack, &contest_state, 0u),
+              "advance missed user contest through landing");
+    }
+    check(contest_state.players[0].action == DD_PLAYER_USER_CONTEST_RECOVER &&
+          contest_state.ball.owner == 0xFFu,
+          "$A6AD exposes state $10 after a missed contest landing");
+    for (player = 0u; player < 3u &&
+         contest_state.players[0].action != DD_PLAYER_LIVE_USER; ++player) {
+        check(dd_gameplay_step(&pack, &contest_state, 0u),
+              "return missed contest recovery to live defense");
+    }
+    check(contest_state.players[0].action == DD_PLAYER_LIVE_USER,
+          "$A5D0 returns normal live state $0F on the next user dispatch");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -1605,6 +1873,6 @@ int main(int argc, char **argv) {
         fprintf(stderr, "%d CPU gameplay regression check(s) failed.\n", failures);
         return 1;
     }
-    puts("Gameplay regression checks passed: tip jump, dispatcher states, camera CHR, moving off-ball players, pass/shot states, rebound, inbound reception, and live audio data.");
+    puts("Gameplay regression checks passed: tip/user contests, dispatcher states, camera CHR, moving off-ball players, pass/shot angles, rebound, inbound reception, and live audio data.");
     return 0;
 }

@@ -19,6 +19,7 @@ static void dd_usage(void) {
     puts("  --render-tipoff <input.assetpack> <output.bmp>");
     puts("  --render-gameplay <input.assetpack> <transition-frame> <output.bmp>");
     puts("  --render-gameplay-input <input.assetpack> <transition-frame> <input-mask> <output.bmp>");
+    puts("  --render-gameplay-user-contest <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-block <input.assetpack> <contact|landing> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
@@ -28,6 +29,8 @@ static void dd_usage(void) {
     puts("  --dump-tipoff-wav <input.assetpack> <output.wav>");
     puts("  --dump-gameplay-wav <input.assetpack> <output.wav>");
     puts("  --dump-whistle-wav <input.assetpack> <output.wav>");
+    puts("  --dump-three-call-wav <input.assetpack> <output.wav>");
+    puts("  --dump-three-score-wav <input.assetpack> <output.wav>");
 }
 
 int main(int argc, char **argv) {
@@ -146,7 +149,9 @@ int main(int argc, char **argv) {
     if (argc == 4 && (strcmp(argv[1], "--dump-end-wav") == 0 ||
                       strcmp(argv[1], "--dump-tipoff-wav") == 0 ||
                       strcmp(argv[1], "--dump-gameplay-wav") == 0 ||
-                      strcmp(argv[1], "--dump-whistle-wav") == 0)) {
+                      strcmp(argv[1], "--dump-whistle-wav") == 0 ||
+                      strcmp(argv[1], "--dump-three-call-wav") == 0 ||
+                      strcmp(argv[1], "--dump-three-score-wav") == 0)) {
         uint8_t *wav;
         size_t size;
         FILE *file;
@@ -158,6 +163,10 @@ int main(int argc, char **argv) {
             ok = dd_build_tipoff_dmc_wav(&pack, &wav, &size);
         } else if (strcmp(argv[1], "--dump-whistle-wav") == 0) {
             ok = dd_build_whistle_audio_wav(&pack, &wav, &size);
+        } else if (strcmp(argv[1], "--dump-three-call-wav") == 0) {
+            ok = dd_build_three_call_audio_wav(&pack, &wav, &size);
+        } else if (strcmp(argv[1], "--dump-three-score-wav") == 0) {
+            ok = dd_build_three_score_audio_wav(&pack, &wav, &size);
         } else {
             ok = dd_build_gameplay_audio_wav(&pack, &wav, &size);
         }
@@ -204,6 +213,33 @@ int main(int argc, char **argv) {
         ok = pixels != NULL && dd_gameplay_advance_to(&pack, &state, (uint32_t)frame, input_mask) &&
              dd_render_gameplay(&pack, &state, pixels, pack.tipoff_meta.width, pack.tipoff_meta.height) &&
              dd_write_bmp(argv[output_argument], pixels, pack.tipoff_meta.width, pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 4 && strcmp(argv[1], "--render-gameplay-user-contest") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        /* Original frame 2748 presses A while user slot $02 is paired with
+           shooter $07 in ball state $04.  Native scene 547 is the matching
+           dispatcher boundary; scene 548 is original frame 2749's first
+           airborne-shot/user-state-$11 screenshot checkpoint. */
+        ok = dd_gameplay_advance_to(&pack, &state, 546u, 0u) &&
+             dd_gameplay_step(&pack, &state, DD_INPUT_A) &&
+             dd_gameplay_step(&pack, &state, 0u) &&
+             state.players[0].action == DD_PLAYER_USER_CONTEST &&
+             state.ball.action == DD_BALL_AIRBORNE &&
+             state.ball.flight_angle == 0x62u;
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[3], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;

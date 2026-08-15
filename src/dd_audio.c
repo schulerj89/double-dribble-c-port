@@ -142,13 +142,22 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
         }
         for (channel = 0; channel < 4u; ++channel) {
             const DDMusicNote *note = active[channel];
+            uint16_t period;
             double frequency;
             double wave;
             double amplitude;
             if (note == NULL) continue;
+            period = note->period;
+            if (note->reserved == 1u) {
+                uint32_t age = frame - note_start[channel];
+                period = age >= period ? 0u : (uint16_t)(period - age);
+            } else if (note->reserved == 2u) {
+                uint32_t swept = (uint32_t)period + frame - note_start[channel];
+                period = (uint16_t)(swept > 0x07FFu ? 0x07FFu : swept);
+            }
             frequency = channel == 3u
-                ? cpu_clock / (2.0 * noise_periods[note->period])
-                : cpu_clock / ((channel == 2u ? 32.0 : 16.0) * ((double)note->period + 1.0));
+                ? cpu_clock / (2.0 * noise_periods[period])
+                : cpu_clock / ((channel == 2u ? 32.0 : 16.0) * ((double)period + 1.0));
             phase[channel] += frequency / sample_rate;
             if (channel == 3u) {
                 double age = (double)(frame - note_start[channel]);
@@ -222,6 +231,20 @@ int dd_build_whistle_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->whistle_audio, pack->whistle_audio_count,
                               pack->tipoff_meta.whistle_audio_frames, 0u, 0u, 0u,
+                              wav_data, wav_size);
+}
+
+int dd_build_three_call_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->three_call_audio, pack->three_call_audio_count,
+                              pack->tipoff_meta.three_call_audio_frames, 0u, 0u, 0u,
+                              wav_data, wav_size);
+}
+
+int dd_build_three_score_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->three_score_audio, pack->three_score_audio_count,
+                              pack->tipoff_meta.three_score_audio_frames, 0u, 0u, 0u,
                               wav_data, wav_size);
 }
 

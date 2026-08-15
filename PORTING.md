@@ -709,8 +709,9 @@ target, and hold branches. Selected-bank ROM offsets are `$8D9C->$0DAC`,
 
 These additions promote player states `$28,$29,$2D,$2E,$2F` to Verified and
 defensive steals/blocks from Missing to Partial. The CPU shot-block branch is
-now translated below; user-triggered contests and the remaining eligibility
-rules are still outstanding.
+translated below, and the later user-contest section now closes
+`$A3E2->$A607->$A638`; the remaining Partial scope is the shared gate/SFX and
+rim-contact eligibility work listed there.
 
 ### Foul/free-throw rule and complete basket-result slice
 
@@ -744,8 +745,8 @@ Verified without promoting the still-partial shot-block collision family.
 
 Headless Ghidra at `$AEDE` shows that score state `$06` is driven by byte
 counter `$004A`, initialized to `$0C` by `$AE25`. Every dispatch decrements it.
-The `$09->$08` dispatch selects an ordinary two-point increment (or the
-free-throw-adjusted one-point increment), calls fixed-bank `$C477/$C6AD`, clears
+The `$09->$08` dispatch selects two points, changes it to three for shot kind
+`$01` or one for free-throw kind `$02`, calls fixed-bank `$C477/$C6AD`, clears
 shot-kind `$005F`, and queues the score display through `$98B5`. Only counter
 values `$05-$00` lower the ball's integer height; `$00->$FF` clears the display
 mode and enters rebound state `$07`.
@@ -757,8 +758,8 @@ both score copies `$07F0/$07F8` still zero. Frame 2774 writes both copies to
 frame 2783 underflows and installs `$07`. The queued HUD transfer later writes
 the right score digits, while the native renderer reads the same score state
 directly because NES PPU buffering is excluded. Native regression checks now
-assert no points on state entry, two points on the fourth dispatch, and one
-point on the corresponding free-throw dispatch. Made-shot sequence and
+assert no points on state entry, two or three points on the fourth dispatch,
+and one point on the corresponding free-throw dispatch. Made-shot sequence and
 score/HUD updates are therefore Verified.
 
 ### CPU packed avoidance and terminal ball states
@@ -979,9 +980,12 @@ repeatable diff makes that remaining visual gap explicit rather than hiding it.
 
 ## Fixed-point height and movement physics
 
-Status: **Verified**. The earlier native code mixed direct integer approaches,
+Status: **Partial**. The earlier native code mixed direct integer approaches,
 clamps, and per-state gravity approximations. The portable primitives now
-follow the ROM's shared fixed-point helpers and their actual call graph.
+follow the ROM's shared fixed-point helpers and their actual call graph, but
+the native 30 Hz route scheduler still adapts the installed unit vectors to its
+already-verified per-state arrival cadence. That remaining integration adapter,
+not the vector/pass/shot initializers themselves, keeps the subsystem Partial.
 
 ### Ghidra control/data flow followed
 
@@ -994,7 +998,11 @@ follow the ROM's shared fixed-point helpers and their actual call graph.
 | bank 0 `$9B84-$9BAF` plus fixed `$C3C5` | divide `(elapsed << 8)` by curve, subtract quotient from base vertical, then add the wrapped 8.8 delta to height | `dd_integrate_height` |
 | bank 0 `$B412-$B434` | reset elapsed and integer height, preserve the height fraction, subtract `$0050` from base vertical, saturate a signed-negative base to zero | `dd_restart_height_bounce` |
 | bank 0 `$9D2D/$9BB0` | classify target angle using `$9DEB`, then expand/rotate signed motion using `$9C1C/$9C5E` | `dd_target_motion_vector` |
-| bank 0 `$B189-$B2EE` | initialize shot state `$05`, aim at the active hoop, derive duration/curve, and use two divider results for base vertical | `dd_initialize_shot_flight` |
+| bank 0 `$9F70->$AA07->$9E2D/$9E4C` | map the input nibble to facing and copy one of eight exact cardinal/diagonal signed 8.8 vectors | `dd_user_motion_vector` |
+| bank 0 `$ABCD->$9D2D->$AA98->$9BB0` | unpack a packed route target, derive its facing, and install the signed unit vector | `route_facing` and `route_velocity_x/depth` in `dd_move_cpu_player` |
+| bank 0 `$B035` | attach the ball using table-selected facing offsets; first byte is depth, second is longitudinal X | `dd_attach_ball` |
+| bank 0 `$B0AB-$B11E` | attach with table zero, target receiver `$0052`, set integer height `$18`, and multiply each signed unit-vector axis by five with 16-bit wrap | `dd_begin_pass` |
+| bank 0 `$B189-$B376` | initialize shot state `$05`, aim at the active hoop, halve major distance/vector before division, derive duration/curve/base vertical, and apply the cross-court `$36/$0207/$D8` override | `dd_initialize_shot_flight` |
 | bank 0 `$AD41/$ADF2/$AE25/$AF46/$AFDD` | pass, bounce pass, airborne shot, rebound, and loose-airborne states call the shared axis/height helpers at their individual recovered counts | native ball dispatcher states `$02/$03/$05/$07/$09` |
 
 `$B167` remains deliberately separate: bounce-pass state `$03` updates only
@@ -1005,10 +1013,12 @@ old `$D8` approximation.
 
 The selected-bank-0 ROM-file mappings (including the 16-byte iNES header) are
 `$9B84->$1B94`, `$9BB0->$1BC0`, `$9C1C->$1C2C`, `$9C5E->$1C6E`,
-`$9CA0->$1CB0`, `$9CF6->$1D06`, `$9D2D->$1D3D`, `$9DEB->$1DFB`,
-`$A84C->$285C`, `$AD41->$2D51`, `$AE25->$2E35`, `$AF46->$2F56`,
-`$AFDD->$2FED`, `$B017->$3027`, `$B167->$3177`, `$B189->$3199`, and
-`$B412->$3422`. Fixed-bank `$C3C5`, `$D98A`, and `$D98D` map to
+`$9CA0->$1CB0`, `$9CF6->$1D06`, `$9D2D->$1D3D`, `$9E4C->$1E5C`,
+`$9F70->$1F80`, `$9DEB->$1DFB`, `$A84C->$285C`, `$AA07->$2A17`,
+`$AA98->$2AA8`, `$ABCD->$2BDD`, `$AD41->$2D51`, `$AE25->$2E35`,
+`$AF46->$2F56`, `$AFDD->$2FED`, `$B017->$3027`, `$B035->$3045`,
+`$B0AB->$30BB`, `$B167->$3177`, `$B189->$3199`, and `$B412->$3422`.
+Fixed-bank `$C3C5`, `$D98A`, and `$D98D` map to
 `$1C3D5`, `$1D99A`, and `$1D99D`. These addresses are evidence only; the
 native runtime does not load or execute ROM instructions.
 
@@ -1028,10 +1038,29 @@ times, `$9B84` 574 times, and `$B189` four times. A no-input shot records:
 That height is exactly
 `$3800 + ($0200 - floor($0100 / 5)) = $39CD`; the next step is `$3B67`.
 Native regression checks assert both values, the long-shot vector
-`$FF01/$000C` plus curve/base `$2F/$027C`, the double-add `$A84C` path, and
+`$FF01/$FFF4` plus duration/curve/base `$B9/$2E/$027A`, the double-add `$A84C` path, and
 upper/lower rejection for both axes. The user-control checks additionally
 prove that boundary attempts preserve sub-cell coordinates and zero rejected
 velocity rather than snapping to a clamp.
+
+Focused traces close the four former initializer gaps:
+
+- `$9F70->$AA07->$9E2D` maps all eight user directions to `$0130/$0000`,
+  `$00C0/$FF40`, `$0000/$FF00`, `$FF40/$FF40`, `$FEC0/$0000`,
+  `$FF40/$00C0`, `$0000/$0100`, and `$00C0/$00C0`. The original user side
+  updates every other rendered frame and calls `$A84C` twice, equivalent to
+  one native integration per host frame.
+- The controlled frame-2600 pass enters `$B0AB` at ball `$010700/$005900`
+  and returns from `$B11E` with `$0424/$02C6`, proving signed unit-vector
+  multiplication by five rather than the removed native `/19` interpolation.
+- The natural inbound enters pass state `$02` at frame 3553. Its first logged
+  integration starts from `$001A3C/$00965C` with `$03D9/$FCD6`, and `$AD41`
+  accepts receiver contact at frame 3572. Correcting `$B035`'s formerly swapped
+  offset axes makes the native pass hit the same 19-frame checkpoint without
+  an elapsed-time gate.
+- The frame-2749 short shot enters `$B189` at `$005700/$004B00/$38C0` and
+  returns from `$B376` with vector `$FF43/$00AB`, duration `$14`, curve `$05`,
+  base `$0200`, and height `$3800`. The native minimum-21 normalization is gone.
 
 Reproduce the ignored evidence with:
 
@@ -1039,16 +1068,21 @@ Reproduce the ignored evidence with:
 .\tools\ghidra\Run-GameplayLoopAnalysis.ps1
 .\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2450 -FinalFrame 6000 -CaptureName original-fixed-physics -JumpStart 2502 -JumpEnd 2515 -JumpButton B -DisablePcCounts
 .\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2450 -FinalFrame 3000 -CaptureName original-fixed-physics-no-input -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2550 -FinalFrame 2800 -CaptureName original-exact-vectors -JumpStart 2502 -JumpEnd 2502 -JumpButton B -MoveStart 2580 -MoveEnd 2587 -MoveDirection right -PassFrame 2600 -PassEnd 2600 -PassButton A -PassDirection right -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2748 -FinalFrame 2751 -CaptureName original-exact-short-shot -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 3548 -FinalFrame 3575 -CaptureName original-exact-inbound-pass -DisablePcCounts
 .\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
 ```
 
 The first post-apex reference screenshot is
 `captures/original-fixed-physics-no-input/frame-2749.png`; the capture remains
 ignored along with its RAM/CSV evidence. Native transition frame 548 is the
-corresponding release checkpoint. Its 256x224 gameplay crop differs in
-3,074/57,344 pixels (5.3606%); the residual is chiefly the already-documented
-opening route's slightly different gather sub-cell, not the fixed-point arc.
-The stable live-handoff gate remains 2,300/57,344 (4.0109%), below its 5% limit.
+corresponding release checkpoint. The fresh native capture/compare at that
+boundary reports 3,007/57,344 differing pixels (5.2438%), improved
+from 3,074/57,344 (5.3606%). The exact ball launch/arc is covered numerically;
+the visible residual remains concentrated in player route positions and sprite
+ordering. The stable live-handoff gate remains 2,300/57,344 (4.0109%), below
+its 5% limit.
 
 ## Complete CPU pass/shot decision policy
 
@@ -1101,12 +1135,139 @@ possession forced shots, decision-timer underflow, and the paired-defender
 lookahead. The existing deterministic opening and post-inbound checkpoints also
 remain unchanged.
 
+## User defender contest and recovered shot angles
+
+Status: **implemented and verified for the portable state/ownership path**.
+This slice uses the user dispatcher rather than reusing the CPU `$23/$24`
+approximation.
+
+The headless Ghidra follow is:
+
+| Ghidra/ASM | Recovered behavior | Native C |
+| --- | --- | --- |
+| `$A014` table entry `$0F->$A3E2` | run user motion/render, then classify ball state | `dd_step_live`, `dd_user_contest_eligible` |
+| `$A3EB-$A409` | `$07/$09` may contest without input; `$01/$04/$05` require bit 7 of pressed input `$0680` | A-edge/automatic branches in `dd_user_contest_eligible` |
+| `$A40A-$A42A` | require `$001D=$0056=0`, follow mutable pair `$0580`, accept paired states `$26/$27/$03` | phase guard plus `paired_player`/action checks |
+| `$A607-$A62A` | clear jump direction, install `$9B26/$9B27`, enter user state `$11`, set `$04E0=1` | `dd_begin_user_contest` |
+| user table entry `$11->$A638` | face inward while unowned and advance exact `$9ABD` signed height script | `dd_step_user_contest` |
+| `$A662-$A68F` | only when the next script byte is zero, call `$A6C3`; contact sets acquisition mode 3, ball state `$00`, owner=current, SFX `$20` | apex byte check, `dd_jump_ball_contact`, awarded ball, `dd_request_audio_event(0x20)` |
+| `$A693-$A6AA` | on landing, only the recorded owner with gate clear runs `$92BD->$A44B` | landing-delayed `dd_transfer_contact_possession` |
+| `$A6AD->$A5D0` | a miss exposes state `$10`, then returns to live user `$0F` | `DD_PLAYER_USER_CONTEST_RECOVER->$0F` |
+
+The dynamic FCEUX run presses A/X at original frame 2748. User slot `$02` is
+in `$0F`, the ball is gather state `$04`, and its mutable pair is shooter slot
+`$07` in state `$27`. The same frame reaches
+`$A3E2->$A402->$A40A->$A426->$A607`; frame 2750 enters `$A638` in state `$11`.
+Frames 2766-2770 reach the zero-byte `$A6C3` checks. That natural shot scores,
+so score gate `$0056=2` stops later contact checks, which is useful proof of the
+remaining gate caveat. Earlier tip-contact traces reach `$A68A`, while native
+regressions deterministically prove the successful apex contact, ball state
+`$00`, SFX request `$20`, delayed landing transfer, and the missed `$10->$0F`
+branch.
+
+This trace also resolves the opening pair map. Before the first inbound,
+original `$0582=$07` and `$0587=$02`, converting to native players `0<->5`;
+the other affected reciprocal pair is `4<->6`. After `$99D9/$9A31` swaps
+inbound roles/links, the later trace has original `$0582=$08`, or native
+`0<->6`. The native initialization and inbound regression now reproduce those
+two distinct stages.
+
+### Angle result
+
+Shots are not selected from a small set of canned 45-degree angles. `$B189`
+calls `$9D2D`, which quantizes the target ratio through the 33 thresholds at
+`$9DEB` into an **8-bit circular angle byte** (even steps), then `$9BB0`
+expands it through the `$9C1C/$9C5E` signed unit-vector tables. `$AA98` groups
+that byte into eight display facings, but flight retains the finer byte.
+
+For the natural frame-2749 shot from `$005700/$004B00` toward the left hoop,
+Ghidra/FCEUX records angle `$62`. `$9BB0` expands it to longitudinal/depth
+velocity `$FF43/$00AB` (`-189/+171` in signed 8.8), with duration `$14`, curve
+`$05`, and vertical base `$0200`. Native `flight_angle` now preserves `$62`
+and the regression asserts the complete tuple. On a rim miss, `$AF72` keeps
+that angle for result `$02`, clears horizontal motion for result `$03`, and
+adds `$80` (180 degrees) for result `$04`; the selected vector is then
+arithmetically halved. Thus the rim result changes the outgoing direction, but
+there is no user-controlled release-angle meter in this path.
+
+Reproduce the ignored evidence and original/native screenshot comparison with:
+
+```powershell
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2738 -FinalFrame 2820 -CaptureName original-user-contest-natural -PassFrame 2748 -PassEnd 2748 -PassButton A -DisablePcCounts
+.\tools\Capture-NativeUserContest.ps1
+.\tools\Compare-UserContestCaptures.ps1
+```
+
+Original frame 2749 and native scene 548 differ by 3,007/57,344 pixels
+(5.2438%), the same bounded residual already attributed to off-ball route
+positions and dynamic sprite ordering. Both expose the user contest and the
+numeric shot tuple above; ignored captures contain no repository assets.
+
+## Curved three-point line, scoring, and `$09/$25` audio
+
+Status: **implemented and verified**. This closes the release-to-score chain
+instead of treating every non-free-throw basket as two points.
+
+The Ghidra follow begins at both release sites. CPU shooter `$8D57` calls
+`$A7EA` before `$B189`; user shooter `$A504` calls `$B189` and then `$A7EA`.
+That ordering is preserved in C around the common shot initializer. The exact
+classifier and score consumer are:
+
+| Ghidra/ASM | Recovered behavior | Native C |
+| --- | --- | --- |
+| `$A7EA-$A7F0` | clear shot kind `$005F`, then split on current object `$004B < 7` | `dd_classify_field_goal` user/CPU side branch |
+| `$A7F7-$A80A` | classify the far X page immediately as three; otherwise subtract depth `$26` | mirrored full-court X/depth checks |
+| `$A80C-$A81A` | depths outside the 23-entry span are three; otherwise use `(depth-$26)>>2` | bounded table index |
+| table `$A834` | `70 68 60 58 50 4C 48 46 44 42 41 40 40 41 42 43 44 45 46 47 48 54 60` | `boundary` in `dd_classify_field_goal` |
+| `$A81B-$A829` | user side is two only when X low is strictly greater than the table byte; CPU side negates the byte and is three only when X low is strictly greater | asymmetric equality/edge comparisons preserved byte-for-byte |
+| `$A82A-$A833` | write kind `$01` and request SFX `$09` through `$C141` | `shot_value=3`, `dd_request_audio_event(0x09)` |
+| `$AEDE-$AEFC` | at score counter `$08`, start with X=2; kind 1 increments to 3 and requests `$25`; kind 2 decrements to 1; score via `$C477/$C6AD`, then clear kind | `dd_apply_made_basket_score` |
+
+The controlled release traces pin the equality edge in both court directions.
+At depth `$58`, table index `$0C` is `$40`: user X `$0141` is inside/two and
+`$0140` is outside/three; CPU X `$00C0` is inside/two and `$00C1` is
+outside/three. The three-point score probe keeps kind `$01` through counters
+`$0C-$09`, requests `$25` at original frame 2607, then writes both score copies
+`00->03` and clears the kind at counter `$08` on frame 2608. Native regressions
+cover these four boundary cases, the far-page cases, release ordering, and all
+one-/two-/three-point score branches.
+
+DDAP v14 contains the audible results, not only event numbers. Matched FCEUX
+APU runs isolate `$09` as a 189-frame pulse-2 cue at duty 50%/volume 6 whose
+timer moves `256->162->255` before stopping. `$25` is a 42-frame two-pulse
+arpeggio; comparing shot kind 1 against kind 0 proves the simultaneous
+triangle/noise traffic belongs to the surrounding basket state, so those
+channels are deliberately excluded. `dd_build_three_call_audio_wav` and
+`dd_build_three_score_audio_wav` synthesize the normalized pack entries, and
+Win32 plays them for native events `$09/$25`. This is native event synthesis;
+there is no 6502/APU instruction interpreter.
+
+Reproduce the ignored evidence with:
+
+```powershell
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2610 -CaptureName original-shot-kind-user-inside -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -ShotKindCase 1 -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2610 -CaptureName original-shot-kind-user-outside -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -ShotKindCase 2 -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2738 -FinalFrame 2760 -CaptureName original-shot-kind-cpu-inside -ShotKindCase 3 -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2738 -FinalFrame 2760 -CaptureName original-shot-kind-cpu-outside -ShotKindCase 4 -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2660 -CaptureName original-three-point-score -BasketFrame 2601 -BasketResult 1 -BasketShotKind 1 -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2900 -CaptureName original-sfx09-outside-full -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -ShotKindCase 2 -DisablePcCounts
+.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+```
+
+`gameplay-shot-kind-calls.csv`, `gameplay-score-calls.csv`,
+`gameplay-sfx-calls.csv`, `gameplay-apu-writes.csv`, and
+`gameplay-audio-state.csv` hold the dynamic proof. The Ghidra report prints the
+entire `$A834` table and the `$A7EA/$AEDE` instruction flows. All captures,
+WAVs, Ghidra reports, the ROM, and the generated asset pack remain ignored.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **94% portable Ghidra-to-C gameplay-loop coverage** (94.4% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
 - Determine the full successful B timing window around the proven original-frame-2502 user jump.
-- Translate the user-defender `$A3E2->$A607` contest trigger, contested-rebound, remaining rim-contact, and out-of-bounds branches.
+- Model the remaining `$001D/$0056` contest gates, block SFX `$10/$20`, rim-contact eligibility, and out-of-bounds branches.

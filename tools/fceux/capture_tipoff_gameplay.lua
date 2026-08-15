@@ -13,6 +13,9 @@ local pass_frame = tonumber(os.getenv("DD_PASS_FRAME") or "-1")
 local pass_end = tonumber(os.getenv("DD_PASS_END") or tostring(pass_frame))
 local pass_button = os.getenv("DD_PASS_BUTTON") or "A"
 local pass_direction = os.getenv("DD_PASS_DIRECTION") or "none"
+local move_start = tonumber(os.getenv("DD_MOVE_START") or "-1")
+local move_end = tonumber(os.getenv("DD_MOVE_END") or tostring(move_start))
+local move_direction = os.getenv("DD_MOVE_DIRECTION") or "none"
 local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
@@ -20,6 +23,7 @@ local inject_contact_clock_gate = tonumber(os.getenv("DD_INJECT_CONTACT_CLOCK_GA
 local inject_basket_frame = tonumber(os.getenv("DD_INJECT_BASKET_FRAME") or "-1")
 local inject_basket_result = tonumber(os.getenv("DD_INJECT_BASKET_RESULT") or "1")
 local inject_basket_counter = tonumber(os.getenv("DD_INJECT_BASKET_COUNTER") or "0")
+local inject_basket_shot_kind = tonumber(os.getenv("DD_INJECT_BASKET_SHOT_KIND") or "0")
 local inject_block_frame = tonumber(os.getenv("DD_INJECT_BLOCK_FRAME") or "-1")
 local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME") or "-1")
 local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
@@ -36,6 +40,7 @@ local inject_player_hold_case = tonumber(os.getenv("DD_INJECT_PLAYER_HOLD_CASE")
 local inject_inbound_rule_frame = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_FRAME") or "-1")
 local inject_inbound_rule_case = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_CASE") or "0")
 local inject_exceptional_reason_frame = tonumber(os.getenv("DD_INJECT_EXCEPTIONAL_REASON_FRAME") or "-1")
+local inject_shot_kind_case = tonumber(os.getenv("DD_INJECT_SHOT_KIND_CASE") or "0")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -101,11 +106,17 @@ score_calls:write("frame,counter,ball_state,score_copy_a,score_copy_b,height,sco
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
 local physics_calls = assert(io.open(join_path(capture_root, "gameplay-physics-calls.csv"), "w"))
-physics_calls:write("frame,pc,current_object,state,x,velocity_x,depth,velocity_depth,height,vertical_base,elapsed,curve,packed,target,global_phase\n")
+physics_calls:write("frame,pc,current_object,state,facing,x,velocity_x,depth,velocity_depth,height,vertical_base,elapsed,curve,duration,packed,target,global_phase\n")
 local control_calls = assert(io.open(join_path(capture_root, "gameplay-control-calls.csv"), "w"))
 control_calls:write("frame,pc,current_object,receiver,switch_candidate,ball_state,owner,carrier,direction,mode,input,pressed,p2,p3,p4,p5,p6\n")
 local block_calls = assert(io.open(join_path(capture_root, "gameplay-block-calls.csv"), "w"))
 block_calls:write("frame,pc,current_object,player_state,ball_state,owner,carrier,input,pressed,player_x,player_depth,player_height,ball_x,ball_depth,ball_height,paired,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11\n")
+local user_contest_calls = assert(io.open(join_path(capture_root, "gameplay-user-contest-calls.csv"), "w"))
+user_contest_calls:write("frame,pc,current_object,player_state,ball_state,acquisition_mode,global_gate,owner,carrier,input,pressed,player_x,player_height,ball_x,ball_height,script_low,script_high,script_value,paired,paired_state\n")
+local shot_kind_calls = assert(io.open(join_path(capture_root, "gameplay-shot-kind-calls.csv"), "w"))
+shot_kind_calls:write("frame,pc,current_object,ball_state,ball_x_high,ball_x_low,ball_depth,depth_offset,boundary_index,boundary_value,shot_kind\n")
+local sfx_calls = assert(io.open(join_path(capture_root, "gameplay-sfx-calls.csv"), "w"))
+sfx_calls:write("frame,event,current_object,ball_state,shot_kind\n")
 local exceptional_calls = assert(io.open(join_path(capture_root, "gameplay-exceptional-calls.csv"), "w"))
 exceptional_calls:write("frame,current,clock_gate,ball_state,input,current_target,current_facing,defender,defender_state,defender_target,defender_facing\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
@@ -199,6 +210,48 @@ memory.registerexecute(0xAEDE, 1, function(address, size, value)
             memory.readbyte(0x005F)))
     end
 end)
+memory.registerexecute(0xC141, 1, function(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end then
+        sfx_calls:write(string.format("%d,%02X,%02X,%02X,%02X\n", frame,
+            memory.getregister("a"), memory.readbyte(0x004B),
+            memory.readbyte(0x0340), memory.readbyte(0x005F)))
+    end
+end)
+
+local function record_shot_kind(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+        local object = memory.readbyte(0x004B)
+        if address == 0xA7EA and inject_shot_kind_case ~= 0 then
+            if object < 0x07 and (inject_shot_kind_case == 1 or inject_shot_kind_case == 2) then
+                memory.writebyte(0x0360, 0x01)
+                memory.writebyte(0x0370, inject_shot_kind_case == 1 and 0x41 or 0x40)
+                memory.writebyte(0x03C0, 0x58)
+            elseif object >= 0x07 and (inject_shot_kind_case == 3 or inject_shot_kind_case == 4) then
+                memory.writebyte(0x0360, 0x00)
+                memory.writebyte(0x0370, inject_shot_kind_case == 3 and 0xC0 or 0xC1)
+                memory.writebyte(0x03C0, 0x58)
+            end
+        end
+        local depth = memory.readbyte(0x03C0)
+        local depth_offset = (depth - 0x26) % 0x100
+        local boundary_index = 0xFF
+        local boundary_value = 0xFF
+        if depth_offset < 0x5C then
+            boundary_index = math.floor(depth_offset / 4)
+            boundary_value = memory.readbyte(0xA834 + boundary_index)
+        end
+        shot_kind_calls:write(string.format(
+            "%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+            frame, address, object, memory.readbyte(0x0340),
+            memory.readbyte(0x0360), memory.readbyte(0x0370), depth,
+            depth_offset, boundary_index, boundary_value, memory.readbyte(0x005F)))
+    end
+end
+for _, address in ipairs({0xA7EA, 0xA82A, 0xA82E, 0xA833}) do
+    memory.registerexecute(address, 1, record_shot_kind)
+end
 
 local function record_cpu_decision(address, size, value)
     local frame = emu.framecount()
@@ -226,26 +279,34 @@ local function record_physics_call(address, size, value)
     if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
         local object = memory.readbyte(0x004B)
         if object < 0x10 then
+            local tracked = object
+            if address == 0xB0AB or address == 0xB11E or address == 0xB189 or
+               address == 0xB29C or address == 0xB2EE or address == 0xB376 then
+                tracked = 0
+            end
             physics_calls:write(string.format(
-                "%d,%04X,%02X,%02X,%02X%02X%02X,%02X%02X,%02X%02X%02X,%02X%02X,%02X%02X,%02X%02X,%02X,%02X,%02X%02X,%02X%02X,%02X\n",
-                frame, address, object, memory.readbyte(0x0340 + object),
-                memory.readbyte(0x0360 + object), memory.readbyte(0x0370 + object),
-                memory.readbyte(0x0380 + object), memory.readbyte(0x0390 + object),
-                memory.readbyte(0x03A0 + object), memory.readbyte(0x03B0 + object),
-                memory.readbyte(0x03C0 + object), memory.readbyte(0x03D0 + object),
-                memory.readbyte(0x03E0 + object), memory.readbyte(0x03F0 + object),
-                memory.readbyte(0x0410 + object), memory.readbyte(0x0420 + object),
-                memory.readbyte(0x0430 + object), memory.readbyte(0x0440 + object),
+                "%d,%04X,%02X,%02X,%02X,%02X%02X%02X,%02X%02X,%02X%02X%02X,%02X%02X,%02X%02X,%02X%02X,%02X,%02X,%02X,%02X%02X,%02X%02X,%02X\n",
+                frame, address, object, memory.readbyte(0x0340 + tracked),
+                memory.readbyte(0x0350 + tracked),
+                memory.readbyte(0x0360 + tracked), memory.readbyte(0x0370 + tracked),
+                memory.readbyte(0x0380 + tracked), memory.readbyte(0x0390 + tracked),
+                memory.readbyte(0x03A0 + tracked), memory.readbyte(0x03B0 + tracked),
+                memory.readbyte(0x03C0 + tracked), memory.readbyte(0x03D0 + tracked),
+                memory.readbyte(0x03E0 + tracked), memory.readbyte(0x03F0 + tracked),
+                memory.readbyte(0x0410 + tracked), memory.readbyte(0x0420 + tracked),
+                memory.readbyte(0x0430 + tracked), memory.readbyte(0x0440 + tracked),
                 memory.readbyte(0x004A), memory.readbyte(0x004C),
-                memory.readbyte(0x05C0 + object), memory.readbyte(0x05B0 + object),
-                memory.readbyte(0x05E0 + object), memory.readbyte(0x05D0 + object),
+                memory.readbyte(0x04B0 + tracked),
+                memory.readbyte(0x05C0 + tracked), memory.readbyte(0x05B0 + tracked),
+                memory.readbyte(0x05E0 + tracked), memory.readbyte(0x05D0 + tracked),
                 memory.readbyte(0x001A)))
         end
     end
 end
 for _, address in ipairs({
     0x9B84, 0x9BAF, 0x9CA0, 0x9CEB, 0x9CF5, 0x9CF6, 0x9D22, 0x9D2C,
-    0xA84C, 0xABCD, 0xAC29, 0xB167, 0xB17E, 0xB188, 0xB189
+    0x9E2D, 0x9E4B, 0xA84C, 0xABCD, 0xAC29, 0xB0AB, 0xB11E,
+    0xB167, 0xB17E, 0xB188, 0xB189, 0xB29C, 0xB2EE, 0xB376
 }) do
     memory.registerexecute(address, 1, record_physics_call)
 end
@@ -285,6 +346,32 @@ for _, address in ipairs({0xA3E2, 0xA504, 0xA607, 0x9102, 0x9139,
                 memory.readbyte(0x0410 + object), memory.readbyte(0x0370),
                 memory.readbyte(0x03C0), memory.readbyte(0x0410),
                 memory.readbyte(0x0580 + object), unpack(states)))
+        end
+    end)
+end
+for _, address in ipairs({0xA3E2, 0xA402, 0xA40A, 0xA426, 0xA607,
+                          0xA638, 0xA651, 0xA656, 0xA672, 0xA67D,
+                          0xA68A, 0xA693, 0xA6AD, 0xA6B8, 0xA6C3}) do
+    memory.registerexecute(address, 1, function(address, size, value)
+        local frame = emu.framecount()
+        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+            local object = memory.readbyte(0x004B)
+            local paired = memory.readbyte(0x0580 + object)
+            local script_low = memory.readbyte(0x0500 + object)
+            local script_high = memory.readbyte(0x0510 + object)
+            local script_value = 0xFF
+            local script_address = script_high * 0x100 + script_low
+            if script_address >= 0x8000 then script_value = memory.readbyte(script_address) end
+            user_contest_calls:write(string.format(
+                "%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+                frame, address, object, memory.readbyte(0x0340 + object),
+                memory.readbyte(0x0340), memory.readbyte(0x005A),
+                memory.readbyte(0x0056), memory.readbyte(0x005B),
+                memory.readbyte(0x0048), memory.readbyte(0x0670 + object),
+                memory.readbyte(0x0680 + object), memory.readbyte(0x0370 + object),
+                memory.readbyte(0x0410 + object), memory.readbyte(0x0370),
+                memory.readbyte(0x0410), script_low, script_high, script_value,
+                paired, paired < 0x10 and memory.readbyte(0x0340 + paired) or 0xFF))
         end
     end)
 end
@@ -373,6 +460,9 @@ while emu.framecount() < final_frame do
     if next_frame >= pass_frame and next_frame <= pass_end then
         input[pass_button] = true
         if pass_direction ~= "none" then input[pass_direction] = true end
+    end
+    if next_frame >= move_start and next_frame <= move_end and move_direction ~= "none" then
+        input[move_direction] = true
     end
     if next_frame == inject_inbound_rule_frame and inject_inbound_rule_case ~= 0 then
         -- Controlled proofs for $A1CC reasons $13/$14 and $9583 reason $15.
@@ -501,6 +591,7 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0480, 0x00)
         memory.writebyte(0x0490, 0x00)
         memory.writebyte(0x04F0, inject_basket_counter)
+        memory.writebyte(0x005F, inject_basket_shot_kind)
     end
     if next_frame == inject_ball_state_frame then
         -- Controlled dispatcher probe, disabled by default.  It verifies that
@@ -663,6 +754,9 @@ cpu_decisions:close()
 physics_calls:close()
 control_calls:close()
 block_calls:close()
+user_contest_calls:close()
+shot_kind_calls:close()
+sfx_calls:close()
 exceptional_calls:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")

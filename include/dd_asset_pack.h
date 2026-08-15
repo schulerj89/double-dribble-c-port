@@ -67,6 +67,8 @@ typedef struct DDTipoffMeta {
     uint32_t end_music_frames;
     uint32_t gameplay_audio_frames;
     uint32_t whistle_audio_frames;
+    uint32_t three_call_audio_frames;
+    uint32_t three_score_audio_frames;
     uint32_t scroll_x;
 } DDTipoffMeta;
 
@@ -153,6 +155,10 @@ typedef struct DDAssetPack {
     size_t gameplay_audio_count;
     DDMusicNote *whistle_audio;
     size_t whistle_audio_count;
+    DDMusicNote *three_call_audio;
+    size_t three_call_audio_count;
+    DDMusicNote *three_score_audio;
+    size_t three_score_audio_count;
     DDTitleMeta meta;
     DDIntroMeta intro_meta;
     DDConfigMeta config_meta;

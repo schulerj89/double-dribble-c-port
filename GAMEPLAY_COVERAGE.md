@@ -4,11 +4,11 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 94%**
+**Portable Ghidra-to-C gameplay-loop coverage: 93%**
 
 **Match-rules completeness: 80.8%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, the CPU shot-block path, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, user-triggered contests, and free-throw formation movement remain incomplete.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, both CPU and user shot-contest paths, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher spine now have native paths, while exact presentation/global contest gates, dynamic block-SFX playback, clock cadence, and free-throw formation movement remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 94.4%`, rounded to **94%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 92.6%`, rounded to **93%**.
 
 ## Player action dispatcher — 100%
 
@@ -162,19 +162,19 @@ camera carrier and rim latch exactly as the original does. The ball dispatcher
 is therefore fully Verified. Higher-level block, foul, and general rim-contact
 eligibility remain tracked under core/rules rather than hidden in this score.
 
-## Portable core per-frame loop — 92.9%
+## Portable core per-frame loop — 85.7%
 
 Seven portable subsystems produce this score.
 
 | Status | Subsystems |
 | --- | --- |
-| V (6) | native object state, alternating 30 Hz team scheduler, packed target coordinates, state-driven dribble audio, user control/control ownership, fixed-point height and movement physics |
-| P (1) | general player/ball collision resolution |
+| V (5) | native object state, alternating 30 Hz team scheduler, packed target coordinates, state-driven dribble audio, user control/control ownership |
+| P (2) | fixed-point height and movement physics, general player/ball collision resolution |
 | M (0) | none |
 
-Score: `(6 + 1 × 0.5) / 7 = 92.9%`.
+Score: `(5 + 2 × 0.5) / 7 = 85.7%`.
 
-Fixed-point height and movement physics is Verified. Bank-0 `$9CA0` adds a
+Fixed-point height and movement physics is Partial. Bank-0 `$9CA0` adds a
 signed 8.8 velocity to the 16.8 longitudinal coordinate, accepting integer
 positions `$0010-$01F1`; `$9CF6` does the same for depth rows `$05-$98`.
 Rejected candidates do not clamp: the old coordinate, including its fractional
@@ -199,6 +199,13 @@ depth `$004B00->$004BAB` with `$00AB`, and height `$3800->$39CD` from base
 `$0200`, elapsed `$01`, curve `$05`. Native tests assert that exact height,
 the next `$3B67` sample, valid double additions, and preserve-and-stop behavior
 at all four court limits for both dispatcher and user-controlled movement.
+The exact `$AA07->$9E2D/$9E4C` user vectors, `$ABCD->$9D2D/$AA98/$9BB0`
+route installer outputs, `$B035->$B0AB` pass initializer, contact-only `$AD41`
+reception, and byte-exact `$B189` short-shot duration/curve are translated and
+covered by native regressions. This subsystem remains Partial because the
+native 30 Hz route scheduler still uses its verified per-state arrival-cadence
+adapter instead of universally consuming `$ABCD`'s installed unit vectors, and
+because an original dynamic court-boundary rejection has not yet been captured.
 
 User control/control ownership is Verified from bank-0 `$A129`, `$AD41`, and
 `$A29D`. Direction+A uses the original directional half-plane scoring and
@@ -210,6 +217,18 @@ to the selected teammate while restoring `$20` to the former user. Focused
 FCEUX traces cover four pass directions, both reception branches, and the
 defensive switch; deterministic native checks cover handoff and post-catch
 movement.
+
+User defense now also follows `$A3E2->$A607->$A638`. Ball states `$01/$04/$05`
+require the A-button edge while `$07/$09` enter without input; the mutable
+`$0580` opponent must expose `$26/$27/$03`. `$A607` installs user state `$11`
+and the `$9B26` jump stream. `$A638` tests `$A6C3` only when the next stream
+byte is zero, changes contact to ball state `$00`, queues SFX `$20`, and delays
+`$92BD->$A44B` possession transfer until landing. A miss exposes `$10` for one
+dispatch before `$A5D0` restores `$0F`. Natural FCEUX frame 2748 proves the
+A-edge `$0F->$11` path against paired shooter `$07`; native tests cover contact,
+delayed ownership, and miss recovery. The opening reciprocal pair map is now
+the observed `$02<->$07` and `$06<->$08`; the later inbound `$99D9/$9A31`
+swap produces the separately observed `$02<->$08` mapping.
 
 Excluded NES-only presentation mechanisms: camera-driven CHR streaming,
 metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
@@ -275,12 +294,13 @@ original frame 2602 proves reason `$17` and all four `$98A3` writes; frame 2822
 then awards the foul shot to that defender. Native tests cover both reasons and
 their shooter/offender ownership.
 
-The defensive entry is Partial: the original sustained-contact steal path,
-paired CPU shot contest, owned-ball block arbitration, landing-delayed
-possession reset, and loose-ball possession arbitration are native. The user
-defender’s `$A3E2->$A607` contest trigger and remaining defensive eligibility
-branches are not yet complete, and block SFX request `$10` is traced but not yet
-connected to a native dynamic-SFX playback path.
+The defensive entry remains Partial, but its portable state/ownership spine is
+now present: sustained-contact steals, paired CPU contests, user
+`$A3E2->$A607->$A638` contests, owned-ball arbitration, apex-only `$A6C3`
+contact, landing-delayed possession, miss recovery, and loose-ball possession
+are native. What remains is exact modeling of presentation gate `$001D`, the
+full lifetime/causes of global gate `$0056`, and pack-backed playback for block
+requests `$10/$20`; those gaps prevent promotion to Verified.
 
 Missed-shot outcomes are Verified from `$AE25->$B377->$AF72/$AFDD`: controlled
 FCEUX probes independently produce classifier results `$01-$04`, the `$04F0`
@@ -290,13 +310,18 @@ entry remains Partial because, although the shared sloped boundary and reasons
 `$13-$16` are native, several foul and exceptional dead-ball causes outside the
 inbound inventory remain incomplete.
 
-The made-shot and score/HUD entries are Verified from `$AE25->$AEDE` and fixed
-bank `$C477/$C6AD`. The natural score trace enters state `$06` with counter
-`$0C`, writes both score copies only on `$09->$08`, lowers height for `$05-$00`,
-and enters rebound `$07` on underflow. Native checks prove the deferred ordinary
-two-point award and foul-shot one-point award; the renderer derives the same
-blank-leading two decimal HUD tiles from native score state. Buffered PPU queue
-mechanics remain excluded as NES-only presentation machinery.
+The made-shot and score/HUD entries are Verified from `$A7EA/$A834`,
+`$AE25->$AEDE`, and fixed bank `$C477/$C6AD`. `$A7EA` mirrors the two court
+directions and applies the exact 23-byte curved line at `$A834`; the native
+release stores shot kind 0/1 for two/three points and preserves kind 2 for a
+one-point free throw. The score trace enters state `$06` with counter `$0C`,
+writes both score copies only on `$09->$08`, lowers height for `$05-$00`, and
+enters rebound `$07` on underflow. Controlled inside/outside traces cover the
+boundary in both directions, and native checks prove deferred one-, two-, and
+three-point awards. DDAP v14 and Win32 also play the recovered `$09` line-call
+and `$25` three-point scoring cues. The renderer derives the same blank-leading
+two decimal HUD tiles from native score state. Buffered PPU queue mechanics
+remain excluded as NES-only presentation machinery.
 
 Period transitions/end conditions are Verified. The earlier long trace proves
 the delayed period-one reset to a second-period formation. The final-match trace
@@ -331,6 +356,6 @@ When updating this ledger:
 ## Highest-value next coverage work
 
 1. Translate the free-throw formation states `$42-$4A`, starting with `$8594/$85BE/$860A/$8682`.
-2. Translate the user-defender `$A3E2->$A607` contest trigger, contested-rebound, and remaining rim-contact eligibility branches.
+2. Close user/CPU contest gates `$001D/$0056`, pack-backed block SFX `$10/$20`, and remaining rim-contact eligibility branches.
 3. Match the clock's presentation-state call gaps.
 4. Complete free-throw formation movement and the remaining foul eligibility branches.

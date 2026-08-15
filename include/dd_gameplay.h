@@ -51,7 +51,9 @@ typedef enum DDPlayerAction {
     DD_PLAYER_USER_PASS_RECEIVE = 0x0C,
     DD_PLAYER_LIVE_USER_INBOUND = 0x0D,
     DD_PLAYER_LIVE_USER = 0x0F,
+    DD_PLAYER_USER_CONTEST_RECOVER = 0x10,
     DD_PLAYER_FORMATION_USER = 0x10,
+    DD_PLAYER_USER_CONTEST = 0x11,
     DD_PLAYER_TIP_USER_AIRBORNE = 0x11,
     DD_PLAYER_LIVE_TEAMMATE = 0x20,
     DD_PLAYER_LIVE_FOLLOW_TARGET = 0x21,
@@ -105,11 +107,14 @@ typedef struct DDPlayerState {
     int32_t velocity_x;
     int32_t velocity_depth;
     int32_t velocity_height;
+    int32_t route_velocity_x;
+    int32_t route_velocity_depth;
     int32_t target_x;
     int32_t target_depth;
     uint32_t cpu_updates;
     uint16_t action_age;
     uint8_t facing;
+    uint8_t route_facing;
     uint8_t animation;
     uint8_t attributes;
     uint8_t action;
@@ -137,7 +142,9 @@ typedef struct DDBallState {
     uint8_t receiver;
     uint8_t outcome;
     uint8_t rim_contact;
+    uint8_t flight_angle;
     uint8_t flight_curve;
+    uint8_t flight_duration;
     uint8_t held_height_offset;
     uint8_t vertical_phase;
     uint16_t action_age;
