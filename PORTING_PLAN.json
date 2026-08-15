@@ -203,6 +203,19 @@
       ],
       "coverage_change_percent": 0.7,
       "reason": "Three portable collision primitives advance from Partial to Verified after headless Ghidra branch recovery, controlled FCEUX rim-contact evidence, and deterministic native ordinary/special contact regressions."
+    },
+    {
+      "milestone": "phase-4c-possession-contact-arbitration-closure",
+      "status": "verified",
+      "completed": [
+        "`$91A6/$91FB` delayed and immediate contact arbitration",
+        "`$A347` ordinary return and exceptional `$30/$1A` foul branch",
+        "distinct `$9208` blocker and `$A44B` ordinary pickup role resets",
+        "`$9395` `$20` contact lock and entropy-seeded foul countdown",
+        "5 comprehensive routine nodes promoted to Verified"
+      ],
+      "coverage_change_percent": 1.2,
+      "reason": "Five possession/contact nodes advance from Partial to Verified using headless Ghidra control flow, existing controlled and natural FCEUX contact/block traces, and native gate, lane, audio, role-swap, team-state, and foul regressions."
     }
   ],
   "phases": [

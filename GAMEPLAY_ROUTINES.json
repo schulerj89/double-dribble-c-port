@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 85.4,
+    "comprehensive_percent": 86.6,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 153,
-    "partial_count": 63,
+    "verified_count": 158,
+    "partial_count": 58,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -1674,12 +1674,22 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:91A6"
+        "Ghidra recursive node bank0:91A6",
+        "Headless Ghidra `$91A6-$92BC` and `$A347-$A503` disassembly proving the `$001D/$0025/$0056/$0068` gates, paired-object checks, `$10/$30` audio branches, role-zero swaps, and distinct `$9208` versus `$A44B` team resets",
+        "FCEUX controlled contact traces record `$B435->$A347`, reason `$1A` with clock gate zero, and `$A44B`; natural block traces record `$9208` followed by player states `$0F,$20,$20,$20,$20/$40,$40,$25,$39,$39`"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_possession_contact",
+        "dd_transfer_block_possession",
+        "dd_transfer_contact_possession",
+        "dd_begin_free_throw",
+        "dd_reset_possession_rules"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c contact lock, paired threshold, ordinary `$10`, exceptional `$30/$1A`, role-zero swap, `$9208` lane branches, `$40/$40/$38/$38`, and `$A44B` role actions/height reset"
+      ]
     },
     {
       "bank": "bank0",
@@ -1701,12 +1711,22 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:91FB"
+        "Ghidra recursive node bank0:91FB",
+        "Headless Ghidra `$91A6-$92BC` and `$A347-$A503` disassembly proving the `$001D/$0025/$0056/$0068` gates, paired-object checks, `$10/$30` audio branches, role-zero swaps, and distinct `$9208` versus `$A44B` team resets",
+        "FCEUX controlled contact traces record `$B435->$A347`, reason `$1A` with clock gate zero, and `$A44B`; natural block traces record `$9208` followed by player states `$0F,$20,$20,$20,$20/$40,$40,$25,$39,$39`"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_possession_contact",
+        "dd_transfer_block_possession",
+        "dd_transfer_contact_possession",
+        "dd_begin_free_throw",
+        "dd_reset_possession_rules"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c contact lock, paired threshold, ordinary `$10`, exceptional `$30/$1A`, role-zero swap, `$9208` lane branches, `$40/$40/$38/$38`, and `$A44B` role actions/height reset"
+      ]
     },
     {
       "bank": "bank0",
@@ -1726,12 +1746,22 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9208"
+        "Ghidra recursive node bank0:9208",
+        "Headless Ghidra `$91A6-$92BC` and `$A347-$A503` disassembly proving the `$001D/$0025/$0056/$0068` gates, paired-object checks, `$10/$30` audio branches, role-zero swaps, and distinct `$9208` versus `$A44B` team resets",
+        "FCEUX controlled contact traces record `$B435->$A347`, reason `$1A` with clock gate zero, and `$A44B`; natural block traces record `$9208` followed by player states `$0F,$20,$20,$20,$20/$40,$40,$25,$39,$39`"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_possession_contact",
+        "dd_transfer_block_possession",
+        "dd_transfer_contact_possession",
+        "dd_begin_free_throw",
+        "dd_reset_possession_rules"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c contact lock, paired threshold, ordinary `$10`, exceptional `$30/$1A`, role-zero swap, `$9208` lane branches, `$40/$40/$38/$38`, and `$A44B` role actions/height reset"
+      ]
     },
     {
       "bank": "bank0",
@@ -2780,12 +2810,22 @@
         "9645"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A347"
+        "Ghidra recursive node bank0:A347",
+        "Headless Ghidra `$91A6-$92BC` and `$A347-$A503` disassembly proving the `$001D/$0025/$0056/$0068` gates, paired-object checks, `$10/$30` audio branches, role-zero swaps, and distinct `$9208` versus `$A44B` team resets",
+        "FCEUX controlled contact traces record `$B435->$A347`, reason `$1A` with clock gate zero, and `$A44B`; natural block traces record `$9208` followed by player states `$0F,$20,$20,$20,$20/$40,$40,$25,$39,$39`"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_possession_contact",
+        "dd_transfer_block_possession",
+        "dd_transfer_contact_possession",
+        "dd_begin_free_throw",
+        "dd_reset_possession_rules"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c contact lock, paired threshold, ordinary `$10`, exceptional `$30/$1A`, role-zero swap, `$9208` lane branches, `$40/$40/$38/$38`, and `$A44B` role actions/height reset"
+      ]
     },
     {
       "bank": "bank0",
@@ -2850,12 +2890,22 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A44B"
+        "Ghidra recursive node bank0:A44B",
+        "Headless Ghidra `$91A6-$92BC` and `$A347-$A503` disassembly proving the `$001D/$0025/$0056/$0068` gates, paired-object checks, `$10/$30` audio branches, role-zero swaps, and distinct `$9208` versus `$A44B` team resets",
+        "FCEUX controlled contact traces record `$B435->$A347`, reason `$1A` with clock gate zero, and `$A44B`; natural block traces record `$9208` followed by player states `$0F,$20,$20,$20,$20/$40,$40,$25,$39,$39`"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_possession_contact",
+        "dd_transfer_block_possession",
+        "dd_transfer_contact_possession",
+        "dd_begin_free_throw",
+        "dd_reset_possession_rules"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c contact lock, paired threshold, ordinary `$10`, exceptional `$30/$1A`, role-zero swap, `$9208` lane branches, `$40/$40/$38/$38`, and `$A44B` role actions/height reset"
+      ]
     },
     {
       "bank": "bank0",

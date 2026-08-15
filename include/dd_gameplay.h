@@ -210,6 +210,9 @@ typedef struct DDGameplayState {
     uint8_t foul_shooter;
     uint8_t foul_offender;
     uint8_t match_clock_pulse;
+    uint8_t contact_lock_timer;
+    uint8_t possession_foul_timer;
+    uint8_t possession_contact_limit;
     uint16_t free_throw_age;
     uint16_t free_throw_coarse_age;
     uint8_t free_throw_initialized;

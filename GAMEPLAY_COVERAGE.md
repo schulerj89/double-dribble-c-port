@@ -8,7 +8,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 **Match-rules completeness: 80.8%**
 
-**Comprehensive recursive-routine coverage: 85.4% (153 Verified, 63 Partial, 0 Missing; 7 NES mechanisms excluded)**
+**Comprehensive recursive-routine coverage: 86.6% (158 Verified, 58 Partial, 0 Missing; 7 NES mechanisms excluded)**
 
 The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, both CPU and user shot-contest paths, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher now have native paths. Inbound formation/role/arrival helpers, portable score/HUD/net effects, and internal ball physics/contact blocks are now routine-verified. Block SFX `$10/$20` and free-throw tables `$85C7/$86AF` are recovered and pack-backed; exact presentation/global contest gates, clock cadence, and remaining foul eligibility still require closure.
 
@@ -23,6 +23,12 @@ routine-verified. In particular, the seven-sample rim sweep distinguishes the
 ordinary-contact `$16` audio request from the active-special-finish `$003F`
 latch while preserving the original owner-clear, camera-carrier, and velocity
 reflection side effects.
+
+Possession arbitration `$91A6/$91FB/$9208/$A347/$A44B` is also routine-verified.
+Native state now preserves the original `$20` contact lock, entropy-seeded foul
+countdown, paired-player and role gates, `$10` ordinary-contact cue, `$30/$1A`
+exceptional foul, role-zero swaps, and the distinct blocker versus ordinary
+pickup team resets.
 
 Coverage statuses have fixed values:
 

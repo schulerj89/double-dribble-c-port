@@ -679,7 +679,7 @@ reflect longitudinal velocity `$0390/$03A0`. Native regressions exercise both
 outcomes and require that the special-finish path does not emit the ordinary
 rim sound.
 
-Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, both `$B473` rim-contact outcomes, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. The reusable `$9B42`, `$B435`, and `$B473` collision helpers are therefore **Verified**. CPU shot-block arbitration is covered below; higher-level possession/contact arbitration (`$91A6/$91FB/$9208`) and the remaining contested-rebound branches stay **Partial**.
+Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, both `$B473` rim-contact outcomes, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. The reusable `$9B42`, `$B435`, and `$B473` collision helpers are therefore **Verified**. CPU shot-block and higher-level possession/contact arbitration are covered below; only the remaining contested-rebound branches in this collision area stay **Partial**.
 
 ### Defensive contact and shooter recovery slice
 
@@ -695,19 +695,37 @@ rotating priority object `$004D` matches, then calls `$91FB`. The trace records
 the resulting `$B435` probes for slot `$0A` from frame 6554 onward while the
 player follows the loose ball.
 
-The defensive path begins at `$91A6` and `$9FA3`. Both use `$B435`, increment
+The defensive path begins at `$91A6` and `$9FA3`. Both honor `$001D`'s `$20`
+post-possession contact lock, use `$B435`, increment
 the per-object contact counter `$06A0+slot` against limit `$0068`, clear the
 counter when contact or eligibility fails, and call `$A347` when sustained
-contact qualifies. `$B435` uses exclusive player/ball half extents 4+6 on court
+contact qualifies. `$91A6` accepts only the defender paired with controlled
+owner `$0046` while direction `$40` is active; `$9FA3` accepts a non-role-zero
+teammate paired with ball owner `$005B` while direction `$08` is active.
+`$B435` uses exclusive player/ball half extents 4+6 on court
 X and depth, then accepts height when unsigned
 `player_height + $11 - ball_height < $22`. A controlled, opt-in FCEUX probe at
 frames 2602/2606/2608 holds opposing slots `$03/$07` in stable state `$3B` at
 the same coordinates with limit 3. The original calls `$A347` at frame 2608;
-because clock countdown `$0025` is nonzero, it returns and `$9FA3` jumps to
+because the entropy-seeded countdown `$0025` is nonzero, it returns and `$9FA3` jumps to
 `$A44B`. That routine changes owner/carrier `$07->$03`, installs carrier state `$02`, assigns the
 winning team `$40,$40,$3C,$3E`, and resets the other team to `$20`. The native
-translation applies those team roles, ownership, court direction, control, and
-contact-counter resets without emulating instructions.
+translation swaps a nonzero winning role with role zero through the
+`$99D9/$9A31` relationship update, applies those actions by role rather than
+object order, resets all ten heights to `$10`, and preserves ownership, court
+direction, control, and contact-counter side effects without emulating
+instructions.
+
+`$91FB` is the immediate-contact companion used by shooter recovery. Its
+ordinary path requests `$10` and falls into `$9208`, as does a successful CPU
+block landing at `$8B44`. This is not `$A44B`: `$9208` swaps the winner into
+role zero, installs carrier `$25`, gives offensive roles 1/2 state `$40`, gives
+roles 3/4 route initialization `$38`, and selects the carrier lane `$05` or
+`$0C` from the low five bits of its packed court position. Natural FCEUX block
+evidence records the next-frame vector
+`$0F,$20,$20,$20,$20/$40,$40,$25,$39,$39`; `$38` has advanced to `$39` through
+its normal dispatcher by then. Native tests preserve the earlier exact `$38`
+installation and both lane branches.
 
 Repeated natural transitions additionally verify the rebound chain: `$2D->$2E`
 at frames 2942, 3693, 4675, 7606, 8337, 9249, and 10870; `$2E->$2F` two frames
@@ -719,11 +737,11 @@ target, and hold branches. Selected-bank ROM offsets are `$8D9C->$0DAC`,
 `$A44B->$245B`, and
 `$B435->$3445`.
 
-These additions promote player states `$28,$29,$2D,$2E,$2F` to Verified and
-defensive steals/blocks from Missing to Partial. The CPU shot-block branch is
-translated below, and the later user-contest section now closes
-`$A3E2->$A607->$A638`; the remaining Partial scope is the shared gate/SFX and
-rim-contact eligibility work listed there.
+These additions promote player states `$28,$29,$2D,$2E,$2F` and the
+`$91A6/$91FB/$9208/$A347/$A44B` possession family to Verified. The CPU
+shot-block branch is translated below, and the later user-contest section
+closes `$A3E2->$A607->$A638`; remaining collision work is confined to the
+separately inventoried contested-rebound paths.
 
 ### Foul/free-throw rule and complete basket-result slice
 
@@ -1561,8 +1579,7 @@ evidence and screenshot checkpoints with:
 Coverage remains **92.6% unrounded (93% displayed)**, with **80.8%** match-rule
 completeness. The verified player/ball dispatcher entries do not gain duplicate
 credit; this repair strengthens user shooting and inbound, while universal
-route interpolation and higher-level possession/contact arbitration remain
-Partial.
+route interpolation and the remaining contested-rebound paths remain Partial.
 
 ### Post-score chase, reception, and native sprite completeness
 

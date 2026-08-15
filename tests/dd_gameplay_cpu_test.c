@@ -1189,7 +1189,63 @@ int main(int argc, char **argv) {
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u &&
           dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER,
-          "player state $29 uses immediate $91FB/$B435 contact to run $A44B possession transfer");
+          "player state $29 uses immediate $91FB/$B435 contact to run the $9208 possession transfer");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[9].action = DD_PLAYER_LIVE_SHOOTER_RESET;
+    dispatch_state.ball.action = DD_BALL_REBOUND;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.court_x = dispatch_state.players[9].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[9].court_depth;
+    dispatch_state.ball.height = dispatch_state.players[9].height + 0x0800;
+    dispatch_state.players[9].court_x = 0x008000;
+    dispatch_state.ball.court_x = dispatch_state.players[9].court_x;
+    run_cpu_dispatch(&pack, &dispatch_state, 9u);
+    check(dispatch_state.carrier == 9u && dispatch_state.ball.owner == 9u &&
+          dispatch_state.players[9].role == 0u && dispatch_state.players[5].role == 4u &&
+          dispatch_state.players[9].action == DD_PLAYER_LIVE_CARRIER &&
+          dispatch_state.players[6].action == DD_PLAYER_LIVE_CPU &&
+          dispatch_state.players[7].action == DD_PLAYER_LIVE_CPU &&
+          dispatch_state.players[8].action == DD_PLAYER_ROUTE_INIT &&
+          dispatch_state.players[5].action == DD_PLAYER_ROUTE_INIT &&
+          dispatch_state.players[0].action == DD_PLAYER_LIVE_USER &&
+          (dispatch_state.players[9].target_zone & 0x1Fu) == 0x05u &&
+          dispatch_state.audio_event == 0x10u,
+          "$91FB->$9208 swaps the winner into role zero and installs `$40/$40/$38/$38` by role");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
+    dispatch_state.players[5].paired_player = 0u;
+    dispatch_state.players[0].paired_player = 5u;
+    dispatch_state.players[5].contact_age = 19u;
+    dispatch_state.contact_lock_timer = 2u;
+    dispatch_state.cpu_global_frame = 1u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.ball.owner == 0u &&
+          dispatch_state.players[5].contact_age == 0u,
+          "$91A6` clears contact accumulation while `$001D` remains nonzero");
+    dispatch_state.contact_lock_timer = 0u;
+    dispatch_state.possession_foul_timer = 1u;
+    dispatch_state.players[5].contact_age = 19u;
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
+    dispatch_state.cpu_global_frame = 1u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u &&
+          dispatch_state.possession_direction == 0u &&
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER &&
+          (dispatch_state.players[5].target_zone & 0x1Fu) == 0x0Cu &&
+          dispatch_state.audio_event == 0x10u,
+          "$91A6->$A347->$10->$9208 transfers after the exact paired-contact threshold");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_REBOUND_CHASE;
@@ -1570,6 +1626,10 @@ int main(int argc, char **argv) {
     dispatch_state.ball.court_x = dispatch_state.players[1].court_x;
     dispatch_state.ball.court_depth = dispatch_state.players[1].court_depth;
     dispatch_state.ball.height = dispatch_state.players[1].height + 0x0800;
+    dispatch_state.contact_lock_timer = 0u;
+    dispatch_state.players[1].paired_player = 5u;
+    dispatch_state.players[5].paired_player = 1u;
+    dispatch_state.players[0].height = 0x2A00;
     dispatch_state.players[1].contact_age = 19u;
     run_cpu_dispatch(&pack, &dispatch_state, 1u);
     check(dispatch_state.carrier == 1u && dispatch_state.ball.owner == 1u &&
@@ -1578,8 +1638,12 @@ int main(int argc, char **argv) {
           dispatch_state.players[0].action == DD_PLAYER_LIVE_CPU &&
           dispatch_state.players[3].action == DD_PLAYER_LIVE_CPU_CUT &&
           dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
-          dispatch_state.possession_direction == 1u,
-          "$B435/$9FA3->$A44B sustained contact transfers possession, control, and both team states");
+          dispatch_state.players[1].role == 0u &&
+          dispatch_state.players[0].role == 1u &&
+          dispatch_state.players[0].height == 0x1000 &&
+          dispatch_state.possession_direction == 1u &&
+          dispatch_state.audio_event == 0x10u,
+          "$B435/$9FA3->$A44B sustained paired contact swaps role zero and installs both teams by role");
 
     dispatch_state = dispatch_base;
     dispatch_state.carrier = 5u;
@@ -1588,9 +1652,12 @@ int main(int argc, char **argv) {
     dispatch_state.ball.court_x = dispatch_state.players[1].court_x;
     dispatch_state.ball.court_depth = dispatch_state.players[1].court_depth;
     dispatch_state.ball.height = dispatch_state.players[1].height + 0x0800;
+    dispatch_state.contact_lock_timer = 0u;
+    dispatch_state.possession_foul_timer = 0u;
+    dispatch_state.players[1].paired_player = 5u;
+    dispatch_state.players[5].paired_player = 1u;
     dispatch_state.players[1].contact_age = 19u;
     dispatch_state.players[1].facing = dispatch_state.players[5].facing;
-    dispatch_state.scene_frame = dispatch_state.next_clock_frame - 1u;
     run_cpu_dispatch(&pack, &dispatch_state, 1u);
     check(dispatch_state.phase == DD_GAMEPLAY_FREE_THROW &&
           dispatch_state.foul_shooter == 5u && dispatch_state.foul_offender == 1u &&
@@ -1612,7 +1679,7 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].action = DD_PLAYER_LIVE_PAIRED_DEFENDER;
     dispatch_state.players[5].target_zone = 0x80u;
     dispatch_state.players[5].facing = 0u;
-    dispatch_state.scene_frame = dispatch_state.next_clock_frame - 1u;
+    dispatch_state.possession_foul_timer = 0u;
     check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_LEFT),
           "step controlled $A37D exceptional contact");
     check(dispatch_state.phase == DD_GAMEPLAY_FREE_THROW &&

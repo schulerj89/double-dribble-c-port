@@ -14,7 +14,7 @@
 #define DD_FIRST_CLOCK_TICK_FRAME 296u
 #define DD_CLOCK_FRAMES_PER_SECOND 32u
 #define DD_PERIOD_RESET_DELAY 214u
-#define DD_POSSESSION_CONTACT_LIMIT 20u
+#define DD_INITIAL_POSSESSION_CONTACT_LIMIT 0x14u
 #define DD_NO_OWNER 0xFFu
 
 static const uint16_t DD_INITIAL_X[DD_GAMEPLAY_PLAYER_COUNT] = {
@@ -69,6 +69,17 @@ static const uint8_t DD_REBOUND_PHASE_INDEX[2][DD_GAMEPLAY_PLAYER_COUNT] = {
 static const uint8_t DD_PAIRED_PLAYER[DD_GAMEPLAY_PLAYER_COUNT] = {
     5u, 9u, 8u, 7u, 6u, 0u, 4u, 3u, 2u, 1u
 };
+
+static uint32_t dd_team_role(const DDGameplayState *state, uint32_t first,
+                             uint8_t role);
+static void dd_swap_inbound_role_links(DDGameplayState *state,
+                                       uint32_t first, uint32_t second);
+static void dd_choose_spacing_target(const DDTipoffAssetsHeader *assets,
+                                     DDGameplayState *state,
+                                     uint32_t player_index);
+static uint8_t dd_pack_cpu_position(const DDPlayerState *player);
+static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed);
+static void dd_install_cpu_route_vector(DDPlayerState *player);
 static uint8_t dd_animation_for_facing(uint8_t facing, uint32_t phase) {
     static const uint8_t base[8] = {0x1Bu, 0x12u, 0x06u, 0x0Cu, 0x15u, 0x09u, 0x03u, 0x0Fu};
     uint32_t count = facing == 0u || facing == 4u ? 6u : 3u;
@@ -281,11 +292,14 @@ static void dd_restart_height_bounce(DDBallState *ball) {
     ball->velocity_height = (base & 0x8000u) != 0u ? 0 : (int32_t)base;
 }
 
-/* $9395 resets both bytes of the 64-frame coarse possession timer and the
-   return-to-backcourt latch. */
+/* `$9395` clears the coarse possession timer/backcourt latch, holds contact
+   arbitration for `$20` ticks through `$001D`, and seeds `$0025` from the
+   live entropy byte: `($0063 & $78) + $80`. */
 static void dd_reset_possession_rules(DDGameplayState *state) {
     state->possession_rule_age = 0u;
     state->backcourt_latched = 0u;
+    state->contact_lock_timer = 0x20u;
+    state->possession_foul_timer = (uint8_t)((state->cpu_entropy & 0x78u) + 0x80u);
 }
 
 /* Fixed $C141 switches to bank 1 and submits the original sound request.
@@ -447,7 +461,7 @@ static int dd_step_user_exceptional_contact(DDGameplayState *state,
     if (carrier >= DD_GAMEPLAY_PLAYER_COUNT || state->carrier != carrier ||
         state->ball.owner != carrier || state->ball.action != DD_BALL_DRIBBLE ||
         state->players[carrier].action != DD_PLAYER_LIVE_USER_CARRIER ||
-        input_mask == 0u || state->match_clock_pulse == 0u) return 0;
+        input_mask == 0u || state->possession_foul_timer != 0u) return 0;
     first = carrier < 5u ? 5u : 0u;
     for (player = first; player < first + 5u; ++player) {
         DDPlayerState *defender = &state->players[player];
@@ -462,16 +476,20 @@ static int dd_step_user_exceptional_contact(DDGameplayState *state,
     return 0;
 }
 
-/* $9FA3 calls $A347 first.  If that special branch returns, its tail jumps
-   to $A44B, which performs the ordinary possession and ten-player reset. */
+/* `$A44B` is the ordinary user-side pickup/steal reset.  If the winner is
+   not role zero, `$9097->$99D9->$9A31` swaps that role and its reciprocal
+   opponent link with role zero before the dispatcher states are installed.
+   The four offensive actions are selected by role, never by object order. */
 static void dd_transfer_contact_possession(DDGameplayState *state, uint32_t winner) {
-    static const uint8_t route_actions[4] = {
-        DD_PLAYER_LIVE_CPU, DD_PLAYER_LIVE_CPU,
-        DD_PLAYER_LIVE_CPU_CUT, DD_PLAYER_LIVE_CPU_ROUTE
-    };
     uint32_t first = winner < 5u ? 0u : 5u;
-    uint32_t route = 0u;
+    uint32_t other_first = first == 0u ? 5u : 0u;
     uint32_t player;
+    uint32_t role_zero;
+    if (winner >= DD_GAMEPLAY_PLAYER_COUNT) return;
+    role_zero = dd_team_role(state, first, 0u);
+    if (state->players[winner].role != 0u && role_zero != winner) {
+        dd_swap_inbound_role_links(state, role_zero, winner);
+    }
     state->carrier = (uint8_t)winner;
     state->ball.owner = (uint8_t)winner;
     state->last_touch_player = (uint8_t)winner;
@@ -490,35 +508,113 @@ static void dd_transfer_contact_possession(DDGameplayState *state, uint32_t winn
         object->action_age = 0u;
         object->contact_age = 0u;
         object->route_step = 0u;
+        object->height = 0x1000;
         if (player == winner) {
             object->action = winner < 5u
                 ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_CARRIER;
         } else if (player >= first && player < first + 5u) {
-            object->action = route_actions[route++];
-        } else {
+            if (object->role == 3u) object->action = DD_PLAYER_LIVE_CPU_CUT;
+            else if (object->role == 4u) object->action = DD_PLAYER_LIVE_CPU_ROUTE;
+            else object->action = DD_PLAYER_LIVE_CPU;
+        } else if (player >= other_first && player < other_first + 5u) {
             object->action = player == state->controlled_player
                 ? DD_PLAYER_LIVE_USER : DD_PLAYER_LIVE_TEAMMATE;
+        } else {
+            object->action = DD_PLAYER_LIVE_TEAMMATE;
         }
     }
 }
 
-static int dd_step_possession_contact(DDGameplayState *state, uint32_t player_index) {
+/* `$9208` is the separate CPU block/steal landing reset reached from `$91FB`
+   and `$8B44`. It swaps the winner into role zero, leaves roles 3/4 in route
+   initialization `$38`, and assigns roles 1/2 direct policy state `$40`. */
+static void dd_transfer_block_possession(const DDTipoffAssetsHeader *assets,
+                                         DDGameplayState *state,
+                                         uint32_t winner) {
+    uint32_t first;
+    uint32_t other_first;
+    uint32_t role_zero;
+    uint32_t player;
+    uint8_t packed;
+    uint8_t lane;
+    if (assets == NULL || winner >= DD_GAMEPLAY_PLAYER_COUNT) return;
+    first = winner < 5u ? 0u : 5u;
+    other_first = first == 0u ? 5u : 0u;
+    role_zero = dd_team_role(state, first, 0u);
+    if (role_zero != winner) dd_swap_inbound_role_links(state, role_zero, winner);
+
+    state->carrier = (uint8_t)winner;
+    state->ball.owner = (uint8_t)winner;
+    state->last_touch_player = (uint8_t)winner;
+    state->ball.receiver = DD_NO_OWNER;
+    state->ball.action = DD_BALL_DRIBBLE;
+    state->ball.action_age = 0u;
+    state->ball.velocity_x = 0;
+    state->ball.velocity_depth = 0;
+    state->ball.velocity_height = 0;
+    state->possession_direction = winner < 5u ? 1u : 0u;
+    dd_reset_possession_rules(state);
+    if (winner < 5u) state->controlled_player = (uint8_t)winner;
+    ++state->possession_count;
+
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        DDPlayerState *object = &state->players[player];
+        object->action_age = 0u;
+        object->contact_age = 0u;
+        object->route_step = 0u;
+        if (player == winner) {
+            object->action = winner < 5u
+                ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_CARRIER;
+        } else if (player >= first && player < first + 5u) {
+            if (object->role == 3u || object->role == 4u) {
+                dd_choose_spacing_target(assets, state, player);
+                object->action = DD_PLAYER_ROUTE_INIT;
+            } else {
+                object->action = DD_PLAYER_LIVE_CPU;
+            }
+        } else if (player >= other_first && player < other_first + 5u) {
+            object->action = player == state->controlled_player
+                ? DD_PLAYER_LIVE_USER : DD_PLAYER_LIVE_TEAMMATE;
+        }
+    }
+    packed = dd_pack_cpu_position(&state->players[winner]);
+    lane = (packed & 0x1Fu) < 0x10u ? 0x05u : 0x0Cu;
+    dd_set_cpu_target(&state->players[winner], (uint8_t)((packed & 0xE0u) | lane));
+    dd_install_cpu_route_vector(&state->players[winner]);
+}
+
+/* `$91A6` arbitrates CPU defense while direction `$40` is active and only
+   for the object paired with controlled owner `$0046`; `$9FA3` is the mirror
+   for non-role-zero user teammates during direction `$08`. Both share the
+   `$001D/$0056/$B435/$06A0/$0068` gates, but success ends in `$9208` for the
+   CPU path and `$A44B` for the user-side path. */
+static int dd_step_possession_contact(const DDTipoffAssetsHeader *assets,
+                                      DDGameplayState *state,
+                                      uint32_t player_index) {
     DDPlayerState *player = &state->players[player_index];
     uint32_t owner = state->ball.owner;
-    if (state->ball.action != DD_BALL_DRIBBLE || owner >= DD_GAMEPLAY_PLAYER_COUNT ||
+    int cpu_defense = state->possession_direction != 0u;
+    int eligible_side = cpu_defense
+        ? player_index >= 5u && player->paired_player == state->controlled_player
+        : player_index < 5u && player->role != 0u && player->paired_player == owner;
+    if (state->contact_lock_timer != 0u || !eligible_side ||
+        state->ball.action != DD_BALL_DRIBBLE || owner >= DD_GAMEPLAY_PLAYER_COUNT ||
         owner == player_index || (owner < 5u) == (player_index < 5u) ||
         !dd_possession_ball_contact(state, player_index)) {
         player->contact_age = 0u;
         return 0;
     }
     if (player->contact_age != UINT8_MAX) ++player->contact_age;
-    if (player->contact_age < DD_POSSESSION_CONTACT_LIMIT) return 0;
-    if (state->match_clock_pulse != 0u &&
+    if (player->contact_age < state->possession_contact_limit) return 0;
+    player->contact_age = 0u;
+    if (state->possession_foul_timer == 0u &&
         state->players[owner].facing == player->facing) {
         dd_begin_free_throw(state, owner, player_index, 0x1Au);
         return 1;
     }
-    dd_transfer_contact_possession(state, player_index);
+    dd_request_audio_event(state, 0x10u);
+    if (cpu_defense) dd_transfer_block_possession(assets, state, player_index);
+    else dd_transfer_contact_possession(state, player_index);
     return 1;
 }
 
@@ -1689,7 +1785,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
        common movement tail, so every portable object field remains intact. */
     if (player->action == DD_PLAYER_ROUTE_WAIT) return;
     if (player->action_age != UINT16_MAX) ++player->action_age;
-    if (dd_step_possession_contact(state, player_index)) return;
+    if (dd_step_possession_contact(assets, state, player_index)) return;
     switch (player->action) {
         case DD_PLAYER_USER_PASS_RECOVER:
             speed = 0;
@@ -1857,7 +1953,17 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                                                                state->ball.court_depth);
             }
             if (dd_possession_ball_contact(state, player_index)) {
-                dd_transfer_contact_possession(state, player_index);
+                /* `$91FB->$A347->$10->$9208`: unlike a ground pickup, this
+                   immediate shooter-reset contact takes the block reset. */
+                if (state->possession_foul_timer == 0u &&
+                    state->ball.owner < DD_GAMEPLAY_PLAYER_COUNT &&
+                    state->players[state->ball.owner].facing == player->facing) {
+                    dd_begin_free_throw(state, state->ball.owner,
+                                        player_index, 0x1Au);
+                } else {
+                    dd_request_audio_event(state, 0x10u);
+                    dd_transfer_block_possession(assets, state, player_index);
+                }
                 return;
             }
             break;
@@ -1997,7 +2103,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             }
             if (dd_step_player_height_script(assets, player)) {
                 if (state->ball.owner == player_index) {
-                    dd_transfer_contact_possession(state, player_index);
+                    dd_transfer_block_possession(assets, state, player_index);
                 } else {
                     player->action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
                     /* $28's native age counts upward while the ROM's $04F0
@@ -2355,6 +2461,10 @@ static uint8_t dd_bcd_decrement(uint8_t value) {
 
 static void dd_step_game_clock(DDGameplayState *state) {
     state->match_clock_pulse = 0u;
+    /* `$9431` decrements `$0025` and `$001D` before its 32-frame BCD gate.
+       The native outer loop reaches this once per rendered gameplay frame. */
+    if (state->possession_foul_timer != 0u) --state->possession_foul_timer;
+    if (state->contact_lock_timer != 0u) --state->contact_lock_timer;
     if (state->clock_expired || state->scene_frame < state->next_clock_frame) return;
     while (!state->clock_expired && state->scene_frame >= state->next_clock_frame) {
         state->match_clock_pulse = 1u;
@@ -2408,6 +2518,9 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
     state->dunk_age = 0u;
     state->foul_shooter = DD_NO_OWNER;
     state->foul_offender = DD_NO_OWNER;
+    state->contact_lock_timer = 0u;
+    state->possession_foul_timer = 0u;
+    state->possession_contact_limit = DD_INITIAL_POSSESSION_CONTACT_LIMIT;
     state->free_throw_age = 0u;
     state->free_throw_coarse_age = 0u;
     state->free_throw_initialized = 0u;
