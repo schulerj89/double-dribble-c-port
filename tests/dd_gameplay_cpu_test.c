@@ -158,8 +158,13 @@ int main(int argc, char **argv) {
     check(dd_gameplay_advance_to(&pack, &state, 569u, 0u), "advance to scoring result");
     check(state.live_frame == 213u && state.ball.action == DD_BALL_SCORE,
           "live 213 reaches original score/rim state $06");
-    check(state.score[1] == 2u && state.score[0] == 0u,
-          "first CPU make updates the native right-side score to two points");
+    check(state.score[1] == 0u && state.score[0] == 0u,
+          "entering score state $06 does not award points before $AEDE counter $08");
+    check(dd_gameplay_advance_to(&pack, &state, 573u, 0u),
+          "advance four score-state dispatches to $AEDE counter $08");
+    check(state.live_frame == 217u && state.ball.action == DD_BALL_SCORE &&
+          state.score[1] == 2u && state.score[0] == 0u,
+          "$AEDE counter $08 updates the native right-side score to two points");
     check(dd_gameplay_advance_to(&pack, &state, 582u, 0u), "advance to rebound state");
     check(state.live_frame == 226u && state.ball.action == DD_BALL_REBOUND,
           "live 226 reaches original rebound state $07");
@@ -730,9 +735,14 @@ int main(int argc, char **argv) {
     dispatch_state.score[1] = 0u;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u),
           "score controlled free-throw result one");
-    check(dispatch_state.ball.action == DD_BALL_SCORE &&
-          dispatch_state.score[1] == 1u,
-          "$B377 result one awards one point while the foul shot is active");
+    check(dispatch_state.ball.action == DD_BALL_SCORE && dispatch_state.score[1] == 0u,
+          "$B377 result one enters score state before the deferred point award");
+    for (player = 0u; player < 4u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance free-throw score counter to $08");
+    }
+    check(dispatch_state.score[1] == 1u,
+          "$AEDE counter $08 awards one point while the foul shot is active");
 
     dispatch_state = dispatch_base;
     dispatch_state.carrier = 5u;

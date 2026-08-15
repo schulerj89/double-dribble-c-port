@@ -621,6 +621,27 @@ native classifier now has the same wrap guard; tests cover all `$AF72` vector
 branches and `$AFDD`'s 61-frame arc. This promotes missed-shot outcomes to
 Verified without promoting the still-partial shot-block collision family.
 
+### Made-basket counter and score/HUD timing
+
+Headless Ghidra at `$AEDE` shows that score state `$06` is driven by byte
+counter `$004A`, initialized to `$0C` by `$AE25`. Every dispatch decrements it.
+The `$09->$08` dispatch selects an ordinary two-point increment (or the
+free-throw-adjusted one-point increment), calls fixed-bank `$C477/$C6AD`, clears
+shot-kind `$005F`, and queues the score display through `$98B5`. Only counter
+values `$05-$00` lower the ball's integer height; `$00->$FF` clears the display
+mode and enters rebound state `$07`.
+
+The dedicated FCEUX `gameplay-score-calls.csv` trace proves the timing. Original
+frame 2770 installs state `$06/$0C`; frames 2771-2773 reach `$0B/$0A/$09` with
+both score copies `$07F0/$07F8` still zero. Frame 2774 writes both copies to
+`$02` as the counter reaches `$08`; frames 2777-2782 lower height `$32->$2C`;
+frame 2783 underflows and installs `$07`. The queued HUD transfer later writes
+the right score digits, while the native renderer reads the same score state
+directly because NES PPU buffering is excluded. Native regression checks now
+assert no points on state entry, two points on the fourth dispatch, and one
+point on the corresponding free-throw dispatch. Made-shot sequence and
+score/HUD updates are therefore Verified.
+
 ### CPU packed avoidance and terminal ball states
 
 The fixed-bank `$D99A-$DA39` helper is a short lookahead rather than a general

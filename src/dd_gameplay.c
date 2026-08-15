@@ -262,6 +262,16 @@ static uint8_t dd_basket_contact_result(const DDGameplayState *state) {
     return 0u;
 }
 
+static void dd_apply_made_basket_score(DDGameplayState *state) {
+    if (state->last_shooter < DD_GAMEPLAY_PLAYER_COUNT) {
+        uint32_t team = state->last_shooter < 5u ? 0u : 1u;
+        uint32_t points = state->shot_value == 1u ? 1u : 2u;
+        if (state->score[team] <= 999u - points) {
+            state->score[team] = (uint16_t)(state->score[team] + points);
+        }
+    }
+}
+
 /* $B473 sweeps seven two-axis samples along the rim/backboard diagonal.  On
    the first contact it latches $0490 and reverses longitudinal velocity. */
 static int dd_rim_sweep_contact(DDGameplayState *state) {
@@ -1388,13 +1398,6 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                     ball->height = (ball->height & 0x00FF) | 0x3200;
                     ball->velocity_x = 0;
                     ball->velocity_depth = 0;
-                    if (state->last_shooter < DD_GAMEPLAY_PLAYER_COUNT) {
-                        uint32_t team = state->last_shooter < 5u ? 0u : 1u;
-                        uint32_t points = state->shot_value == 1u ? 1u : 2u;
-                        if (state->score[team] <= 999u - points) {
-                            state->score[team] = (uint16_t)(state->score[team] + points);
-                        }
-                    }
                     state->possession_direction ^= 1u;
                 }
                 break;
@@ -1413,7 +1416,13 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             break;
         }
         case DD_BALL_SCORE:
-            if (ball->action_age >= 7u && ball->height >= 0x0100) {
+            /* $AEDE starts counter $004A at $0C.  It awards the basket when
+               the post-decrement value reaches $08 (fourth dispatch), lowers
+               integer height only for values $05-$00, then enters $07 when
+               the next decrement underflows. */
+            if (ball->action_age == 4u) dd_apply_made_basket_score(state);
+            if (ball->action_age >= 7u && ball->action_age <= 12u &&
+                ball->height >= 0x0100) {
                 ball->height -= 0x0100;
             }
             if (ball->action_age >= 13u) {

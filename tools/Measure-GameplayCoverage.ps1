@@ -24,9 +24,9 @@ $components = @(
     },
     [pscustomobject]@{
         Name = 'Match rules'; Weight = 0.20; Expected = 13
-        Verified = @('tipoff','misses')
-        Partial = @('user-control','cpu-choice','made-shot','rebound','inbound','possession-transfer',
-                    'clock','score-hud','periods','steals-blocks','fouls-out-of-bounds')
+        Verified = @('tipoff','made-shot','score-hud','misses')
+        Partial = @('user-control','cpu-choice','rebound','inbound','possession-transfer',
+                    'clock','periods','steals-blocks','fouls-out-of-bounds')
         Missing = @()
     }
 )

@@ -88,6 +88,8 @@ local clock_calls = assert(io.open(join_path(capture_root, "gameplay-clock-calls
 clock_calls:write("frame,clock_minutes,clock_seconds,ball_state,phase\n")
 local collision_calls = assert(io.open(join_path(capture_root, "gameplay-collision-calls.csv"), "w"))
 collision_calls:write("frame,pc,current_object,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier,contact_timer,contact_limit,clock_gate,current_facing,owner_facing\n")
+local score_calls = assert(io.open(join_path(capture_root, "gameplay-score-calls.csv"), "w"))
+score_calls:write("frame,counter,ball_state,score_copy_a,score_copy_b,height,scoring_side,shot_kind\n")
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
@@ -171,6 +173,16 @@ memory.registerexecute(0xB473, 1, record_collision_call)
 memory.registerexecute(0xB435, 1, record_collision_call)
 memory.registerexecute(0xA347, 1, record_collision_call)
 memory.registerexecute(0xA44B, 1, record_collision_call)
+memory.registerexecute(0xAEDE, 1, function(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+        score_calls:write(string.format("%d,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+            frame, memory.readbyte(0x004A), memory.readbyte(0x0340),
+            memory.readbyte(0x07F0), memory.readbyte(0x07F8),
+            memory.readbyte(0x0410), memory.readbyte(0x0056),
+            memory.readbyte(0x005F)))
+    end
+end)
 
 local function record_cpu_decision(address, size, value)
     local frame = emu.framecount()
@@ -195,7 +207,7 @@ local capture_frames = {
     [2460]=true,[2480]=true,[2500]=true,[2519]=true,[2520]=true,[2530]=true,[2531]=true,
     [2540]=true,[2550]=true,[2557]=true,[2560]=true,[2570]=true,[2580]=true,[2590]=true,
     [2600]=true,[2620]=true,[2640]=true,
-    [2660]=true,[2680]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,
+    [2660]=true,[2680]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,[2774]=true,
     [2770]=true,[2783]=true,[2929]=true,[2944]=true,[3004]=true,[3324]=true,
     [3501]=true,[3545]=true,[3553]=true,[3572]=true,[3600]=true,[3640]=true,
     [3680]=true,[3720]=true,[3800]=true,[3900]=true,[4000]=true,[4100]=true,[4200]=true,
@@ -479,6 +491,7 @@ states:close()
 dispatch:close()
 clock_calls:close()
 collision_calls:close()
+score_calls:close()
 cpu_decisions:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")

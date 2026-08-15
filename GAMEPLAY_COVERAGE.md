@@ -4,9 +4,9 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 86%**
+**Portable Ghidra-to-C gameplay-loop coverage: 88%**
 
-**Match-rules completeness: 57.7%**
+**Match-rules completeness: 65.4%**
 
 The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, final match end, blocks, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 86.2%`, rounded to **86%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 87.7%`, rounded to **88%**.
 
 ## Player action dispatcher — 100%
 
@@ -160,17 +160,17 @@ metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
 switching are likewise excluded globally and are not represented as gameplay
 coverage entries.
 
-## Match rules and possession flow — 57.7%
+## Match rules and possession flow — 65.4%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
-| V (2) | opening tip-off and possession award; missed-shot outcomes |
-| P (11) | live user control, CPU pass/shot choice, made-shot sequence, rebound sequence, inbound sequence, possession transfer, game clock, score/HUD updates, period transitions/end conditions, defensive steals/blocks, fouls and general out-of-bounds rules |
+| V (4) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes |
+| P (9) | live user control, CPU pass/shot choice, rebound sequence, inbound sequence, possession transfer, game clock, period transitions/end conditions, defensive steals/blocks, fouls and general out-of-bounds rules |
 | M (0) | none |
 
-Score: `(2 + 11 × 0.5) / 13 = 57.7%`.
+Score: `(4 + 9 × 0.5) / 13 = 65.4%`.
 
 The defensive entry is Partial: the original sustained-contact steal path and
 immediate loose-ball possession arbitration are now native, but shot blocks and
@@ -182,6 +182,14 @@ wrap/arming return is covered, and native checks exercise all three miss-vector
 branches plus the traced 61-frame loose-ball arc. The combined foul/out-of-bounds
 entry is now Partial because the zero-clock same-facing foul/free-throw path is
 native; general sideline and baseline out-of-bounds decisions remain missing.
+
+The made-shot and score/HUD entries are Verified from `$AE25->$AEDE` and fixed
+bank `$C477/$C6AD`. The natural score trace enters state `$06` with counter
+`$0C`, writes both score copies only on `$09->$08`, lowers height for `$05-$00`,
+and enters rebound `$07` on underflow. Native checks prove the deferred ordinary
+two-point award and foul-shot one-point award; the renderer derives the same
+blank-leading two decimal HUD tiles from native score state. Buffered PPU queue
+mechanics remain excluded as NES-only presentation machinery.
 
 ## Evidence and update rules
 
