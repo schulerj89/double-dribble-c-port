@@ -96,6 +96,7 @@ typedef struct DDTipoffAssetsHeader {
     int8_t height_scripts[32];
     uint8_t cpu_role_targets[20];
     uint8_t cpu_spacing_targets[14];
+    uint8_t cpu_region_targets[7];
     uint8_t court_chr_left[DD_COURT_CHR_STREAM_SIZE];
     uint8_t court_chr_right[DD_COURT_CHR_STREAM_SIZE];
 } DDTipoffAssetsHeader;

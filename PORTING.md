@@ -409,9 +409,9 @@ ROM provenance for these selected-bank-0 addresses is `$89C0->$09D0`, `$8A98->$0
 
 The extended APU trace also establishes that ordinary gameplay has no continuously running background song in this branch. At original frame 2565 fixed `$CD24` installs bank-1 stream pointers `$8653/$8664/$866B`; frames 2566-2579 write a pulse/triangle/noise gesture, and a new cycle begins around frame 2584. Square 2 remains silent. During long dead-ball/non-dribble intervals the channels go silent instead of maintaining a score. The fixed driver loads stream pointer bytes into `$88/$8D`, initializes channel state, and clears the corresponding `$4000` register before the bank-1 sequencer services it.
 
-DDAP v11 adds `gameplay.audio`: twenty normalized events over eighteen frames, with provenance bank 1 `$8653` (ROM file offset `$4663`, bounded source span `$40`). Win32 loops the synthesized gesture only while gameplay is LIVE and ball action is dribble `$01`; pass, shot, rebound, and dead-ball states stop it. `--dump-gameplay-wav` exports the generated pack-only WAV. This is the audio actually observed in FCEUX, rather than an invented gameplay BGM.
+DDAP v11 introduced `gameplay.audio`: twenty normalized events over eighteen frames, with provenance bank 1 `$8653` (ROM file offset `$4663`, bounded source span `$40`). Win32 loops the synthesized gesture only while gameplay is LIVE and ball action is dribble `$01`; pass, shot, rebound, and dead-ball states stop it. `--dump-gameplay-wav` exports the generated pack-only WAV. This is the audio actually observed in FCEUX, rather than an invented gameplay BGM. DDAP v12 retains it and adds the seven route targets extracted from `$AC78`.
 
-The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the v11 audio event count. The original-frame-3572/native-1371 screenshot comparison differs by 2,570 pixels out of 57,344 (4.4817%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
+The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the gameplay audio event count. The original-frame-3572/native-1371 screenshot comparison differs by 2,570 pixels out of 57,344 (4.4817%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
 
 ### Complete dispatcher inventory slice
 
@@ -565,9 +565,24 @@ The native handler reproduces those branches and ownership/latch side effects,
 promoting `$03/$08` and completing all 13 ball dispatcher states. Broader block,
 foul, and general rim-contact eligibility remains incomplete at the rule level.
 
+Player route initializer `$38` at `$8195` stores `$39`, calls `$8468`, and then
+uses the common movement tail. `$8468` calls `$AC2A`; nonzero regions index the
+seven bytes at `$AC78` through `$AC58`, while region zero substitutes
+`($001A + 1) & 3`. Natural frames 9110-9112 show slots `$07/$0A` in region one
+selecting packed target `$EC` and then changing `$38->$39`. DDAP v12 extracts
+the complete `$AC78` table (`96 EC 8C 2C E6 85 25`) so the native route contains
+no embedded asset bytes.
+
+Two controlled frame-2601 probes seed motion vectors `$0123/$FEDC/$0345`.
+State `$3B` reaches the literal `$8297 RTS` and preserves all three through
+frame 2604. State `$3F` reaches `$8460->$B503` and clears all three on frame
+2601. The native dispatcher now makes the same distinction and tests it;
+`$38/$3B/$3F` move to Verified while `$39/$3A` remain Partial pending their
+remaining regional/occupancy branches.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **77% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **78% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

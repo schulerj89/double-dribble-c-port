@@ -16,6 +16,9 @@ local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME")
 local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
 local inject_loose_launch_frame = tonumber(os.getenv("DD_INJECT_LOOSE_LAUNCH_FRAME") or "-1")
 local inject_loose_outcome = tonumber(os.getenv("DD_INJECT_LOOSE_OUTCOME") or "2")
+local inject_player_state_frame = tonumber(os.getenv("DD_INJECT_PLAYER_STATE_FRAME") or "-1")
+local inject_player_state = tonumber(os.getenv("DD_INJECT_PLAYER_STATE") or "59")
+local inject_player_slot = tonumber(os.getenv("DD_INJECT_PLAYER_SLOT") or "7")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -300,6 +303,18 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x03F0, 0x40)
         memory.writebyte(0x0410, 0x37)
         memory.writebyte(0x0420, 0x55)
+    end
+    if next_frame == inject_player_state_frame then
+        -- Controlled player-dispatch probe. Seed all three motion vectors so
+        -- $8297's bare RTS and $8460->$B503 can be distinguished dynamically.
+        local player = inject_player_slot
+        memory.writebyte(0x0340 + player, inject_player_state)
+        memory.writebyte(0x0390 + player, 0x01)
+        memory.writebyte(0x03A0 + player, 0x23)
+        memory.writebyte(0x03E0 + player, 0xFE)
+        memory.writebyte(0x03F0 + player, 0xDC)
+        memory.writebyte(0x0430 + player, 0x03)
+        memory.writebyte(0x0440 + player, 0x45)
     end
     joypad.set(1, input)
     emu.frameadvance()

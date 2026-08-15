@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 11u
+#define DD_PACK_VERSION 12u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -624,6 +624,7 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
     const size_t height_scripts = dd_bank_file_offset(0u, 0x9B29u);
     const size_t cpu_role_targets = 16u + 7u * 0x4000u + (0xD745u - 0xC000u);
     const size_t cpu_spacing_targets = dd_bank_file_offset(0u, 0x8452u);
+    const size_t cpu_region_targets = dd_bank_file_offset(0u, 0xAC78u);
     const size_t court_chr_left = dd_bank_file_offset(0u, 0xB59Eu);
     const size_t court_chr_right = dd_bank_file_offset(0u, 0xB83Eu);
     uint8_t *data = (uint8_t *)calloc(1u, capacity);
@@ -634,6 +635,7 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
         height_scripts + sizeof(header->height_scripts) > rom_size ||
         cpu_role_targets + sizeof(header->cpu_role_targets) > rom_size ||
         cpu_spacing_targets + sizeof(header->cpu_spacing_targets) > rom_size ||
+        cpu_region_targets + sizeof(header->cpu_region_targets) > rom_size ||
         court_chr_left + sizeof(header->court_chr_left) > rom_size ||
         court_chr_right + sizeof(header->court_chr_right) > rom_size) {
         free(data);
@@ -643,6 +645,7 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
     memcpy(header->height_scripts, rom + height_scripts, sizeof(header->height_scripts));
     memcpy(header->cpu_role_targets, rom + cpu_role_targets, sizeof(header->cpu_role_targets));
     memcpy(header->cpu_spacing_targets, rom + cpu_spacing_targets, sizeof(header->cpu_spacing_targets));
+    memcpy(header->cpu_region_targets, rom + cpu_region_targets, sizeof(header->cpu_region_targets));
     memcpy(header->court_chr_left, rom + court_chr_left, sizeof(header->court_chr_left));
     memcpy(header->court_chr_right, rom + court_chr_right, sizeof(header->court_chr_right));
     for (index = 0u; index < DD_GAMEPLAY_METASPRITE_COUNT; ++index) {
@@ -1300,6 +1303,14 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
                 return 0;
             }
         }
+        for (index = 0u; index < sizeof(assets->cpu_region_targets); ++index) {
+            uint8_t target = assets->cpu_region_targets[index];
+            if ((target & 0x1Fu) == 0u || (target & 0xE0u) == 0u) {
+                dd_asset_pack_unload(pack);
+                free(file_data);
+                return 0;
+            }
+        }
         for (index = 0u; index < DD_GAMEPLAY_METASPRITE_COUNT; ++index) {
             if (assets->metasprite_offset[index] < sizeof(*assets) ||
                 assets->metasprite_size[index] == 0u ||
@@ -1419,7 +1430,7 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v11: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 34 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, and %zu DMC bytes.\n",
+    printf("Valid DDAP v12: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, and %zu DMC bytes.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
            pack.select_music_count, pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count,
            pack.config_music_count,

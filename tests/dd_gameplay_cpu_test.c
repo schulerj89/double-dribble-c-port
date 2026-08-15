@@ -63,6 +63,10 @@ int main(int argc, char **argv) {
           "asset pack exposes the observed role targets at both half-court phases");
     check(assets->cpu_spacing_targets[3] == 0x8Cu && assets->cpu_spacing_targets[13] == 0x4Cu,
           "asset pack exposes the observed opening spacing and cut targets");
+    check(assets->cpu_region_targets[0] == 0x96u &&
+          assets->cpu_region_targets[1] == 0xECu &&
+          assets->cpu_region_targets[6] == 0x25u,
+          "asset pack exposes $AC78's seven route-init region targets");
     check(memcmp(assets->court_chr_left, assets->court_chr_right,
                  sizeof(assets->court_chr_left)) != 0,
           "asset pack exposes distinct camera-triggered left and right court CHR streams");
@@ -379,9 +383,12 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_ROUTE_INIT;
+    dispatch_state.players[5].court_x = 0x00B000;
+    dispatch_state.players[5].court_depth = 0x7000;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
-    check(dispatch_state.players[5].action == DD_PLAYER_ROUTE_APPROACH,
-          "player state $38 selects a spacing target and advances to $39");
+    check(dispatch_state.players[5].action == DD_PLAYER_ROUTE_APPROACH &&
+          dispatch_state.players[5].target_zone == 0xECu,
+          "player state $38 uses $AC2A region one and $AC78 target $EC before $39");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_ROUTE_APPROACH;
@@ -401,20 +408,33 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_ROUTE_WAIT;
-    dispatch_state.players[5].velocity_x = 0;
+    dispatch_state.players[5].velocity_x = 0x0123;
+    dispatch_state.players[5].velocity_depth = -0x0456;
+    dispatch_state.players[5].velocity_height = 0x0789;
+    dispatch_state.players[5].action_age = 9u;
     live_start_x[5] = dispatch_state.players[5].court_x;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_ROUTE_WAIT &&
-          dispatch_state.players[5].court_x == live_start_x[5],
-          "player state $3B preserves the original RTS no-op behavior");
+          dispatch_state.players[5].court_x == live_start_x[5] &&
+          dispatch_state.players[5].velocity_x == 0x0123 &&
+          dispatch_state.players[5].velocity_depth == -0x0456 &&
+          dispatch_state.players[5].velocity_height == 0x0789 &&
+          dispatch_state.players[5].action_age == 9u,
+          "player state $3B preserves the original bare-RTS object state");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_RENDER_ONLY;
+    dispatch_state.players[5].velocity_x = 0x0123;
+    dispatch_state.players[5].velocity_depth = -0x0456;
+    dispatch_state.players[5].velocity_height = 0x0789;
     live_start_x[5] = dispatch_state.players[5].court_x;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_LIVE_RENDER_ONLY &&
-          dispatch_state.players[5].court_x == live_start_x[5],
-          "player state $3F executes only its render/animation continuation");
+          dispatch_state.players[5].court_x == live_start_x[5] &&
+          dispatch_state.players[5].velocity_x == 0 &&
+          dispatch_state.players[5].velocity_depth == 0 &&
+          dispatch_state.players[5].velocity_height == 0,
+          "player state $3F reproduces $8460->$B503's three-vector clear");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_INBOUNDER;

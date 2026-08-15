@@ -391,11 +391,11 @@ static void dd_choose_spacing_target(const DDTipoffAssetsHeader *assets,
                                      DDGameplayState *state, uint32_t player_index) {
     DDPlayerState *player = &state->players[player_index];
     uint8_t region = dd_cpu_region(dd_pack_cpu_position(player));
-    uint8_t phase = (uint8_t)((state->cpu_global_frame >> 1u) & 1u);
-    uint8_t target = assets->cpu_spacing_targets[(uint32_t)region * 2u + phase];
-    if (dd_cpu_target_occupied(state, player_index, target)) {
-        target = assets->cpu_spacing_targets[(uint32_t)region * 2u + (phase ^ 1u)];
-    }
+    /* $8468 passes the current $AC2A region to $AC58. Region zero instead
+       uses ($001A + 1) & 3; $AC58 reads the seven-byte table at $AC78. */
+    uint8_t target_index = region != 0u
+        ? region : (uint8_t)((state->cpu_global_frame + 1u) & 3u);
+    uint8_t target = assets->cpu_region_targets[target_index];
     dd_set_cpu_target(player, target);
 }
 
@@ -510,6 +510,9 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
     DDPlayerState *player = &state->players[player_index];
     int32_t speed = 0x0180;
     ++player->cpu_updates;
+    /* Dispatcher state $3B points at $8297, a bare RTS. It bypasses even the
+       common movement tail, so every portable object field remains intact. */
+    if (player->action == DD_PLAYER_ROUTE_WAIT) return;
     if (player->action_age != UINT16_MAX) ++player->action_age;
     if (dd_step_possession_contact(state, player_index)) return;
     switch (player->action) {
@@ -788,17 +791,13 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 player->action_age = 0u;
             }
             break;
-        case DD_PLAYER_ROUTE_WAIT:
-            /* $8297 is literally RTS: preserve the object unchanged. */
-            speed = 0;
-            player->velocity_x = 0;
-            player->velocity_depth = 0;
-            break;
         case DD_PLAYER_LIVE_RENDER_ONLY:
-            /* $8460 only calls $B503 and the common animation/render tail. */
+            /* $8460 calls $B503, clearing all three motion vectors, before
+               the common animation/render tail. */
             speed = 0;
             player->velocity_x = 0;
             player->velocity_depth = 0;
+            player->velocity_height = 0;
             break;
         case DD_PLAYER_INBOUNDER:
             /* $8C6B moves to the inbound point, becomes ball owner, then
