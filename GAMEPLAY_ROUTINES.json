@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 61.3,
+    "comprehensive_percent": 67.8,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 49,
-    "partial_count": 167,
+    "verified_count": 77,
+    "partial_count": 139,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -1687,12 +1687,23 @@
         "9ABD"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9ABD"
+        "Ghidra recursive node bank0:9ABD",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -1702,12 +1713,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9AFB"
+        "Ghidra recursive node bank0:9AFB",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -1717,12 +1739,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9AFD"
+        "Ghidra recursive node bank0:9AFD",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -1732,12 +1765,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9B0E"
+        "Ghidra recursive node bank0:9B0E",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -1762,12 +1806,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9B84"
+        "Ghidra recursive node bank0:9B84",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -1785,12 +1840,23 @@
         "9C06"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9BB0"
+        "Ghidra recursive node bank0:9BB0",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1808,12 +1874,23 @@
         "9C06"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9BB2"
+        "Ghidra recursive node bank0:9BB2",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1823,12 +1900,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9BF6"
+        "Ghidra recursive node bank0:9BF6",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1838,12 +1926,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9BF8"
+        "Ghidra recursive node bank0:9BF8",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1855,12 +1954,23 @@
         "9BF8"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9C06"
+        "Ghidra recursive node bank0:9C06",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1870,12 +1980,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9C0B"
+        "Ghidra recursive node bank0:9C0B",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1885,12 +2006,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9CA0"
+        "Ghidra recursive node bank0:9CA0",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -1900,12 +2032,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9CF6"
+        "Ghidra recursive node bank0:9CF6",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -1919,12 +2062,23 @@
         "9D9A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9D2D"
+        "Ghidra recursive node bank0:9D2D",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1938,12 +2092,23 @@
         "9D9A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9D35"
+        "Ghidra recursive node bank0:9D35",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1956,12 +2121,23 @@
         "9D9A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9D55"
+        "Ghidra recursive node bank0:9D55",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1973,12 +2149,23 @@
         "9D9A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9D9A"
+        "Ghidra recursive node bank0:9D9A",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2671,12 +2858,23 @@
         "9CA0"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A84C"
+        "Ghidra recursive node bank0:A84C",
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
     },
     {
       "bank": "bank0",
@@ -2719,12 +2917,20 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AA07"
+        "Ghidra recursive node bank0:AA07",
+        "Ghidra `$AA07->$9E2D/$9E4C` eight-direction copy and `$B501/$B503` six-byte velocity clear",
+        "FCEUX direction probes record all eight signed 8.8 vectors; natural dispatch traces execute both clear entry points"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_motion_vector",
+        "dd_begin_shot",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c eight-direction user movement and state-$3F/shot motion clear checks"
+      ]
     },
     {
       "bank": "bank0",
@@ -2779,12 +2985,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AA98"
+        "Ghidra recursive node bank0:AA98",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2796,12 +3013,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AAEE"
+        "Ghidra recursive node bank0:AAEE",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2813,12 +3041,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AB53"
+        "Ghidra recursive node bank0:AB53",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2828,12 +3067,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AB72"
+        "Ghidra recursive node bank0:AB72",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2845,12 +3095,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AB96"
+        "Ghidra recursive node bank0:AB96",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2860,12 +3121,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:ABAB"
+        "Ghidra recursive node bank0:ABAB",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2880,12 +3152,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:ABCD"
+        "Ghidra recursive node bank0:ABCD",
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3701,12 +3984,20 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B501"
+        "Ghidra recursive node bank0:B501",
+        "Ghidra `$AA07->$9E2D/$9E4C` eight-direction copy and `$B501/$B503` six-byte velocity clear",
+        "FCEUX direction probes record all eight signed 8.8 vectors; natural dispatch traces execute both clear entry points"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_motion_vector",
+        "dd_begin_shot",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c eight-direction user movement and state-$3F/shot motion clear checks"
+      ]
     },
     {
       "bank": "bank0",
@@ -3716,12 +4007,20 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B503"
+        "Ghidra recursive node bank0:B503",
+        "Ghidra `$AA07->$9E2D/$9E4C` eight-direction copy and `$B501/$B503` six-byte velocity clear",
+        "FCEUX direction probes record all eight signed 8.8 vectors; natural dispatch traces execute both clear entry points"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_motion_vector",
+        "dd_begin_shot",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c eight-direction user movement and state-$3F/shot motion clear checks"
+      ]
     },
     {
       "bank": "fixed7",

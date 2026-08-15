@@ -1066,6 +1066,18 @@ upper/lower rejection for both axes. The user-control checks additionally
 prove that boundary attempts preserve sub-cell coordinates and zero rejected
 velocity rather than snapping to a clamp.
 
+Four controlled FCEUX boundary captures close the remaining primitive
+rejection branches. `phase4-physics-x-upper` enters `$9CA0` with
+`$01F1.80/$0100` and returns `$01F1.80/$0000`; `x-lower` does the same for
+`$0010.80/$FF00`. `depth-upper` enters `$9CF6` with `$98.80/$0100`, while
+`depth-lower` uses `$05.80/$FF00`; both return at `$9D2C` with the coordinate
+unchanged and velocity zero. The checked-in capture option injects only at the
+original helper entry, so the original instructions execute every decision
+and the ordinary trace hook records the result. This promotes the bounded-axis,
+height-script, angle/vector, packed-target, user-direction, and motion-clear
+primitive routine families to Verified. The higher-level route cadence adapter
+remains Partial and is tracked separately.
+
 Focused traces close the four former initializer gaps:
 
 - `$9F70->$AA07->$9E2D` maps all eight user directions to `$0130/$0000`,

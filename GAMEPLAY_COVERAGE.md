@@ -8,7 +8,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 **Match-rules completeness: 80.8%**
 
-**Comprehensive recursive-routine coverage: 61.3% (49 Verified, 167 Partial, 0 Missing; 7 NES mechanisms excluded)**
+**Comprehensive recursive-routine coverage: 67.8% (77 Verified, 139 Partial, 0 Missing; 7 NES mechanisms excluded)**
 
 The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, both CPU and user shot-contest paths, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher now have native paths. Block SFX `$10/$20` and free-throw tables `$85C7/$86AF` are recovered and pack-backed; exact presentation/global contest gates, clock cadence, and remaining foul eligibility still require closure.
 
@@ -240,11 +240,14 @@ The exact `$AA07->$9E2D/$9E4C` user vectors, `$ABCD->$9D2D/$AA98/$9BB0`
 route installer outputs, `$B035->$B0AB` pass initializer and all three
 longitudinal/depth hand-offset tables, `$9018->$B0B8` early inbound pass
 initializer, contact-only `$AD41` reception, and byte-exact `$B189` short-shot
-duration/curve are translated and covered by native regressions. This
-subsystem remains Partial because the
-native 30 Hz route scheduler still uses its verified per-state arrival-cadence
-adapter instead of universally consuming `$ABCD`'s installed unit vectors, and
-because an original dynamic court-boundary rejection has not yet been captured.
+duration/curve are translated and covered by native regressions. Controlled
+original probes now execute all four `$9CA0/$9CF6` rejection exits at frame
+2558: `$01F1.80 + $0100`, `$0010.80 + $FF00`, `$98.80 + $0100`, and
+`$05.80 + $FF00` each preserve the coordinate and return with the attempted
+axis velocity cleared. The primitive routines are Verified. The subsystem
+remains Partial only because the native 30 Hz route scheduler still uses its
+per-state arrival-cadence adapter instead of universally consuming `$ABCD`'s
+installed unit vectors.
 
 User control/control ownership is Verified from bank-0 `$A129`, `$AD41`, and
 `$A29D`. Direction+A uses the original directional half-plane scoring and
@@ -423,7 +426,7 @@ When updating this ledger:
 
 ## Highest-value next coverage work
 
-1. Close remaining user/CPU contest gates `$001D/$0056` and ordinary rim-contact eligibility branches; DDAP v20 plays the recovered `$10/$20` block cues.
-2. Match the clock's presentation-state call gaps.
-3. Recover and test the remaining foul eligibility branches and post-final-free-throw rebound/inbound variants.
-4. Expand full-match FCEUX PC traces so every still-Partial helper receives dynamic branch evidence.
+1. Replace the remaining CPU route-arrival cadence adapter with each state's exact `$D98A/$D98D` installed-vector call count.
+2. Close remaining user/CPU contest gates `$001D/$0056` and ordinary rim-contact eligibility branches; DDAP v20 plays the recovered `$10/$20` block cues.
+3. Match the clock's presentation-state call gaps.
+4. Recover and test the remaining foul eligibility branches and post-final-free-throw rebound/inbound variants.

@@ -17,6 +17,8 @@ param(
     [int]$MoveEnd = -1,
     [ValidateSet('none', 'left', 'right', 'up', 'down')]
     [string]$MoveDirection = 'none',
+    [ValidateSet('none', 'x-upper', 'x-lower', 'depth-upper', 'depth-lower')]
+    [string]$PhysicsBoundary = 'none',
     [int]$ContactFrame = -1,
     [int]$ContactClockGate = -1,
     [int]$UserFreeThrowFrame = -1,
@@ -68,6 +70,7 @@ $env:DD_PASS_DIRECTION = $PassDirection
 $env:DD_MOVE_START = $MoveStart.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_MOVE_END = $(if ($MoveEnd -ge 0) { $MoveEnd } else { $MoveStart }).ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_MOVE_DIRECTION = $MoveDirection
+$env:DD_INJECT_PHYSICS_BOUNDARY = $PhysicsBoundary
 $env:DD_ENABLE_PC_COUNTS = if ($DisablePcCounts) { '0' } else { '1' }
 $env:DD_INJECT_CONTACT_FRAME = $ContactFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_CONTACT_CLOCK_GATE = $ContactClockGate.ToString([Globalization.CultureInfo]::InvariantCulture)

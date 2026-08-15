@@ -16,6 +16,7 @@ local pass_direction = os.getenv("DD_PASS_DIRECTION") or "none"
 local move_start = tonumber(os.getenv("DD_MOVE_START") or "-1")
 local move_end = tonumber(os.getenv("DD_MOVE_END") or tostring(move_start))
 local move_direction = os.getenv("DD_MOVE_DIRECTION") or "none"
+local inject_physics_boundary = os.getenv("DD_INJECT_PHYSICS_BOUNDARY") or "none"
 local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
@@ -133,6 +134,7 @@ local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}
 local bank_counts = {}
 local previous_ball_state = -1
 local previous_player_state = {}
+local physics_boundary_pending = inject_physics_boundary ~= "none"
 
 local function record_write(address, size, value)
     local frame = emu.framecount()
@@ -358,6 +360,35 @@ local function record_physics_call(address, size, value)
             if address == 0xB0AB or address == 0xB11E or address == 0xB189 or
                address == 0xB29C or address == 0xB2EE or address == 0xB376 then
                 tracked = 0
+            end
+            -- Controlled primitive-only rejection probes.  Injection occurs
+            -- at the original helper entry after its caller has installed a
+            -- real object/velocity, so `$9CA0/$9CF6` executes the complete
+            -- unchanged accept/reject path and the existing return hooks
+            -- record its result.
+            if physics_boundary_pending and address == 0x9CA0 and
+               (inject_physics_boundary == "x-upper" or
+                inject_physics_boundary == "x-lower") then
+                memory.writebyte(0x0360 + tracked,
+                    inject_physics_boundary == "x-upper" and 0x01 or 0x00)
+                memory.writebyte(0x0370 + tracked,
+                    inject_physics_boundary == "x-upper" and 0xF1 or 0x10)
+                memory.writebyte(0x0380 + tracked, 0x80)
+                memory.writebyte(0x0390 + tracked,
+                    inject_physics_boundary == "x-upper" and 0x01 or 0xFF)
+                memory.writebyte(0x03A0 + tracked, 0x00)
+                physics_boundary_pending = false
+            elseif physics_boundary_pending and address == 0x9CF6 and
+                   (inject_physics_boundary == "depth-upper" or
+                    inject_physics_boundary == "depth-lower") then
+                memory.writebyte(0x03B0 + tracked, 0x00)
+                memory.writebyte(0x03C0 + tracked,
+                    inject_physics_boundary == "depth-upper" and 0x98 or 0x05)
+                memory.writebyte(0x03D0 + tracked, 0x80)
+                memory.writebyte(0x03E0 + tracked,
+                    inject_physics_boundary == "depth-upper" and 0x01 or 0xFF)
+                memory.writebyte(0x03F0 + tracked, 0x00)
+                physics_boundary_pending = false
             end
             physics_calls:write(string.format(
                 "%d,%04X,%02X,%02X,%02X,%02X%02X%02X,%02X%02X,%02X%02X%02X,%02X%02X,%02X%02X,%02X%02X,%02X,%02X,%02X,%02X%02X,%02X%02X,%02X\n",

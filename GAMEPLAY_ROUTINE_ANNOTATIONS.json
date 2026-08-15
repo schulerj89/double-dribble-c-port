@@ -75,6 +75,68 @@
         "tests/dd_gameplay_cpu_test.c free-throw formation, CPU aim, user B launch, and one-point score suite",
         "tools/Capture-NativeFreeThrow.ps1"
       ]
+    },
+    {
+      "name": "fixed_point_height_and_bounded_axis_primitives",
+      "status": "verified",
+      "routines": [
+        "bank0:9ABD", "bank0:9AFB", "bank0:9AFD", "bank0:9B0E",
+        "bank0:9B84", "bank0:9CA0", "bank0:9CF6", "bank0:A84C"
+      ],
+      "evidence": [
+        "Headless Ghidra `$9ABD/$9B84/$9CA0/$9CF6/$A84C` control-flow and ROM-offset report",
+        "FCEUX natural physics trace: 574 `$9B84`, 13,810 each `$9CA0/$9CF6`, and 6,556 `$A84C` calls",
+        "FCEUX controlled `phase4-physics-*` traces prove upper/lower rejection on both axes preserves the fractional coordinate and clears only the rejected velocity"
+      ],
+      "native_symbols": [
+        "dd_step_player_height_script",
+        "dd_integrate_height",
+        "dd_integrate_longitudinal",
+        "dd_integrate_depth",
+        "dd_restart_height_bounce"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact height samples, double integration, four edge rejections, and user edge movement"
+      ]
+    },
+    {
+      "name": "angle_vector_and_packed_target_primitives",
+      "status": "verified",
+      "routines": [
+        "bank0:9BB0", "bank0:9BB2", "bank0:9BF6", "bank0:9BF8",
+        "bank0:9C06", "bank0:9C0B", "bank0:9D2D", "bank0:9D35",
+        "bank0:9D55", "bank0:9D9A", "bank0:AA98", "bank0:AAEE",
+        "bank0:AB53", "bank0:AB72", "bank0:AB96", "bank0:ABAB",
+        "bank0:ABCD"
+      ],
+      "evidence": [
+        "Headless Ghidra angle/vector call chain `$ABCD->$9D2D->$AA98->$9BB0` and packed `$AB53/$AB72/$AB96/$ABAB` helpers",
+        "FCEUX moving-shot/route traces record angle `$62`, vector `$00E1/$FF88`, packed targets, and natural short-shot flight inputs"
+      ],
+      "native_symbols": [
+        "dd_target_motion_vector",
+        "dd_facing_from_angle",
+        "dd_pack_cpu_position",
+        "dd_unpack_cpu_target",
+        "dd_set_cpu_target",
+        "dd_install_cpu_route_vector"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact route vector/facing, packed target, pass angle, shot angle, and flight initializer suite"
+      ]
+    },
+    {
+      "name": "user_direction_and_motion_clear_primitives",
+      "status": "verified",
+      "routines": ["bank0:AA07", "bank0:B501", "bank0:B503"],
+      "evidence": [
+        "Ghidra `$AA07->$9E2D/$9E4C` eight-direction copy and `$B501/$B503` six-byte velocity clear",
+        "FCEUX direction probes record all eight signed 8.8 vectors; natural dispatch traces execute both clear entry points"
+      ],
+      "native_symbols": ["dd_user_motion_vector", "dd_begin_shot", "dd_update_cpu_player"],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c eight-direction user movement and state-$3F/shot motion clear checks"
+      ]
     }
   ]
 }
