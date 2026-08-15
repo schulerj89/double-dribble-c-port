@@ -72,6 +72,10 @@ int main(int argc, char **argv) {
           "asset pack exposes distinct camera-triggered left and right court CHR streams");
     check(pack.tipoff_meta.gameplay_audio_frames == 18u && pack.gameplay_audio_count == 20u,
           "asset pack exposes the observed 18-frame live dribble APU sequence");
+    check((uint8_t)assets->height_scripts[10] == 0x80u &&
+          assets->height_scripts[11] == 5 &&
+          (uint8_t)assets->height_scripts[24] == 0x81u,
+          "asset pack exposes $9B34's jump stream with reverse and landing sentinels");
 
     memset(&jump_state, 0, sizeof(jump_state));
     check(dd_gameplay_advance_to(&pack, &jump_state, 300u, 0u),
@@ -264,29 +268,49 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_JUMP_START;
+    dispatch_state.players[5].height = 0x1055;
+    dispatch_state.players[5].velocity_x = 0x0123;
+    dispatch_state.players[5].velocity_depth = -0x0124;
+    dispatch_state.players[5].velocity_height = 0x0345;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_JUMP_CONTEST &&
-          dispatch_state.players[5].velocity_height > 0,
-          "player state $23 installs the jump and advances to $24");
+          dispatch_state.players[5].height == 0x1055 &&
+          dispatch_state.players[5].velocity_x == 0 &&
+          dispatch_state.players[5].velocity_depth == 0 &&
+          dispatch_state.players[5].velocity_height == 0 &&
+          dispatch_state.players[5].height_script_index == 11u &&
+          dispatch_state.players[5].height_script_reverse == 0u,
+          "player state $23 clears motion and installs $9B34 before advancing to $24");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_JUMP_CONTEST;
-    dispatch_state.players[5].action_age = 3u;
-    dispatch_state.players[5].height = 0x1000;
-    dispatch_state.players[5].velocity_height = -0x0100;
-    dispatch_state.ball.owner = 0xFFu;
-    dispatch_state.carrier = 0xFFu;
-    dispatch_state.ball.court_x = 0x001000;
-    dispatch_state.ball.court_depth = 0x0400;
+    dispatch_state.players[5].height = 0x1055;
+    dispatch_state.players[5].height_script_index = 11u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.carrier = 0u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].height == 0x1555 &&
+          dispatch_state.players[5].height_script_index == 12u,
+          "$9ABD applies $9B34's first +5 integer-height delta and preserves fraction");
+    for (player = 1u; player < 14u; ++player) {
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    }
+    check(dispatch_state.players[5].height == 0x2655 &&
+          dispatch_state.players[5].height_script_reverse == 1u &&
+          dispatch_state.players[5].height_script_index == 22u,
+          "$9ABD reaches $26, consumes $81, and reverses the jump stream");
+    for (player = 14u; player < 27u; ++player) {
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    }
     check(dispatch_state.players[5].action == DD_PLAYER_LIVE_SHOOTER_RECOVER &&
-          dispatch_state.players[5].height == 0x1000,
-          "player state $24 lands into recovery when no loose ball is contacted");
+          dispatch_state.players[5].height == 0x1055 &&
+          dispatch_state.players[5].action_age == 16u,
+          "player state $24 lands through $80 into the original $10 recovery countdown");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_JUMP_CONTEST;
     dispatch_state.players[5].height = 0x2000;
-    dispatch_state.players[5].velocity_height = 0;
+    dispatch_state.players[5].height_script_index = 11u;
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.carrier = 0xFFu;
     dispatch_state.ball.court_x = dispatch_state.players[5].court_x - 0x0600;

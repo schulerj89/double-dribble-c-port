@@ -101,6 +101,8 @@ typedef struct DDPlayerState {
     uint8_t target_zone;
     uint8_t route_step;
     uint8_t contact_age;
+    uint8_t height_script_index;
+    uint8_t height_script_reverse;
 } DDPlayerState;
 
 typedef struct DDBallState {

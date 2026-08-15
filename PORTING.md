@@ -411,7 +411,7 @@ The extended APU trace also establishes that ordinary gameplay has no continuous
 
 DDAP v11 introduced `gameplay.audio`: twenty normalized events over eighteen frames, with provenance bank 1 `$8653` (ROM file offset `$4663`, bounded source span `$40`). Win32 loops the synthesized gesture only while gameplay is LIVE and ball action is dribble `$01`; pass, shot, rebound, and dead-ball states stop it. `--dump-gameplay-wav` exports the generated pack-only WAV. This is the audio actually observed in FCEUX, rather than an invented gameplay BGM. DDAP v12 retains it and adds the seven route targets extracted from `$AC78`.
 
-The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the gameplay audio event count. The original-frame-3572/native-1371 screenshot comparison differs by 2,570 pixels out of 57,344 (4.4817%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
+The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the gameplay audio event count. The rebuilt original-frame-3572/native-1371 screenshot comparison differs by 2,543 pixels out of 57,344 (4.4346%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
 
 ### Complete dispatcher inventory slice
 
@@ -431,6 +431,25 @@ The previously missing player entries resolve as follows in the regenerated `bui
 | `$3F` | `$8460` | `$B503` plus the common render/animation continuation |
 
 Selected-bank ROM offsets are `$8A3A->$0A4A`, `$8AF4->$0B04`, `$8B12->$0B22`, `$8BC5->$0BD5`, `$8E71->$0E81`, `$8E88->$0E98`, `$8EBF->$0ECF`, `$8195->$01A5`, `$81A2->$01B2`, `$8266->$0276`, `$8297->$02A7`, and `$8460->$0470`.
+
+The `$23/$24` jump is now instruction-derived rather than ballistic. In selected
+bank 0, `$8AF4` reads the little-endian pointer at `$9B26/$9B27` (`$34,$9B`),
+calls `$B503` to clear all three fixed-point motion vectors, clears direction
+byte `$04F0+slot`, and advances the action. `$8B12` calls `$A6C3` for contact,
+then `$9ABD`. The latter treats `$80` as landing, `$81` as reverse-direction,
+and every other byte as a signed delta applied only to integer height
+`$0410+slot`; fractional height `$0420+slot` is untouched. The importer already
+stores `$9B29-$9B48` in `height_scripts`, so `$9B34` is stable asset index 11
+and its backward `$80` sentinel is index 10. CPU-to-ROM mappings are
+`$9B26->$1B36`, `$9B34->$1B44`, `$9ABD->$1ACD`, and `$B503->$3513`.
+
+Opt-in FCEUX probe `DD_INJECT_PLAYER_JUMP_CASE=2` records slot 7 at original
+frames 2601-2657. Frame 2601 has action `$24`, height `$1055`, pointer `$9B34`,
+and all motion zero. The integer height reaches `$26` and direction becomes one
+at frame 2629; it returns to `$1055`/pointer `$9B33` at frame 2653; frame 2655
+enters `$28` with countdown `$10`, which becomes `$0F` at frame 2657. The
+fractional `$55` never changes. The native test executes the same 27 scheduled
+script updates and separately exercises the contact/possession branch.
 
 The four previously missing ball entries are likewise explicit:
 
@@ -603,7 +622,7 @@ promoting `$21/$41` to Verified.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **80% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **81% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

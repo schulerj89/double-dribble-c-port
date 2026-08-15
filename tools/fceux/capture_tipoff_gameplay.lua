@@ -20,6 +20,7 @@ local inject_player_state_frame = tonumber(os.getenv("DD_INJECT_PLAYER_STATE_FRA
 local inject_player_state = tonumber(os.getenv("DD_INJECT_PLAYER_STATE") or "59")
 local inject_player_slot = tonumber(os.getenv("DD_INJECT_PLAYER_SLOT") or "7")
 local inject_player_route_case = tonumber(os.getenv("DD_INJECT_PLAYER_ROUTE_CASE") or "0")
+local inject_player_jump_case = tonumber(os.getenv("DD_INJECT_PLAYER_JUMP_CASE") or "0")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -316,6 +317,20 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x03F0 + player, 0xDC)
         memory.writebyte(0x0430 + player, 0x03)
         memory.writebyte(0x0440 + player, 0x45)
+        if inject_player_jump_case ~= 0 then
+            -- Controlled $8AF4->$8B12->$9ABD probe.  The nonzero global
+            -- collision gate isolates the signed height script and landing.
+            memory.writebyte(0x0340 + player, 0x23)
+            memory.writebyte(0x0410 + player, 0x10)
+            memory.writebyte(0x0420 + player, 0x55)
+            memory.writebyte(0x0056, inject_player_jump_case == 1 and 0x01 or 0x00)
+            memory.writebyte(0x005B, 0xFF)
+            memory.writebyte(0x0048, 0xFF)
+            memory.writebyte(0x0340, 0x0B)
+            memory.writebyte(0x0370, 0x00)
+            memory.writebyte(0x03C0, 0x00)
+            memory.writebyte(0x0410, 0x00)
+        end
         if inject_player_route_case ~= 0 then
             -- Force $81A2's same-region, not-at-target branch. Slot $0B is
             -- the role-zero reference selected by $9097 on this possession side.

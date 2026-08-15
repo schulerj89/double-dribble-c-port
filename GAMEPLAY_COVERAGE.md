@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 80%**
+**Portable Ghidra-to-C gameplay-loop coverage: 81%**
 
 **End-to-end match completeness: approximately 50%**
 
@@ -23,19 +23,19 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 79.8%`, rounded to **80%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 80.7%`, rounded to **81%**.
 
-## Player action dispatcher — 83.8%
+## Player action dispatcher — 86.8%
 
 Ghidra anchor `$89B2` subtracts `$20` from player action `$0340+slot` and dispatches through the 34-entry table at `$89C0`. `ExportGameplayLoopEvidence.java` prints all entries so this denominator is reproducible.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 23 | `$21,$22,$25,$26,$27,$28,$29,$2D,$2E,$2F,$32,$36,$37,$38,$39,$3A,$3B,$3C,$3D,$3E,$3F,$40,$41` |
-| P | 11 | `$20,$23,$24,$2A,$2B,$2C,$30,$31,$33,$34,$35` |
+| V | 25 | `$21-$29,$2D,$2E,$2F,$32,$36,$37,$38,$39,$3A,$3B,$3C,$3D,$3E,$3F,$40,$41` |
+| P | 9 | `$20,$2A,$2B,$2C,$30,$31,$33,$34,$35` |
 | M | 0 | none |
 
-Score: `(23 + 11 × 0.5) / 34 = 83.8%`.
+Score: `(25 + 9 × 0.5) / 34 = 86.8%`.
 
 Every table entry now has an explicit native handler. States `$28/$29` reproduce
 the traced `$20` countdown, rotating-priority ball target, immediate `$B435`
@@ -63,6 +63,17 @@ controlled `$EC==$EC` probe records `$21->$20` and `$55->$00`. State `$41`
 uses the same arrival rule before copying the inbounder's position to the ball:
 natural frame 3501 records position/target/ball `$0121`, owner/carrier `$07`,
 and `$41->$30`. Both states are V.
+
+States `$23/$24` now translate `$8AF4->$8B12->$9ABD` instead of using a
+ballistic approximation. `$8AF4->$B503` clears all three motion vectors and
+installs ROM pointer `$9B34` (asset index 11). The native byte interpreter adds
+the signed integer-height deltas, preserves the fractional byte, reverses both
+pointer direction and sign at `$81`, and restores integer height `$10` at the
+backward `$80` sentinel. Controlled FCEUX frames 2601-2657 record
+`$23->$24`, height `$1055->$2655->$1055`, pointer `$9B34->$9B3F->$9B33`,
+direction `0->1`, then `$24->$28` with timer `$10->$0F`. Native regression
+checks reproduce the 27 scheduled interpreter updates and the `$A6C3` loose-ball
+contact branch. Both states are therefore V.
 
 ## Ball action dispatcher — 100%
 

@@ -446,6 +446,36 @@ static void dd_claim_loose_ball(DDGameplayState *state, uint32_t player_index) {
     ++state->possession_count;
 }
 
+/* Bank-0 $9ABD interprets the signed height stream selected through the
+   original per-object $0500/$0510 pointer.  $81 reverses the pointer and
+   sign; $80 restores only the integer height byte and returns carry set. */
+static int dd_step_player_height_script(const DDTipoffAssetsHeader *assets,
+                                        DDPlayerState *player) {
+    for (;;) {
+        uint8_t value = (uint8_t)assets->height_scripts[player->height_script_index];
+        if (value == 0x80u) {
+            player->height = (player->height & 0x00FF) | 0x1000;
+            return 1;
+        }
+        if (value == 0x81u) {
+            player->height_script_reverse ^= 1u;
+        } else {
+            int delta = (int)(int8_t)value;
+            uint8_t high = (uint8_t)(((uint32_t)player->height >> 8u) & 0xFFu);
+            if (player->height_script_reverse != 0u) delta = -delta;
+            high = (uint8_t)((int)high + delta);
+            player->height = (player->height & 0x00FF) | ((int32_t)high << 8u);
+            if (player->height_script_reverse == 0u) {
+                ++player->height_script_index;
+                return 0;
+            }
+            --player->height_script_index;
+            return 0;
+        }
+        --player->height_script_index;
+    }
+}
+
 static int32_t dd_scripted_jump_height(const DDTipoffAssetsHeader *assets,
                                        uint32_t scene_frame, uint32_t start_frame) {
     int32_t height = 0x1000;
@@ -663,34 +693,36 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         }
         case DD_PLAYER_JUMP_START:
-            /* $8AF4 installs the jump height script and immediately advances
-               the object dispatcher to state $24. */
+            /* $8AF4->$B503 clears all motion, installs $9B34 (asset index 11),
+               clears the $9ABD direction flag, and advances $23->$24. */
             speed = 0;
-            player->height = 0x1000;
-            player->velocity_height = 0x0380;
+            player->velocity_x = 0;
+            player->velocity_depth = 0;
+            player->velocity_height = 0;
+            player->height_script_index = 11u;
+            player->height_script_reverse = 0u;
             player->action = DD_PLAYER_JUMP_CONTEST;
             player->action_age = 0u;
             break;
         case DD_PLAYER_JUMP_CONTEST:
-            /* $8B12 runs the height script, tests loose-ball contact, and
-               chooses possession/recovery when the player lands. */
+            /* $8B12 tests $A6C3 contact, then runs the byte-exact $9ABD
+               interpreter.  A non-owner lands in $28 with $04F0=$10. */
             speed = 0;
             if (state->ball.owner == DD_NO_OWNER &&
                 dd_jump_ball_contact(state, player_index)) {
                 dd_claim_loose_ball(state, player_index);
             }
-            player->height += player->velocity_height;
-            player->velocity_height -= 0x0070;
-            if (player->action_age >= 2u && player->height <= 0x1000) {
-                player->height = 0x1000;
-                player->velocity_height = 0;
+            if (dd_step_player_height_script(assets, player)) {
                 if (state->carrier == player_index) {
                     player->action = player_index == state->controlled_player
                         ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_CARRIER;
+                    player->action_age = 0u;
                 } else {
                     player->action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
+                    /* $28's native age counts upward while the ROM's $04F0
+                       counts $10 down through $FF: both take 17 updates. */
+                    player->action_age = 16u;
                 }
-                player->action_age = 0u;
             }
             break;
         case DD_PLAYER_LIVE_CPU:
