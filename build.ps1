@@ -49,7 +49,7 @@ cl.exe /nologo /std:c17 /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I "$include" 
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 cl.exe /nologo /std:c17 /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I "$include" /Fo"$objDir\\" /Fe"$game" "$root\src\win32_game_main.c" $common "$resource" bcrypt.lib user32.lib gdi32.lib shell32.lib winmm.lib /link /SUBSYSTEM:WINDOWS
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
-cl.exe /nologo /std:c17 /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I "$include" /Fo"$objDir\\" /Fe"$cpuTests" "$root\tests\dd_gameplay_cpu_test.c" "$root\src\dd_asset_pack.c" "$root\src\dd_gameplay.c" bcrypt.lib
+cl.exe /nologo /std:c17 /W4 /WX /O2 /MD /D_CRT_SECURE_NO_WARNINGS /I "$include" /Fo"$objDir\\" /Fe"$cpuTests" "$root\tests\dd_gameplay_cpu_test.c" "$root\src\dd_asset_pack.c" "$root\src\dd_gameplay.c" "$root\src\dd_renderer.c" bcrypt.lib
 if %ERRORLEVEL% NEQ 0 exit /b %ERRORLEVEL%
 "@
 [System.IO.File]::WriteAllText($batch, $batchText, [System.Text.Encoding]::ASCII)

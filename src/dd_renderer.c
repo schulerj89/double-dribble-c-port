@@ -109,7 +109,7 @@ static int dd_render_scrolled_scene(const uint8_t *ppu, size_t ppu_size,
                                     const uint8_t *oam, size_t oam_size,
                                     uint32_t background_pattern_base, uint32_t nametable_base,
                                     uint32_t ppu_control, uint32_t sprite_count, uint32_t scroll_x,
-                                    uint32_t hud_split_y,
+                                    uint32_t hud_split_y, int enforce_scanline_sprite_limit,
                                     uint32_t *pixels, uint32_t width, uint32_t height) {
     uint8_t background_opaque[256u * 240u];
     uint32_t x;
@@ -163,7 +163,7 @@ static int dd_render_scrolled_scene(const uint8_t *ppu, size_t ppu_size,
                 uint32_t sx;
                 uint32_t destination_y = sprite_y + sy;
                 if (destination_y >= height) continue;
-                {
+                if (enforce_scanline_sprite_limit) {
                     int candidate;
                     uint32_t on_scanline = 0u;
                     for (candidate = 0; candidate <= sprite_index; ++candidate) {
@@ -671,7 +671,7 @@ int dd_render_tipoff(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, 
                                     pack->tipoff_meta.ppu_control,
                                     pack->tipoff_meta.sprite_count,
                                     pack->tipoff_meta.scroll_x,
-                                    64u,
+                                    64u, 1,
                                     pixels, width, height);
 }
 
@@ -797,10 +797,13 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
         oam[sprite * 4u] = 0xF4u;
         ++sprite;
     }
+    /* Preserve the original scanline limit for the reference tip-off frame,
+       but live native gameplay is not constrained by NES secondary OAM. Draw
+       every bounded metasprite record so overlapping players remain whole. */
     return dd_render_scrolled_scene(ppu, sizeof(ppu),
                                     oam, sizeof(oam), pack->tipoff_meta.background_pattern_base,
                                     pack->tipoff_meta.nametable_base, pack->tipoff_meta.ppu_control,
-                                    64u, (uint32_t)camera, state->hud_split_y,
+                                    64u, (uint32_t)camera, state->hud_split_y, 0,
                                     pixels, width, height);
 }
 

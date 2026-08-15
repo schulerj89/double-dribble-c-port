@@ -1243,14 +1243,20 @@ static void dd_start_inbound_release(const DDTipoffAssetsHeader *assets,
                                      uint32_t receiver) {
     DDPlayerState *player = &state->players[inbounder];
     uint32_t other_first = inbounder < 5u ? 5u : 0u;
+    uint32_t role_zero = other_first;
     uint32_t teammate;
     for (teammate = other_first; teammate < other_first + 5u; ++teammate) {
         state->players[teammate].action = DD_PLAYER_LIVE_TEAMMATE;
         state->players[teammate].action_age = 0u;
+        if (state->players[teammate].role == 0u) role_zero = teammate;
     }
-    state->controlled_player = (uint8_t)other_first;
-    state->players[other_first].action = DD_PLAYER_LIVE_USER;
     dd_swap_inbound_role_links(state, inbounder, receiver);
+    /* `$8F7C-$8F96` resets user slots 2-6 to `$20`, then `$9097` finds
+       whichever physical object currently owns role zero and gives that one
+       state `$0F`. Defensive switching means it is not necessarily slot 0. */
+    state->controlled_player = (uint8_t)role_zero;
+    state->players[role_zero].action = DD_PLAYER_LIVE_USER;
+    state->players[role_zero].action_age = 0u;
     player->action = DD_PLAYER_INBOUND_READY;
     player->action_age = 0u;
     player->release_timer = 8u;
@@ -1563,6 +1569,8 @@ static DDCPUDecision dd_cpu_decide_possession(const DDTipoffAssetsHeader *assets
 static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayState *state,
                                  uint32_t player_index, uint32_t live_frame) {
     DDPlayerState *player = &state->players[player_index];
+    int32_t dispatch_start_x = player->court_x;
+    int32_t dispatch_start_depth = player->court_depth;
     int32_t speed = 0x0180;
     int integrate_existing_velocity = 0;
     ++player->cpu_updates;
@@ -1935,10 +1943,11 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 player->action = DD_PLAYER_REBOUND_CLAIM;
                 player->action_age = 0u;
             } else {
-                player->velocity_x = player->target_x < player->court_x
-                    ? -dd_absolute(player->velocity_x) : dd_absolute(player->velocity_x);
-                player->velocity_depth = player->target_depth < player->court_depth
-                    ? -dd_absolute(player->velocity_depth) : dd_absolute(player->velocity_depth);
+                /* `$8491->$ABCD` installs this vector once. `$8E71` then
+                   consumes it through `$D98D`; it does not point the vector
+                   back at the expanded cell center on every dispatch. Doing
+                   that in native code made the facing alternate at the target
+                   edge, which appeared as a stationary shaking metasprite. */
                 integrate_existing_velocity = 1;
             }
             break;
@@ -1978,10 +1987,9 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 player->velocity_x = 0;
                 player->velocity_depth = 0;
             } else {
-                player->velocity_x = player->target_x < player->court_x
-                    ? -dd_absolute(player->velocity_x) : dd_absolute(player->velocity_x);
-                player->velocity_depth = player->target_depth < player->court_depth
-                    ? -dd_absolute(player->velocity_depth) : dd_absolute(player->velocity_depth);
+                /* `$8E88->$ABCD` likewise leaves a stable return vector for
+                   `$8EBF->$D98D`. Preserve its direction until the extended
+                   packed boundary target is reached. */
                 integrate_existing_velocity = 1;
             }
             break;
@@ -2134,6 +2142,18 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         dd_integrate_depth(&player->court_depth, &player->velocity_depth);
         dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
         dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
+        if (player->court_x != dispatch_start_x ||
+            player->court_depth != dispatch_start_depth) {
+            player->facing = dd_facing_from_velocity(
+                player->court_x - dispatch_start_x,
+                player->court_depth - dispatch_start_depth,
+                player->facing);
+            /* `$D990->$A896` still runs after `$8E71/$8EBF`. The portable
+               route states therefore need the same moving metasprite tail as
+               target-driven players instead of retaining one frozen frame. */
+            player->animation = dd_animation_for_facing(
+                player->facing, live_frame / 3u + player_index);
+        }
     } else {
         dd_move_cpu_player(player, player_index, live_frame, speed);
     }
@@ -2394,8 +2414,16 @@ static void dd_finish_ball_reception(const DDTipoffAssetsHeader *assets,
                                      DDGameplayState *state, uint32_t receiver) {
     uint32_t previous_control;
     int inbound_reception;
+    int cpu_route_reception;
     if (receiver >= DD_GAMEPLAY_PLAYER_COUNT) return;
-    inbound_reception = state->phase == DD_GAMEPLAY_INBOUND;
+    /* `$AD4E-$AD56` selects the expanded CPU reception path from `$002C`
+       and possession bit `$0050.3`, not from a scene phase. A made basket
+       deliberately remains in the live dispatcher while `$2D-$31` runs, so
+       using phase alone skipped `$AD6D` after every automatic CPU inbound. */
+    inbound_reception = state->phase == DD_GAMEPLAY_INBOUND ||
+        state->inbound_variant != 0u;
+    cpu_route_reception = receiver >= 5u &&
+        state->possession_direction == 0u && state->inbound_variant != 2u;
     previous_control = state->controlled_player;
     state->carrier = (uint8_t)receiver;
     state->ball.owner = (uint8_t)receiver;
@@ -2417,14 +2445,22 @@ static void dd_finish_ball_reception(const DDTipoffAssetsHeader *assets,
     state->players[receiver].action_age = 0u;
     state->players[receiver].route_step = inbound_reception ? 4u :
         (receiver >= 5u ? 5u : 0u);
-    if (inbound_reception && receiver >= 5u) {
+    if (cpu_route_reception) {
         uint32_t first = receiver < 5u ? 0u : 5u;
+        uint32_t role_zero = dd_team_role(state, first, 0u);
         uint32_t teammate;
         state->possession_direction = receiver < 5u ? 1u : 0u;
-        /* $AD6D finds roles 3 and 4 with $9097, assigns $3C/$3E, then
-           calls $842F for role 4 before replacing role 0 with carrier $25.
+        /* `$AD6D` first swaps the pre-reception role-zero object with the
+           receiver through `$99D9/$9A31`, leaves the old role-zero object in
+           `$38`, then finds roles 3 and 4 with `$9097` for `$3C/$3E` before
+           replacing the receiver (now role zero) with carrier `$25`.
            Positions are deliberately left untouched: the $36->$37 walkers
            have already put every object where the original pass receives it. */
+        if (role_zero != receiver) {
+            dd_swap_inbound_role_links(state, role_zero, receiver);
+            state->players[role_zero].action = DD_PLAYER_ROUTE_INIT;
+            state->players[role_zero].action_age = 0u;
+        }
         for (teammate = first; teammate < first + 5u; ++teammate) {
             DDPlayerState *player = &state->players[teammate];
             if (teammate == receiver) continue;

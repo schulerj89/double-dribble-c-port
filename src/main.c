@@ -22,7 +22,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay-user-contest <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-switch-block <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-block <input.assetpack> <contact|landing> <output.bmp>");
-    puts("  --render-gameplay-shot <input.assetpack> <make|miss> <gather|release|result|pickup|inbound> <output.bmp>");
+    puts("  --render-gameplay-shot <input.assetpack> <make|miss> <gather|release|result|chase|pickup|inbound|receive> <output.bmp>");
     puts("  --render-gameplay-moving-shot <input.assetpack> <takeoff|held|airborne> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
@@ -440,6 +440,8 @@ int main(int argc, char **argv) {
         else if (strcmp(argv[4], "result") == 0) checkpoint = 2;
         else if (strcmp(argv[4], "inbound") == 0) checkpoint = 3;
         else if (strcmp(argv[4], "pickup") == 0) checkpoint = 4;
+        else if (strcmp(argv[4], "chase") == 0) checkpoint = 5;
+        else if (strcmp(argv[4], "receive") == 0) checkpoint = 6;
         else return 1;
         if (!dd_asset_pack_load(argv[2], &pack)) return 1;
         memset(&state, 0, sizeof(state));
@@ -484,7 +486,25 @@ int main(int argc, char **argv) {
                 state.ball.outcome == 1u;
             else ok = ok && state.ball.action != DD_BALL_SCORE;
         }
-        if (ok && checkpoint == 4) {
+        if (ok && checkpoint == 5) {
+            int running = 0;
+            while (ok && !running && steps < 900u) {
+                for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                    if (state.players[player].action == DD_PLAYER_REBOUND_CHASE &&
+                        state.players[player].action_age >= 2u &&
+                        (state.players[player].velocity_x != 0 ||
+                         state.players[player].velocity_depth != 0)) {
+                        running = 1;
+                        break;
+                    }
+                }
+                if (!running) {
+                    ok = dd_gameplay_step(&pack, &state, 0u);
+                    ++steps;
+                }
+            }
+            ok = ok && running;
+        } else if (ok && checkpoint == 4) {
             int holding = 0;
             while (ok && !holding && steps < 900u) {
                 for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
@@ -501,7 +521,7 @@ int main(int argc, char **argv) {
                 }
             }
             ok = ok && holding;
-        } else if (ok && checkpoint == 3) {
+        } else if (ok && (checkpoint == 3 || checkpoint == 6)) {
             if (make) {
                 while (state.ball.action != DD_BALL_PASS && steps < 900u) {
                     ok = dd_gameplay_step(&pack, &state, 0u);
@@ -510,6 +530,17 @@ int main(int argc, char **argv) {
                 ok = ok && state.ball.action == DD_BALL_PASS &&
                     state.ball.receiver >= 5u &&
                     state.ball.receiver < DD_GAMEPLAY_PLAYER_COUNT;
+                if (ok && checkpoint == 6) {
+                    uint32_t receiver = state.ball.receiver;
+                    while (ok && steps < 1100u &&
+                           (state.ball.action != DD_BALL_DRIBBLE ||
+                            state.carrier != receiver || state.inbound_variant != 0u)) {
+                        ok = dd_gameplay_step(&pack, &state, 0u);
+                        ++steps;
+                    }
+                    ok = ok && state.ball.action == DD_BALL_DRIBBLE &&
+                        state.carrier == receiver && state.inbound_variant == 0u;
+                }
             } else {
                 int moving = 1;
                 while (state.phase != DD_GAMEPLAY_INBOUND && steps < 900u) {

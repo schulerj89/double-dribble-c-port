@@ -1506,6 +1506,52 @@ completeness. The verified player/ball dispatcher entries do not gain duplicate
 credit; this repair strengthens user shooting and inbound, while universal
 route interpolation and general collision remain Partial.
 
+### Post-score chase, reception, and native sprite completeness
+
+Status: **implemented and regression-verified**. Fresh headless Ghidra reports
+confirm that `$8491->$ABCD` installs the inbound retriever's route vector,
+`$8E71->$D98D` consumes that vector in state `$2D`, and `$D990->$A896` still
+runs the common facing/metasprite tail. State `$2F` follows the same pattern at
+`$8EBF`: it consumes the vector installed after `$8E88` rather than repeatedly
+aiming at the expanded packed-cell center. The previous native adapter reversed
+each component around that center and skipped the animation tail, producing the
+visible shake/frozen pose. The C path now preserves the installed direction and
+advances the facing-specific run frames until packed arrival.
+
+The original deliberately starts dribble state `$01` through `$8E88->$AD0E`
+when the inbounder claims the loose scoring ball. Native code retains that
+dribble during `$2F/$30`; `$9018` changes it to attached release state `$00`,
+and `$8FE0` launches pass state `$02` at countdown four. This is separate from
+the fixed reception bug: `$AD4E-$AD56` selects the expanded CPU reception from
+`$002C` and possession bit `$0050.3`, even though the made-basket sequence is
+still using the live dispatcher. Native reception now follows that condition,
+runs `$AD6D`'s role/link swap and `$38/$3C/$3E` route restoration, then assigns
+the receiving role-zero player state `$25` and ball state `$01`. The opposing
+user is restored by role through `$8F8D->$9097`, not by assuming physical slot
+zero.
+
+Gameplay rendering no longer emulates the NES eight-sprites-per-scanline
+secondary-OAM dropout. Every bounded DDAP metasprite record is drawn during
+live native play, so clustered players remain complete. The limit remains on
+for the reference tip-off renderer because its acceptance captures explicitly
+verify the original overflow pattern. A pixel-union regression places three
+non-overlapping player metasprites on one scanline and proves the combined
+native frame contains every piece.
+
+Reproduce the rebuilt ignored screenshots with:
+
+```powershell
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
+.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+.\build\double_dribble_port.exe --render-gameplay-shot .\build\double-dribble.assetpack make chase .\captures\native-post-score-fix\run-to-ball.bmp
+.\build\double_dribble_port.exe --render-gameplay-shot .\build\double-dribble.assetpack make pickup .\captures\native-post-score-fix\inbound-hold.bmp
+.\build\double_dribble_port.exe --render-gameplay-shot .\build\double-dribble.assetpack make receive .\captures\native-post-score-fix\post-inbound-reception.bmp
+```
+
+Coverage remains **92.6% unrounded (93% displayed)** and match rules remain
+**80.8%**. These corrections close defects inside already-verified dispatcher
+states rather than adding new states to the denominator.
+
 ## Open research questions
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
