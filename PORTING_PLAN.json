@@ -191,6 +191,18 @@
       ],
       "coverage_change_percent": 6.9,
       "reason": "Thirty CPU policy/helper nodes advance from Partial to Verified using headless call graphs, natural/controlled FCEUX decision traces, isolated all-region native checks, and the new full-match progress regression."
+    },
+    {
+      "milestone": "phase-4b-general-collision-primitive-closure",
+      "status": "verified",
+      "completed": [
+        "exclusive two-axis `$9B42` box comparison",
+        "`$B435` possession height/contact window",
+        "`$B473` seven-sample rim sweep, ordinary `$16` audio, special `$003F` latch, owner clearing, camera retention, and velocity reflection",
+        "3 comprehensive routine nodes promoted to Verified"
+      ],
+      "coverage_change_percent": 0.7,
+      "reason": "Three portable collision primitives advance from Partial to Verified after headless Ghidra branch recovery, controlled FCEUX rim-contact evidence, and deterministic native ordinary/special contact regressions."
     }
   ],
   "phases": [

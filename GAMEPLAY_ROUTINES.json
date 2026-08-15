@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 84.7,
+    "comprehensive_percent": 85.4,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 150,
-    "partial_count": 66,
+    "verified_count": 153,
+    "partial_count": 63,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -2147,12 +2147,20 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9B42"
+        "Ghidra recursive node bank0:9B42",
+        "Headless Ghidra `$9B42`, `$B435`, and `$B473-$B500` disassembly including exclusive two-axis bounds, unsigned height window, seven rim samples, special-finish latch, ordinary `$16` sound, owner clear, and signed velocity reflection",
+        "FCEUX controlled `$B435` contact-boundary and `$B473` first-rim-sample traces plus natural made/missed shot calls"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_axis_boxes_overlap",
+        "dd_possession_ball_contact",
+        "dd_rim_sweep_contact"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exclusive collision edges, possession height window, seven-sample rim contact, ordinary SFX `$16`, special-finish `$003F` latch, owner/camera behavior, and velocity reflection"
+      ]
     },
     {
       "bank": "bank0",
@@ -4502,12 +4510,20 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B435"
+        "Ghidra recursive node bank0:B435",
+        "Headless Ghidra `$9B42`, `$B435`, and `$B473-$B500` disassembly including exclusive two-axis bounds, unsigned height window, seven rim samples, special-finish latch, ordinary `$16` sound, owner clear, and signed velocity reflection",
+        "FCEUX controlled `$B435` contact-boundary and `$B473` first-rim-sample traces plus natural made/missed shot calls"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_axis_boxes_overlap",
+        "dd_possession_ball_contact",
+        "dd_rim_sweep_contact"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exclusive collision edges, possession height window, seven-sample rim contact, ordinary SFX `$16`, special-finish `$003F` latch, owner/camera behavior, and velocity reflection"
+      ]
     },
     {
       "bank": "bank0",
@@ -4520,12 +4536,20 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B473"
+        "Ghidra recursive node bank0:B473",
+        "Headless Ghidra `$9B42`, `$B435`, and `$B473-$B500` disassembly including exclusive two-axis bounds, unsigned height window, seven rim samples, special-finish latch, ordinary `$16` sound, owner clear, and signed velocity reflection",
+        "FCEUX controlled `$B435` contact-boundary and `$B473` first-rim-sample traces plus natural made/missed shot calls"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_axis_boxes_overlap",
+        "dd_possession_ball_contact",
+        "dd_rim_sweep_contact"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exclusive collision edges, possession height window, seven-sample rim contact, ordinary SFX `$16`, special-finish `$003F` latch, owner/camera behavior, and velocity reflection"
+      ]
     },
     {
       "bank": "bank0",

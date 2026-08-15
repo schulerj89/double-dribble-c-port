@@ -246,6 +246,23 @@
       "regression_tests": [
         "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
       ]
+    },
+    {
+      "name": "general_box_possession_and_rim_collision_primitives",
+      "status": "verified",
+      "routines": [
+        "bank0:9B42", "bank0:B435", "bank0:B473"
+      ],
+      "evidence": [
+        "Headless Ghidra `$9B42`, `$B435`, and `$B473-$B500` disassembly including exclusive two-axis bounds, unsigned height window, seven rim samples, special-finish latch, ordinary `$16` sound, owner clear, and signed velocity reflection",
+        "FCEUX controlled `$B435` contact-boundary and `$B473` first-rim-sample traces plus natural made/missed shot calls"
+      ],
+      "native_symbols": [
+        "dd_axis_boxes_overlap", "dd_possession_ball_contact", "dd_rim_sweep_contact"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exclusive collision edges, possession height window, seven-sample rim contact, ordinary SFX `$16`, special-finish `$003F` latch, owner/camera behavior, and velocity reflection"
+      ]
     }
   ]
 }

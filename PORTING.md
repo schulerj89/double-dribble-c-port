@@ -671,7 +671,15 @@ The frame-12430 miss supplies a dynamic branch for `$B377/$AF72/$AFDD`. `$B377` 
 
 Native shot flight now aims at the original hoop centers `$0048/$01B8`, evaluates the same result-1-through-4 boxes, sends misses through `$08/$09`, and reproduces the reverse/half and `$10`-gravity behavior. `$B473` is also translated as seven diagonal samples: left-side X runs `$45->$3F`, right-side X runs `$01BB->$01C1`, and the combined depth/height sample runs `$9E->$92`. A controlled, opt-in FCEUX probe at original frame 2601 placed ball state `$03` on the first left sample; the original wrote `$0490=1` at `$B4D4`, cleared owner `$005B` at `$B4D8`, retained camera-follow `$0048`, and negated injected velocity `+$0100 -> -$0100` at `$B4FB`. The equivalent native test proves the same latch, ownership, camera-follow, and reflection behavior, while the unmodified made-shot trace proves that `$B473` is called every flight frame without a false latch.
 
-Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, the `$B473` rim probe, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. CPU shot-block arbitration is now covered below; all remaining state `$03` vertical and contested-rebound branches keep general collision **Partial**.
+The final `$B473` hit branch is now instruction-matched as well. `$B4DB` reads
+special-finish state `$003B`: when it is nonzero, `$B4E1-$B4E5` writes the
+rim-contact latch `$003F=1`; otherwise `$B4E7` requests audio event `$16`.
+Both branches retain camera carrier `$0048`, clear ball owner `$005B`, and
+reflect longitudinal velocity `$0390/$03A0`. Native regressions exercise both
+outcomes and require that the special-finish path does not emit the ordinary
+rim sound.
+
+Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, both `$B473` rim-contact outcomes, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. The reusable `$9B42`, `$B435`, and `$B473` collision helpers are therefore **Verified**. CPU shot-block arbitration is covered below; higher-level possession/contact arbitration (`$91A6/$91FB/$9208`) and the remaining contested-rebound branches stay **Partial**.
 
 ### Defensive contact and shooter recovery slice
 
@@ -1553,7 +1561,8 @@ evidence and screenshot checkpoints with:
 Coverage remains **92.6% unrounded (93% displayed)**, with **80.8%** match-rule
 completeness. The verified player/ball dispatcher entries do not gain duplicate
 credit; this repair strengthens user shooting and inbound, while universal
-route interpolation and general collision remain Partial.
+route interpolation and higher-level possession/contact arbitration remain
+Partial.
 
 ### Post-score chase, reception, and native sprite completeness
 

@@ -2451,8 +2451,28 @@ int main(int argc, char **argv) {
           "step ball through $B473's first left-rim sample");
     check(dispatch_state.ball.rim_contact == 1u &&
           dispatch_state.ball.owner == 0xFFu && dispatch_state.carrier == 5u &&
+          dispatch_state.ball.velocity_x == -0x0100 &&
+          dispatch_state.audio_event == 0x16u,
+          "$B473 latches rim contact, clears ownership, retains camera follow, reverses velocity, and requests rim SFX `$16`");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_PASS_BOUNCE;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.court_x = 0x004500;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.ball.height = 0x004600;
+    dispatch_state.ball.velocity_x = 0x0100;
+    dispatch_state.ball.velocity_height = 0;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.dunk_active = 1u;
+    dispatch_state.audio_event = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step `$B473` special-finish rim branch");
+    check(dispatch_state.dunk_rim_contact == 1u &&
+          dispatch_state.audio_event != 0x16u &&
           dispatch_state.ball.velocity_x == -0x0100,
-          "$B473 latches rim contact, clears ownership, retains camera follow, and reverses velocity");
+          "`$B473` special finish writes `$003F` instead of requesting ordinary rim SFX");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_PASS_BOUNCE;

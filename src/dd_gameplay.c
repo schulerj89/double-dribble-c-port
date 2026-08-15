@@ -579,6 +579,15 @@ static int dd_rim_sweep_contact(DDGameplayState *state) {
             dd_axis_boxes_overlap(ball->court_x, rim_x, 0x0100, 0x0100)) {
             ball->rim_contact = 1u;
             ball->owner = DD_NO_OWNER;
+            /* `$B4DB-$B4E7` separates the special-finish latch from the
+               ordinary rim sound: `$003B!=0` writes `$003F=1`; otherwise it
+               requests event `$16`. The carrier/camera owner is deliberately
+               not cleared here. */
+            if (state->dunk_active != 0u) {
+                state->dunk_rim_contact = 1u;
+            } else {
+                dd_request_audio_event(state, 0x16u);
+            }
             ball->velocity_x = -ball->velocity_x;
             return 1;
         }
@@ -1389,6 +1398,7 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
     state->dunk_active = 0u;
     state->dunk_age = 0u;
     state->dunk_outcome = 0u;
+    state->dunk_rim_contact = 0u;
     if (shooter == state->controlled_player && shooter < 5u) {
         /* Bank-0 $AA75 is the user B-button shot initializer: install the
            $9B26/$9B27 height stream, expose dispatcher state $03, and put
@@ -2394,6 +2404,7 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
     state->shot_value = 2u;
     state->dunk_active = 0u;
     state->dunk_outcome = 0u;
+    state->dunk_rim_contact = 0u;
     state->dunk_age = 0u;
     state->foul_shooter = DD_NO_OWNER;
     state->foul_offender = DD_NO_OWNER;
@@ -2727,6 +2738,7 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 if (age >= 18u) {
                     uint8_t outcome = state->dunk_outcome;
                     state->dunk_active = 0u;
+                    state->dunk_rim_contact = 0u;
                     dunk_player->height = 0x1000;
                     dunk_player->action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
                     dunk_player->action_age = 0u;
