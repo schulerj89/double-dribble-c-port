@@ -531,6 +531,53 @@ Selected-bank ROM mappings are `$9645->$1655`, `$9698->$16A8`,
 `$9761->$1771`, `$A129->$2139`, `$A21F->$222F`, `$A482->$2492`, and
 `$A780->$2790`.
 
+The common inbound tail is now translated for both possession directions.
+Headless Ghidra `$9651-$9760` first calls `$9395`, flips direction with
+`EOR #$48`, calls fixed `$D6BD`, and uses `$9097` to find role zero. `$D6BD`
+loops object slots `$02-$0B`, indexes the 20-byte role/team/direction table at
+`$D745`, assigns state `$36`, and installs its movement cadence. The exporter
+now prints the complete 256-byte `$9763` adjustment table. Native C expresses
+that byte-exact band transform arithmetically, retains `$05E0`'s ninth packed
+bit, derives the opposite role-zero target with signed `$40/$C0`, clamps its
+lane to `$08..$18`, and derives receiving role one with `$62/$BE`. `$ABCD` then
+refreshes native target axes before `$D978/$D98D` performs the existing packed
+arrival walk.
+
+The long natural FCEUX trace supplies the opposite-direction proof. Frame 5673
+writes reason `$16` from `$9635`, flips direction `$08->$40`, selects object
+`$02` as inbounder `$41`, and produces final targets
+`$0124,$A6,$69,$58,$B6,$A8,$D5,$5A,$45,$E8`. The preceding `$95E0-$9635`
+handler accepts ball states `$01/$07/$0C`, rejects depth outside `$16-$8B`, and
+applies the two sloped longitudinal boundaries. Frames 6610 and 9990 repeat the
+same natural reason. The native boundary helper converts those comparisons
+directly rather than using a rectangular court approximation.
+
+Ghidra `$A1CC` supplies two more callers of the same setup: coarse timer
+`$06B1 >= $18` queues reason `$14`, while a user carrier still in its original
+half at tick `$0A` queues `$13`. `$9583` latches a front-court crossing in
+`$06B3` and queues `$15` if that owner returns. Controlled FCEUX probes at
+frame 2601 dynamically reach `$A202->$9651` (reason `$13`), `$A1DE->$9651`
+(reason `$14`), and `$95C9->$9651` (reason `$15`); all ten players are written
+through `$D6BD` on the following dispatcher frame. Native tests independently
+seed the three thresholds/latch and verify reason, direction, timer reset, and
+role-zero inbounder.
+
+Inbound also reaches the role-maintenance helpers that run during formation.
+Natural frame 3545 records `$993A->$99D9` swapping object `$07/$08` roles
+`0/1 -> 1/0` and their `$0580` pair links before `$9018` restores the final
+`$31/$37` actions. `$9A31` swaps the reciprocal linked pair entries. Native
+players now carry mutable pair links, reproduce that persistent role/link
+result at release, and verify reciprocal pairs after frame-3572 reception.
+User-side reception follows `$AD58`; CPU-side reception alone runs `$AD6D`'s
+role-3/role-4 route setup.
+
+The bounded inbound inventory is **96.8%**: 29 portable branches/helpers are
+Verified and two remain Partial (exact whistle SFX `$2C`, plus exceptional
+reasons `$17/$1A` which bypass ordinary formation). Mapper switching and
+PPU/OAM presentation are excluded. Rebuilt original/native inbound screenshot
+differences are **4.8671%**, **4.7189%**, **5.1252%**, **5.2734%**, and
+**5.6536%** at setup, hold, release-ready, pass, and reception respectively.
+
 Following the timeout exposed an older rebound-return approximation.  Ghidra
 shows `$8E71` and `$8EBF` both using `$D978` packed equality followed by
 `$D98D`'s double fixed-point integration.  Natural frames 2783-3004 carry
@@ -912,7 +959,7 @@ repeatable diff makes that remaining visual gap explicit rather than hiding it.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **91% portable Ghidra-to-C gameplay-loop coverage** and **73.1% match-rules completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **92% portable Ghidra-to-C gameplay-loop coverage** (91.8% unrounded), **76.9% match-rules completeness**, and **96.8% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

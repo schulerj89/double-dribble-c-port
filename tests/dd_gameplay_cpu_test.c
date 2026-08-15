@@ -227,6 +227,12 @@ int main(int argc, char **argv) {
           "live 1015 completes the inbound and resumes CPU possession decisions");
     check(state.clock_minutes == 0x04u && state.clock_seconds == 0x26u,
           "native HUD clock matches original frame 3572 at 04:26");
+    check(state.players[5].role == 1u && state.players[6].role == 0u &&
+          state.players[5].paired_player == 0u &&
+          state.players[0].paired_player == 5u &&
+          state.players[6].paired_player == 4u &&
+          state.players[4].paired_player == 6u,
+          "$993A/$99D9/$9A31 preserve inbound role and reciprocal pair swaps");
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         check_checkpoint(&state, 1015u, player,
                          post_inbound_action[player], post_inbound_target[player]);
@@ -259,6 +265,71 @@ int main(int argc, char **argv) {
     memset(&dispatch_base, 0, sizeof(dispatch_base));
     check(dd_gameplay_advance_to(&pack, &dispatch_base, 356u, 0u),
           "prepare isolated dispatcher checks");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.possession_rule_age = 10u * 64u - 1u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "run $A1CC ten-tick back-court rule");
+    check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
+          dispatch_state.inbound_reason == 0x13u &&
+          dispatch_state.possession_direction == 0u &&
+          dispatch_state.players[5].action == DD_PLAYER_INBOUNDER &&
+          dispatch_state.possession_rule_age == 0u,
+          "$A1CC reason $13 flips possession and enters shared inbound setup");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].court_x = 0x018000;
+    dispatch_state.ball.court_x = dispatch_state.players[0].court_x;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.possession_rule_age = 24u * 64u - 1u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "run $A1CC twenty-four-tick possession rule");
+    check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
+          dispatch_state.inbound_reason == 0x14u &&
+          dispatch_state.players[5].action == DD_PLAYER_INBOUNDER,
+          "$A1CC checks reason $14 before the ten-tick branch");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].court_x = 0x008000;
+    dispatch_state.ball.court_x = dispatch_state.players[0].court_x;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.backcourt_latched = 1u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "run $9583 return-to-backcourt latch");
+    check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
+          dispatch_state.inbound_reason == 0x15u &&
+          dispatch_state.backcourt_latched == 0u &&
+          dispatch_state.players[5].action == DD_PLAYER_INBOUNDER,
+          "$9583 reason $15 clears its latch through $9395 and changes sides");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_HIDDEN;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.court_x = 0x003000;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.possession_direction = 0u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "run $95E0 sloped boundary rule");
+    check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
+          dispatch_state.inbound_reason == 0x16u &&
+          dispatch_state.possession_direction == 1u &&
+          dispatch_state.players[0].action == DD_PLAYER_INBOUNDER &&
+          dispatch_state.players[0].target_zone == 0x23u &&
+          dispatch_state.players[0].target_depth == 0x009800,
+          "$95E0 reason $16 uses $9763 and the ninth packed target bit");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_FOLLOW_TARGET;

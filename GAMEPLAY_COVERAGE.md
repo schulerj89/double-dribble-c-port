@@ -4,11 +4,11 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 91%**
+**Portable Ghidra-to-C gameplay-loop coverage: 92%**
 
-**Match-rules completeness: 73.1%**
+**Match-rules completeness: 76.9%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, the CPU shot-block path, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, user-triggered contests, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, the CPU shot-block path, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, user-triggered contests, free-throw formation movement, and broad CPU decision coverage remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 91.0%`, rounded to **91%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 91.8%`, rounded to **92%**.
 
 ## Player action dispatcher — 100%
 
@@ -97,9 +97,10 @@ ownership. `$A482` restores the role-based `$40/$3C/$3E` and opposite `$20`
 layout. `$05D7/$05E7=$21/$01` remains extended baseline depth `$98`, while
 `$AD6D` installs the ordinary receiver and `$25/$3C/$3E` actions without
 overwriting coordinates. This strengthens the verified dispatcher and user
-control entries, but the match-level inbound capability remains Partial until
-the opposite possession-direction formations and every sideline/baseline
-out-of-bounds cause have natural traces.
+control entries. The shared `$9651` setup, opposite possession direction,
+sloped court boundary, possession violations, and every portable helper reached
+by those branches are inventoried separately below, promoting match-level
+inbound to Verified.
 
 States `$2C/$33/$34/$35` share the literal `$8BC5->$D98A->$A84C` tail. `$A84C`
 calls the longitudinal fixed-point integrator twice and the depth integrator
@@ -189,26 +190,38 @@ metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
 switching are likewise excluded globally and are not represented as gameplay
 coverage entries.
 
-## Match rules and possession flow — 73.1%
+## Match rules and possession flow — 76.9%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
-| V (6) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions; live user control |
-| P (7) | CPU pass/shot choice, rebound sequence, inbound sequence, possession transfer, game clock, defensive steals/blocks, fouls and general out-of-bounds rules |
+| V (7) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions; live user control; inbound sequence |
+| P (6) | CPU pass/shot choice, rebound sequence, possession transfer, game clock, defensive steals/blocks, fouls and remaining exceptional dead-ball rules |
 | M (0) | none |
 
-Score: `(6 + 7 × 0.5) / 13 = 73.1%`.
+Score: `(7 + 6 × 0.5) / 13 = 76.9%`.
 
-The inbound entry remains Partial, but its user branch and turnover clock are
-now native. Ghidra `$A780/$A129/$A21F/$A482` and natural FCEUX frames
-3004-3051 prove directional receiver selection, held-ball ownership, delayed
-release, live-role restoration, reception, and control transfer. The no-input
-trace reaches `$A795->$9651` on frame 3324, exactly 320 frames after `$0D`
-begins, replacing the former absolute native-frame trigger. Remaining work is
-the full `$9583` sideline/baseline cause matrix and mirrored formations for
-every possession direction, so this capability is not promoted prematurely.
+The inbound entry is Verified. Ghidra `$A780/$A129/$A21F/$A482` and natural
+FCEUX frames 3004-3051 prove directional receiver selection, held-ball
+ownership, delayed release, live-role restoration, reception, and control
+transfer. The no-input trace reaches `$A795->$9651` on frame 3324, exactly 320
+frames after `$0D` begins. Natural frame 5673 proves the opposite-direction
+reason `$16` formation. Controlled original probes prove `$A1CC` reasons
+`$13/$14` and `$9583` reason `$15`, including their common `$9651` tail.
+
+### Inbound-only portable coverage — 96.8%
+
+This bounded denominator contains every portable branch/helper reached from
+the recovered inbound paths; it excludes only mapper, PPU, and OAM machinery.
+
+| Status | Count | Capabilities |
+| --- | ---: | --- |
+| V | 29 | sequence/dispatch (10): `$2D` chase, `$2E` claim, `$2F` return, standard `$30`, alternate `$30`, `$002C` `$30`, `$31` release, user `$0D`, ball `$02` flight/contact, reception/control; placement/helpers (10): direction flip, `$9395`, `$D6BD`, `$9097`, `$9763`, ninth packed bit, opposite role-zero offset, lane clamp, receiving role-one offset, `$ABCD/$D978/$D98D` refresh/walk/arrival; causes/rules (6): `$12`, `$13`, `$14`, `$15`, `$16`, rebound-state preservation; role/ownership (3): `$AD6D` actions, `$99D9` role swap, `$9A31` reciprocal pair swap |
+| P | 2 | exact dynamic whistle/SFX `$2C` playback; exceptional reasons `$17/$1A` that intentionally bypass the normal formation tail |
+| M | 0 | none |
+
+Score: `(29 + 2 × 0.5) / 31 = 96.8%`.
 
 The defensive entry is Partial: the original sustained-contact steal path,
 paired CPU shot contest, owned-ball block arbitration, landing-delayed
@@ -221,8 +234,9 @@ Missed-shot outcomes are Verified from `$AE25->$B377->$AF72/$AFDD`: controlled
 FCEUX probes independently produce classifier results `$01-$04`, the `$04F0`
 wrap/arming return is covered, and native checks exercise all three miss-vector
 branches plus the traced 61-frame loose-ball arc. The combined foul/out-of-bounds
-entry is now Partial because the zero-clock same-facing foul/free-throw path is
-native; general sideline and baseline out-of-bounds decisions remain missing.
+entry remains Partial because, although the shared sloped boundary and reasons
+`$13-$16` are native, several foul and exceptional dead-ball causes outside the
+inbound inventory remain incomplete.
 
 The made-shot and score/HUD entries are Verified from `$AE25->$AEDE` and fixed
 bank `$C477/$C6AD`. The natural score trace enters state `$06` with counter
@@ -268,4 +282,4 @@ When updating this ledger:
 2. Translate the remaining CPU decision branches and pass-lane rejection.
 3. Translate the user-defender `$A3E2->$A607` contest trigger, contested-rebound, and remaining rim-contact eligibility branches.
 4. Match the clock's presentation-state call gaps.
-5. Add non-scripted sideline and baseline out-of-bounds handling.
+5. Translate the exceptional `$17/$1A` dead-ball bypass and connect whistle SFX `$2C`.

@@ -122,6 +122,7 @@ typedef struct DDPlayerState {
     uint8_t release_timer;
     uint8_t hold_timer;
     uint8_t paired_timer;
+    uint8_t paired_player;
 } DDPlayerState;
 
 typedef struct DDBallState {
@@ -161,10 +162,13 @@ typedef struct DDGameplayState {
     uint8_t possession_direction;
     uint8_t possession_count;
     uint8_t inbound_variant;
+    uint8_t inbound_reason;
+    uint8_t backcourt_latched;
     uint8_t camera_chr_side;
     uint8_t hud_split_y;
     uint8_t tip_winner;
     uint16_t inbound_age;
+    uint16_t possession_rule_age;
     uint32_t tip_user_jump_frame;
     uint32_t live_start_frame;
     uint32_t next_clock_frame;

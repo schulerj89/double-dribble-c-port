@@ -33,6 +33,8 @@ local inject_player_jump_case = tonumber(os.getenv("DD_INJECT_PLAYER_JUMP_CASE")
 local inject_player_inbound_case = tonumber(os.getenv("DD_INJECT_PLAYER_INBOUND_CASE") or "0")
 local inject_player_pair_case = tonumber(os.getenv("DD_INJECT_PLAYER_PAIR_CASE") or "0")
 local inject_player_hold_case = tonumber(os.getenv("DD_INJECT_PLAYER_HOLD_CASE") or "0")
+local inject_inbound_rule_frame = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_FRAME") or "-1")
+local inject_inbound_rule_case = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_CASE") or "0")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -307,6 +309,31 @@ while emu.framecount() < final_frame do
     if next_frame >= pass_frame and next_frame <= pass_end then
         input[pass_button] = true
         if pass_direction ~= "none" then input[pass_direction] = true end
+    end
+    if next_frame == inject_inbound_rule_frame and inject_inbound_rule_case ~= 0 then
+        -- Controlled proofs for $A1CC reasons $13/$14 and $9583 reason $15.
+        -- Object $02 is the user carrier; the ball remains safely inside the
+        -- sloped $95E0 boundary so only the requested possession rule fires.
+        local player = 0x02
+        memory.writebyte(0x0340, 0x01)
+        memory.writebyte(0x0340 + player, 0x02)
+        memory.writebyte(0x005B, player)
+        memory.writebyte(0x0048, player)
+        memory.writebyte(0x004D, player)
+        memory.writebyte(0x0050, 0x40)
+        memory.writebyte(0x06B2, 0x40)
+        memory.writebyte(0x0056, 0x00)
+        memory.writebyte(0x0360, 0x00)
+        memory.writebyte(0x0370, 0x80)
+        memory.writebyte(0x03C0, 0x58)
+        memory.writebyte(0x0360 + player, 0x00)
+        memory.writebyte(0x0370 + player, 0x80)
+        memory.writebyte(0x03C0 + player, 0x58)
+        memory.writebyte(0x06B0, 0x00)
+        memory.writebyte(0x06B1,
+            inject_inbound_rule_case == 1 and 0x0A or
+            (inject_inbound_rule_case == 2 and 0x18 or 0x00))
+        memory.writebyte(0x06B3, inject_inbound_rule_case == 3 and 0x01 or 0x00)
     end
     if next_frame == inject_block_frame then
         -- Controlled branch proof for bank-0 $8B12->$A6C3.  The natural
