@@ -1766,6 +1766,22 @@ capture starts from `$BA`, a cell deliberately outside the removed radius, so a
 successful screenshot also proves this repair rather than the old synthetic
 center case.
 
+A later natural-play regression found one remaining ordering error in that
+translation. `$AA75` (the initial B press) only installs user state `$03` and
+attached ball state `$04`; `$A504->$A84C` continues the already-installed
+takeoff vector while B is held. The literal cell test does not execute until
+`$B189`, after B is released. The C port had sampled it at `$AA75`, so a player
+starting in rejected cell `$B9` could visibly travel into `$BA` in the air but
+still receive an ordinary shot. Eligibility now runs at the shared user-release
+or CPU-apex boundary. The deterministic test begins in `$B9`, retains the exact
+rightward takeoff vector for eight frames, releases in `$BA`, and requires the
+special finish to activate; all eight literal cells and both adjacent-cell
+rejections remain covered. `tools/Capture-NativeDunk.ps1` regenerates ignored
+make/miss gather, airborne, and result screenshots through that same running
+entry. The separate bank-2 close-up graphics remain an active presentation
+gap; this correction proves the gameplay trigger and timing, not cinematic
+pixel parity.
+
 The defensive follow-up corrects a separate native approximation in player
 states `$20/$22`. Ghidra at `$8A16` calls `$9102`, which loads the opponent
 through mutable link `$0580+X`; it never assumes the arithmetic player five

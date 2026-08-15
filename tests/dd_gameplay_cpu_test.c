@@ -2690,9 +2690,14 @@ int main(int argc, char **argv) {
     }
     check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
           "start the recovered right-rim dunk gate");
+    check(dispatch_state.dunk_active == 0u &&
+          dispatch_state.ball.action == DD_BALL_SHOT_GATHER,
+          "`$AA75` starts held shot gather without sampling `$B189` dunk eligibility");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "release the recovered right-rim dunk gate");
     check(dispatch_state.dunk_active != 0u &&
           dispatch_state.ball.action == DD_BALL_SHOT_GATHER,
-          "close-rim B press enters the native bank-2-derived dunk gather");
+          "close-rim B release enters the native bank-2-derived dunk presentation");
     dispatch_state.dunk_outcome = 1u;
     for (player = 0u; player < 20u && dispatch_state.dunk_active != 0u; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
@@ -2718,6 +2723,10 @@ int main(int argc, char **argv) {
     }
     check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
           "start close-rim dunk miss proof");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "release close-rim dunk miss proof");
+    check(dispatch_state.dunk_active != 0u,
+          "close-rim miss path activates only at `$B189` release");
     dispatch_state.dunk_outcome = 4u;
     for (player = 0u; player < 20u && dispatch_state.dunk_active != 0u; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
@@ -2747,8 +2756,9 @@ int main(int argc, char **argv) {
             dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
             set_packed_position(&dispatch_state.players[0], user_dunk_cell[cell]);
             check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B) &&
+                  dd_gameplay_step(&pack, &dispatch_state, 0u) &&
                   dispatch_state.dunk_active != 0u,
-                  "each literal user `$B189` dunk cell activates from shipping B input");
+                  "each literal user `$B189` dunk cell activates on shipping B release");
 
             dispatch_state = dispatch_base;
             dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -2759,8 +2769,13 @@ int main(int argc, char **argv) {
             dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER_ROUTE;
             set_packed_position(&dispatch_state.players[5], cpu_dunk_cell[cell]);
             run_cpu_dispatch(&pack, &dispatch_state, 5u);
+            for (player = 0u; player < 48u && dispatch_state.dunk_active == 0u &&
+                 dispatch_state.ball.action == DD_BALL_SHOT_GATHER; ++player) {
+                check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+                      "advance CPU shot height stream to `$B189` dunk gate");
+            }
             check(dispatch_state.dunk_active != 0u,
-                  "each literal CPU `$B189` dunk cell activates through state `$26`");
+                  "each literal CPU `$B189` dunk cell activates at state `$27` apex");
         }
         dispatch_state = dispatch_base;
         dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -2771,6 +2786,7 @@ int main(int argc, char **argv) {
         dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
         set_packed_position(&dispatch_state.players[0], 0xB9u);
         check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B) &&
+              dd_gameplay_step(&pack, &dispatch_state, 0u) &&
               dispatch_state.dunk_active == 0u,
               "packed cell `$B9` beside the user dunk lane remains an ordinary shot");
         dispatch_state = dispatch_base;
@@ -2781,9 +2797,41 @@ int main(int argc, char **argv) {
         dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER_ROUTE;
         set_packed_position(&dispatch_state.players[5], 0xA6u);
         run_cpu_dispatch(&pack, &dispatch_state, 5u);
+        for (player = 0u; player < 48u && dispatch_state.ball.action == DD_BALL_SHOT_GATHER;
+             ++player) {
+            check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+                  "advance adjacent-cell CPU shot through `$B189`");
+        }
         check(dispatch_state.dunk_active == 0u,
               "packed cell `$A6` beside the CPU dunk lane remains an ordinary shot");
     }
+
+    /* `$A504` keeps the takeoff vector while state `$03` is airborne. Start
+       in rejected cell `$B9`, carry right into `$BA`, and release there: this
+       is the natural-play ordering that press-time eligibility could not do. */
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    set_packed_position(&dispatch_state.players[0], 0xB9u);
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT | DD_INPUT_B),
+          "begin running dunk outside the eligible packed lane");
+    for (player = 0u; player < 8u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+              "hold running dunk while takeoff momentum enters the lane");
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "release running dunk after crossing into the eligible lane");
+    check(dispatch_state.dunk_active != 0u &&
+          dispatch_state.ball.action == DD_BALL_SHOT_GATHER,
+          "`$A504->$B189` activates a natural running dunk from the release-time cell");
 
     period_state = dispatch_base;
     period_state.clock_minutes = 0u;

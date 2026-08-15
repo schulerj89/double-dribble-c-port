@@ -1369,11 +1369,9 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
                           DDGameplayState *state, uint32_t shooter) {
     DDPlayerState *player;
     int32_t hoop_x;
-    uint8_t packed;
     if (shooter >= DD_GAMEPLAY_PLAYER_COUNT) return;
     player = &state->players[shooter];
     hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
-    packed = dd_pack_cpu_position(player);
     state->ball.action = DD_BALL_SHOT_GATHER;
     state->ball.owner = (uint8_t)shooter;
     state->last_touch_player = (uint8_t)shooter;
@@ -1383,14 +1381,14 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
     state->ball.rim_contact = 0u;
     state->last_shooter = (uint8_t)shooter;
     state->shot_value = 2u;
-    /* `$B189-$B1DC` checks the `$AB53` packed cell before it initializes the
-       ordinary shot vector. A match enters the special presentation only for
-       the exact four cells assigned to that player's side. */
-    state->dunk_active = (uint8_t)dd_dunk_cell_eligible(shooter, packed);
+    /* Dunk eligibility is not sampled here. `$AA75` only begins state `$03`
+       and attached ball `$04`; the player can retain takeoff momentum while
+       B remains held. `$B189` samples `$AB53` at the later release/apex
+       boundary, so testing the packed cell on button press rejected natural
+       running dunks that entered the lane in the air. */
+    state->dunk_active = 0u;
     state->dunk_age = 0u;
-    state->dunk_outcome = (uint8_t)(((state->cpu_entropy +
-                                      state->possession_count + shooter) & 3u) == 0u
-                                    ? 4u : 1u);
+    state->dunk_outcome = 0u;
     if (shooter == state->controlled_player && shooter < 5u) {
         /* Bank-0 $AA75 is the user B-button shot initializer: install the
            $9B26/$9B27 height stream, expose dispatcher state $03, and put
@@ -2778,6 +2776,21 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             }
             if ((ball->owner < DD_GAMEPLAY_PLAYER_COUNT && user_release) ||
                 cpu_apex || (!user_shot && ball->action_age > 26u)) {
+                uint32_t shooter = ball->owner;
+                /* `$B189->$AB53` performs the literal packed-cell dunk test
+                   after the held-shot movement/height dispatch, immediately
+                   before ordinary shot-vector initialization. Preserve that
+                   ordering for both user release and CPU apex entry. */
+                if (shooter < DD_GAMEPLAY_PLAYER_COUNT &&
+                    dd_dunk_cell_eligible(shooter,
+                        dd_pack_cpu_position(&state->players[shooter]))) {
+                    state->dunk_active = 1u;
+                    state->dunk_age = 0u;
+                    state->dunk_outcome = (uint8_t)(((state->cpu_entropy +
+                        state->possession_count + shooter) & 3u) == 0u ? 4u : 1u);
+                    ball->action_age = 0u;
+                    break;
+                }
                 /* The recovered opening `$27->$05` trace launches ball slot
                    zero at $005700/$004B00/$38C0. The native route cadence
                    reaches the same packed cell without the NES sub-cell, so

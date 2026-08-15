@@ -706,15 +706,20 @@ int main(int argc, char **argv) {
             state.ball.owner = 0u;
             state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
             state.players[0].facing = 0u;
-            /* Packed cell `$BA` is accepted by original `$B189` but lay
-               outside the port's former narrow radius gate. */
-            state.players[0].court_x = 0x01A400;
+            /* Begin in adjacent rejected cell `$B9`, then retain the right
+               takeoff vector until release enters `$BA`. This capture proves
+               `$B189` samples the natural airborne release position. */
+            state.players[0].court_x = 0x019800;
             state.players[0].court_depth = 0x005800;
             state.players[0].height = 0x1000;
             for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
                 state.players[player].action = DD_PLAYER_ROUTE_WAIT;
             }
-            ok = dd_gameplay_step(&pack, &state, DD_INPUT_B) &&
+            ok = dd_gameplay_step(&pack, &state, DD_INPUT_RIGHT | DD_INPUT_B);
+            for (player = 0u; ok && player < 8u; ++player) {
+                ok = dd_gameplay_step(&pack, &state, DD_INPUT_B);
+            }
+            ok = ok && dd_gameplay_step(&pack, &state, 0u) &&
                  state.dunk_active != 0u;
             state.dunk_outcome = make ? 1u : 4u;
             steps = checkpoint == 0 ? 0u : checkpoint == 1 ? 9u : 20u;
