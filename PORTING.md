@@ -1176,7 +1176,17 @@ lookaheads (one accepted escape and 462 clear/rejected returns):
 acceptance, same-region rejection, cooldown, original delayed pass release,
 mirrored route-table output, lane targeting, region-five shots, clock and
 possession forced shots, decision-timer underflow, and the paired-defender
-lookahead. The existing deterministic opening and post-inbound checkpoints also
+avoidance branches. It also runs a complete accelerated four-period match with
+no controller input. Each period uses the original one-minute BCD clock path;
+the test observes CPU pass, shot, and inbound decisions, validates all ten live
+court positions and every dribble owner each frame, fails if a CPU carrier
+holds an identical position and action for more than 640 frames, and requires
+period four to reach GAME SET and return to the title within 25,000 frames.
+This long-run guard complements the isolated seed and region checks, promoting
+the fixed `$D7CC-$DA38` policy and the called bank-0 route, region, and paired-
+player helpers to routine Verified. Per-state installed-vector cadence remains
+Partial until every action follows the recovered `$ABCD` movement path.
+The existing deterministic opening and post-inbound checkpoints also
 remain unchanged.
 
 ## User defender contest and recovered shot angles

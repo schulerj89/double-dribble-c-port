@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 77.8,
+    "comprehensive_percent": 84.7,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 120,
-    "partial_count": 96,
+    "verified_count": 150,
+    "partial_count": 66,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -271,12 +271,25 @@
         "8491"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:834D"
+        "Ghidra recursive node bank0:834D",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -290,12 +303,25 @@
         "8491"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8368"
+        "Ghidra recursive node bank0:8368",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -307,12 +333,25 @@
         "8491"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:836B"
+        "Ghidra recursive node bank0:836B",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -380,12 +419,25 @@
         "8429"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:841B"
+        "Ghidra recursive node bank0:841B",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -397,12 +449,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8429"
+        "Ghidra recursive node bank0:8429",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -415,12 +480,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:842F"
+        "Ghidra recursive node bank0:842F",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -459,12 +537,25 @@
         "8472"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8468"
+        "Ghidra recursive node bank0:8468",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -477,12 +568,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8472"
+        "Ghidra recursive node bank0:8472",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -876,12 +980,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8BF8"
+        "Ghidra recursive node bank0:8BF8",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -891,12 +1008,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8C02"
+        "Ghidra recursive node bank0:8C02",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -931,12 +1061,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8CF3"
+        "Ghidra recursive node bank0:8CF3",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1433,12 +1576,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:90B3"
+        "Ghidra recursive node bank0:90B3",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1450,12 +1606,25 @@
         "9B42"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9102"
+        "Ghidra recursive node bank0:9102",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1465,12 +1634,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9139"
+        "Ghidra recursive node bank0:9139",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3354,12 +3536,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AC2A"
+        "Ghidra recursive node bank0:AC2A",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3369,12 +3564,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AC58"
+        "Ghidra recursive node bank0:AC58",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3384,12 +3592,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AC5C"
+        "Ghidra recursive node bank0:AC5C",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3399,12 +3620,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AC64"
+        "Ghidra recursive node bank0:AC64",
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_choose_spacing_target",
+        "dd_choose_regional_route_target",
+        "dd_cpu_possession_region",
+        "dd_cpu_target_occupied",
+        "dd_paired_player_contact",
+        "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4943,12 +5177,23 @@
         "D98D"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D7CC"
+        "Ghidra recursive node fixed7:D7CC",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4964,12 +5209,23 @@
         "D98D"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D7DE"
+        "Ghidra recursive node fixed7:D7DE",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4981,12 +5237,23 @@
         "D7DE"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D857"
+        "Ghidra recursive node fixed7:D857",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5003,12 +5270,23 @@
         "D98A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D862"
+        "Ghidra recursive node fixed7:D862",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5022,12 +5300,23 @@
         "D98A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D867"
+        "Ghidra recursive node fixed7:D867",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5039,12 +5328,23 @@
         "D98A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D8B0"
+        "Ghidra recursive node fixed7:D8B0",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5056,12 +5356,23 @@
         "D92D"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D8F1"
+        "Ghidra recursive node fixed7:D8F1",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5071,12 +5382,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D8FA"
+        "Ghidra recursive node fixed7:D8FA",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5086,12 +5408,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D92D"
+        "Ghidra recursive node fixed7:D92D",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5188,12 +5521,23 @@
         "DA38"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D99A"
+        "Ghidra recursive node fixed7:D99A",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5205,12 +5549,23 @@
         "DA04"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:DA04"
+        "Ghidra recursive node fixed7:DA04",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5220,12 +5575,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:DA38"
+        "Ghidra recursive node fixed7:DA38",
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_cpu_decide_possession",
+        "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass",
+        "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired",
+        "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
     }
   ]
 }

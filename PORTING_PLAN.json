@@ -179,6 +179,18 @@
       ],
       "coverage_change_percent": 10.0,
       "reason": "Previously component-verified inbound, scoring, and ball paths now have routine-level Ghidra/FCEUX/native/test mappings; free-throw `$B377` was corrected so aim `$60` makes and every other value returns result two."
+    },
+    {
+      "milestone": "phase-2c-cpu-policy-route-helper-verification",
+      "status": "verified",
+      "completed": [
+        "12 fixed-bank possession, receiver, pass, shot, and avoidance policy nodes",
+        "18 bank-0 route, region, occupancy, paired-defense, and avoidance-bound helper nodes",
+        "four-period long-run regression with ownership/bounds/stall guards and required pass/shot/inbound decisions",
+        "30 comprehensive routine nodes promoted to Verified"
+      ],
+      "coverage_change_percent": 6.9,
+      "reason": "Thirty CPU policy/helper nodes advance from Partial to Verified using headless call graphs, natural/controlled FCEUX decision traces, isolated all-region native checks, and the new full-match progress regression."
     }
   ],
   "phases": [

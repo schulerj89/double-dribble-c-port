@@ -187,6 +187,91 @@ static void check_team_palette_continuity(const DDAssetPack *pack) {
     free(new_york);
 }
 
+static void check_long_run_native_match(const DDAssetPack *pack) {
+    DDGameplayState state;
+    uint32_t frame;
+    uint32_t player;
+    uint32_t cpu_stall = 0u;
+    uint32_t passes = 0u;
+    uint32_t shots = 0u;
+    uint32_t inbounds = 0u;
+    int32_t previous_x = INT32_MIN;
+    int32_t previous_depth = INT32_MIN;
+    uint8_t previous_action = 0xFFu;
+    uint8_t previous_phase = 0xFFu;
+    uint8_t previous_ball_action = 0xFFu;
+    int valid = 1;
+    memset(&state, 0, sizeof(state));
+    valid = dd_gameplay_advance_to(pack, &state, 356u, 0u);
+    /* One-minute periods keep this full four-period smoke test bounded while
+       exercising the same BCD clock, reset, tip, live, and GAME SET paths. */
+    state.match_time_bcd = 0x01u;
+    state.clock_minutes = 0x01u;
+    state.clock_seconds = 0u;
+    state.clock_expired = 0;
+    state.next_clock_frame = state.scene_frame + 1u;
+    for (frame = 0u; valid && frame < 25000u && !state.return_to_title; ++frame) {
+        valid = dd_gameplay_step(pack, &state, 0u);
+        if (!valid) break;
+        if (state.phase == DD_GAMEPLAY_INBOUND && previous_phase != DD_GAMEPLAY_INBOUND) {
+            ++inbounds;
+        }
+        if (state.ball.action == DD_BALL_PASS && previous_ball_action != DD_BALL_PASS) {
+            ++passes;
+        }
+        if ((state.ball.action == DD_BALL_SHOT_GATHER ||
+             state.ball.action == DD_BALL_AIRBORNE) &&
+            previous_ball_action != DD_BALL_SHOT_GATHER &&
+            previous_ball_action != DD_BALL_AIRBORNE) {
+            ++shots;
+        }
+        if (state.phase == DD_GAMEPLAY_LIVE) {
+            if (state.ball.action == DD_BALL_DRIBBLE &&
+                state.ball.owner >= DD_GAMEPLAY_PLAYER_COUNT) {
+                valid = 0;
+                break;
+            }
+            for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                if (state.players[player].court_x < 0x001000 ||
+                    state.players[player].court_x > 0x01F100 ||
+                    state.players[player].court_depth < 0x000500 ||
+                    state.players[player].court_depth > 0x009800) {
+                    valid = 0;
+                    break;
+                }
+            }
+            if (state.ball.action == DD_BALL_DRIBBLE && state.ball.owner >= 5u &&
+                state.ball.owner < DD_GAMEPLAY_PLAYER_COUNT) {
+                const DDPlayerState *carrier = &state.players[state.ball.owner];
+                if (carrier->court_x == previous_x &&
+                    carrier->court_depth == previous_depth &&
+                    carrier->action == previous_action) {
+                    ++cpu_stall;
+                } else {
+                    cpu_stall = 0u;
+                }
+                previous_x = carrier->court_x;
+                previous_depth = carrier->court_depth;
+                previous_action = carrier->action;
+                if (cpu_stall > 640u) valid = 0;
+            } else {
+                cpu_stall = 0u;
+                previous_x = INT32_MIN;
+                previous_depth = INT32_MIN;
+                previous_action = 0xFFu;
+            }
+        }
+        previous_phase = state.phase;
+        previous_ball_action = state.ball.action;
+    }
+    check(valid, "long-run native match preserves bounds, ownership, and CPU progress");
+    check(state.return_to_title && state.period == 4u &&
+          state.phase == DD_GAMEPLAY_GAME_SET,
+          "four one-minute periods reach GAME SET and return-to-title without a stuck state");
+    check(passes != 0u && shots != 0u && inbounds != 0u,
+          "long-run CPU match exercises pass, shot, and inbound decisions");
+}
+
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
         0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Cu, 0x3Eu
@@ -224,6 +309,7 @@ int main(int argc, char **argv) {
     assets = (const DDTipoffAssetsHeader *)pack.tipoff_assets;
     check_unlimited_native_gameplay_sprites(&pack);
     check_team_palette_continuity(&pack);
+    check_long_run_native_match(&pack);
     check(assets->cpu_role_targets[6] == 0xD5u && assets->cpu_role_targets[7] == 0x5Au &&
           assets->cpu_role_targets[16] == 0x54u && assets->cpu_role_targets[17] == 0xD7u,
           "asset pack exposes the observed role targets at both half-court phases");

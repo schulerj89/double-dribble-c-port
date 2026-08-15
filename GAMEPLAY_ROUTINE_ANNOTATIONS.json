@@ -201,6 +201,51 @@
       "regression_tests": [
         "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
       ]
+    },
+    {
+      "name": "fixed_bank_cpu_possession_policy_and_avoidance",
+      "status": "verified",
+      "routines": [
+        "fixed7:D7CC", "fixed7:D7DE", "fixed7:D857", "fixed7:D862",
+        "fixed7:D867", "fixed7:D8B0", "fixed7:D8F1", "fixed7:D8FA",
+        "fixed7:D92D", "fixed7:D99A", "fixed7:DA04", "fixed7:DA38"
+      ],
+      "evidence": [
+        "Headless Ghidra fixed-bank `$D759-$DA39` decision/receiver/pass/shot/avoidance call graph and policy tables `$D8B9/$D8D5`",
+        "FCEUX `gameplay-cpu-decisions.csv` natural routes plus controlled region, receiver, and `$D99A` obstacle success/no-change traces"
+      ],
+      "native_symbols": [
+        "dd_cpu_decide_possession", "dd_cpu_policy_target",
+        "dd_cpu_try_region_pass", "dd_cpu_avoidance_target",
+        "dd_cpu_decision_timer_expired", "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c all-region CPU policy, pass acceptance/rejection, shot timer, obstacle, and long-run four-period match suite"
+      ]
+    },
+    {
+      "name": "cpu_route_region_pair_and_contact_helpers",
+      "status": "verified",
+      "routines": [
+        "bank0:834D", "bank0:8368", "bank0:836B", "bank0:841B",
+        "bank0:8429", "bank0:842F", "bank0:8468", "bank0:8472",
+        "bank0:8BF8", "bank0:8C02", "bank0:8CF3", "bank0:90B3",
+        "bank0:9102", "bank0:9139", "bank0:AC2A", "bank0:AC58",
+        "bank0:AC5C", "bank0:AC64"
+      ],
+      "evidence": [
+        "Headless Ghidra bank-0 route initialization, seven-region classifier, target selection/occupancy, paired-opponent target/contact, shot recognition, and avoidance-bound helpers",
+        "FCEUX route/CPU decision traces record target changes, region branches, paired contacts, and both avoidance outcomes"
+      ],
+      "native_symbols": [
+        "dd_choose_spacing_target", "dd_choose_regional_route_target",
+        "dd_cpu_possession_region", "dd_cpu_target_occupied",
+        "dd_paired_player_contact", "dd_cpu_avoidance_target",
+        "dd_set_paired_defender_target", "dd_update_cpu_player"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c route-state, region, occupancy, paired-defense, obstacle, and long-run progress suite"
+      ]
     }
   ]
 }
