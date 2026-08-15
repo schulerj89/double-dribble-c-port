@@ -501,6 +501,46 @@ arrangement, while the two alternate probes preserve the other `$37` objects.
 The native `inbound_variant` makes these portable choices explicit without
 emulating zero-page flags.
 
+The user-entered made-basket inbound is now translated rather than falling
+through to the generic CPU mover.  Headless Ghidra at `$A780` proves that the
+handler preserves the current object as carrier, calls `$A129` to score the
+five same-side receivers against the held direction, and accepts the pass only
+when `$0680 & $80` is set.  `$A21F` changes the inbounder to `$05`, stores the
+selected receiver through `$B0AB`, and `$A482` restores the live role layout.
+The no-input branch compares coarse timer `$06B1` with five; `$93AE` advances
+that byte every 64 frames, so `$A795` queues SFX `$2C`, reason `$12`, and jumps
+to the common `$9651` turnover after exactly 320 frames.
+
+Natural FCEUX frames 3004-3324 prove both outcomes.  With no input, frame 3004
+holds ball `$00`, owner/carrier `$02/$02`, and user action `$0D`; frame 3324 is
+exactly 320 frames later and installs ball `$0B`, carrier `$00`, nine `$36`
+walkers, and object `$07` in `$41`.  The focused
+`original-user-inbound-pass` capture instead presses right+A on frame 3010:
+`$A129/$A1C9` select object `$04`, `$A7C6->$A21F->$A230->$A241` queue the pass,
+and `$A482` produces `$05,$40,$40,$3C,$3E` on that side with five opposite
+`$20` objects.  Frame 3012 changes ball `$00->$02`, carrier `$02->$00`, and
+receiver `$04->$0C`; `$AD41->$AD58` completes reception on frame 3051 with
+ball `$01` and owner/carrier `$04/$04`.
+
+The timeout now reaches `$9651` through rule state rather than the former
+`live_frame == 767` shortcut.  The regenerated Ghidra report includes the
+full `$9698-$9760` placement tail: pointer `$9761->$9763` contributes offset
+one, the inbound lane component is clamped to `$08..$18`, role zero enters
+`$36`, and role one is placed at signed `$62/$BE` before entering `$36`.
+Selected-bank ROM mappings are `$9645->$1655`, `$9698->$16A8`,
+`$9761->$1771`, `$A129->$2139`, `$A21F->$222F`, `$A482->$2492`, and
+`$A780->$2790`.
+
+Following the timeout exposed an older rebound-return approximation.  Ghidra
+shows `$8E71` and `$8EBF` both using `$D978` packed equality followed by
+`$D98D`'s double fixed-point integration.  Natural frames 2783-3004 carry
+`$FF01` longitudinal and signed `$000C` depth terms through
+`$2D->$2E->$2F->$30->$0D`; native now preserves those vectors and the traced
+frame-2783 sub-cell `$00EC0A/$5988`.  Original/native pixel differences for
+2783/582, 2944/743, 3004/803, 3324/1123, 3501/1300, 3545/1344, 3553/1352,
+and 3572/1371 are respectively **5.2037%, 4.5968%, 5.0520%, 4.8671%,
+4.7189%, 5.1252%, 5.2734%, and 5.6536%**.
+
 State `$20`'s missing paired-player path is `$8A16->$9102`. `$9102` feeds
 current and paired projected coordinates to the shared `$9B42` two-axis box
 test with half extents two. Controlled case 1 records `$20->$22`, latch

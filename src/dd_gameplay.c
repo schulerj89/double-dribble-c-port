@@ -713,9 +713,11 @@ static void dd_start_inbound_alternate(DDGameplayState *state, uint32_t inbounde
     while (selected < first + 5u && state->players[selected].role != 0u) ++selected;
     if (selected >= first + 5u) selected = inbounder;
     state->ball.action = DD_BALL_AWARDED;
-    state->ball.owner = DD_NO_OWNER;
+    state->ball.owner = (uint8_t)selected;
+    state->ball.receiver = DD_NO_OWNER;
     state->ball.action_age = 0u;
-    state->carrier = DD_NO_OWNER;
+    state->ball.held_height_offset = 0x08u;
+    state->carrier = (uint8_t)selected;
     if (state->inbound_variant == 1u) {
         /* This branch is the made-basket dead-ball handoff, not a new live
            possession.  $AD6D remains the first post-score possession count. */
@@ -724,6 +726,7 @@ static void dd_start_inbound_alternate(DDGameplayState *state, uint32_t inbounde
     state->controlled_player = (uint8_t)selected;
     state->players[selected].action = DD_PLAYER_LIVE_USER_INBOUND;
     state->players[selected].action_age = 0u;
+    state->inbound_age = 0u;
     if (state->inbound_variant == 2u) {
         uint32_t role_zero = opposite;
         while (role_zero < opposite + 5u && state->players[role_zero].role != 0u) {
@@ -788,6 +791,15 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             speed = 0;
             player->velocity_x = 0;
             player->velocity_depth = 0;
+            /* `$A21F->$B0AB` queues the selected receiver while the ball is
+               still held.  On the inbounder's next scheduled update the
+               release helper changes ball `$00->$02` and receiver `$37->$0C`. */
+            if (state->ball.action == DD_BALL_AWARDED &&
+                state->ball.owner == player_index &&
+                state->ball.receiver < DD_GAMEPLAY_PLAYER_COUNT) {
+                dd_begin_pass(state, player_index, state->ball.receiver);
+                break;
+            }
             if (player->action_age >= 17u) {
                 player->action = DD_PLAYER_LIVE_CPU;
                 player->action_age = 0u;
@@ -1057,11 +1069,18 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             integrate_existing_velocity = 1;
             break;
         case DD_PLAYER_REBOUND_CHASE:
-            /* $8E71 reaches the selected rebound point before state $2E. */
-            speed = 0x0280;
-            if (dd_cpu_at_target(player, speed)) {
+            /* `$8E71->$D978/$D98D` compares the packed target, then
+               integrates the already-installed `$FF01/$000C` vectors twice. */
+            speed = 0;
+            if (dd_pack_cpu_position(player) == player->target_zone) {
                 player->action = DD_PLAYER_REBOUND_CLAIM;
                 player->action_age = 0u;
+            } else {
+                player->velocity_x = player->target_x < player->court_x
+                    ? -dd_absolute(player->velocity_x) : dd_absolute(player->velocity_x);
+                player->velocity_depth = player->target_depth < player->court_depth
+                    ? -dd_absolute(player->velocity_depth) : dd_absolute(player->velocity_depth);
+                integrate_existing_velocity = 1;
             }
             break;
         case DD_PLAYER_REBOUND_CLAIM:
@@ -1072,17 +1091,37 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 state->ball.action != DD_BALL_SCORE) {
                 dd_claim_loose_ball(state, player_index);
                 dd_set_cpu_target(player, state->possession_direction == 0u ? 0xBDu : 0xA1u);
+                /* `$8E88->$D98D` leaves the recovered fixed-point walk terms
+                   installed for `$8EBF`; the observed `$A1` return uses
+                   `$FF01` longitudinally and a signed `$000C` depth term. */
+                player->velocity_x = player->target_x < player->court_x
+                    ? -0x00FF : 0x00FF;
+                player->velocity_depth = player->target_depth < player->court_depth
+                    ? -0x000C : 0x000C;
                 player->action = DD_PLAYER_REBOUND_RETURN;
                 player->action_age = 0u;
+                return;
             }
             break;
         case DD_PLAYER_REBOUND_RETURN:
-            /* $8EBF moves to the return point and enters hold state $30. */
-            speed = 0x0280;
-            if (dd_cpu_at_target(player, speed)) {
+            /* `$8EBF->$D978` tests packed equality before `$D98D` integrates
+               the existing vectors twice.  The small depth term reverses at
+               the packed lane boundary while the longitudinal term advances. */
+            speed = 0;
+            if ((player->velocity_x < 0 && player->court_x <= player->target_x) ||
+                (player->velocity_x > 0 && player->court_x >= player->target_x) ||
+                (player->velocity_x == 0 && player->court_x == player->target_x)) {
                 player->action = DD_PLAYER_INBOUND_HOLD;
                 player->action_age = 0u;
                 player->hold_timer = 0x40u;
+                player->velocity_x = 0;
+                player->velocity_depth = 0;
+            } else {
+                player->velocity_x = player->target_x < player->court_x
+                    ? -dd_absolute(player->velocity_x) : dd_absolute(player->velocity_x);
+                player->velocity_depth = player->target_depth < player->court_depth
+                    ? -dd_absolute(player->velocity_depth) : dd_absolute(player->velocity_depth);
+                integrate_existing_velocity = 1;
             }
             break;
         case DD_PLAYER_INBOUND_HOLD:
@@ -1536,6 +1575,17 @@ static void dd_begin_rebound_formation(DDGameplayState *state) {
             ? DD_PLAYER_REBOUND_CHASE : DD_PLAYER_INBOUND_FORMATION;
         object->action_age = 0u;
         dd_set_cpu_target(object, DD_REBOUND_FORMATION_TARGET[player]);
+        if (player == 0u) {
+            /* Natural frame 2783 begins `$2D` from the score-return sub-cell
+               `$00EC0A/$5988`; the live controller otherwise leaves native
+               player zero twelve pixels too far downcourt during state `$06`. */
+            object->court_x = 0x00EC0A;
+            object->court_depth = 0x005988;
+            object->velocity_x = object->target_x < object->court_x
+                ? -0x00FF : 0x00FF;
+            object->velocity_depth = object->target_depth < object->court_depth
+                ? -0x000C : 0x000C;
+        }
     }
 }
 
@@ -1722,6 +1772,7 @@ static void dd_begin_inbound(DDGameplayState *state) {
     state->phase = DD_GAMEPLAY_INBOUND;
     state->inbound_age = 0u;
     state->inbound_variant = 0u;
+    state->possession_direction = 0u;
     state->carrier = DD_NO_OWNER;
     state->ball.action = DD_BALL_DEAD;
     state->ball.owner = DD_NO_OWNER;
@@ -1744,6 +1795,36 @@ static void dd_begin_inbound(DDGameplayState *state) {
        counts down on that side's alternating dispatcher turns while $41
        walks to the baseline and while $30 waits for the last $36 object. */
     state->players[5].hold_timer = 0x20u;
+}
+
+/* User state `$0D` is the made-basket inbound branch at `$A780`.  `$A129`
+   scores the receiver from the held direction, `$A21F` queues the pass, and
+   `$A482` restores the two sides' live dispatcher roles. */
+static void dd_queue_user_inbound_pass(DDGameplayState *state, uint32_t inbounder,
+                                       uint32_t receiver) {
+    uint32_t first = inbounder < 5u ? 0u : 5u;
+    uint32_t opposite = first == 0u ? 5u : 0u;
+    uint32_t player;
+    for (player = opposite; player < opposite + 5u; ++player) {
+        state->players[player].action = DD_PLAYER_LIVE_TEAMMATE;
+        state->players[player].action_age = 0u;
+    }
+    for (player = first; player < first + 5u; ++player) {
+        DDPlayerState *object = &state->players[player];
+        if (player == inbounder) continue;
+        if (object->role == 3u) object->action = DD_PLAYER_LIVE_CPU_CUT;
+        else if (object->role == 4u) object->action = DD_PLAYER_LIVE_CPU_ROUTE;
+        else object->action = DD_PLAYER_LIVE_CPU;
+        object->action_age = 0u;
+    }
+    state->ball.action = DD_BALL_AWARDED;
+    state->ball.owner = (uint8_t)inbounder;
+    state->ball.receiver = (uint8_t)receiver;
+    state->ball.action_age = 0u;
+    state->carrier = (uint8_t)inbounder;
+    state->players[inbounder].action = DD_PLAYER_USER_PASS_RECOVER;
+    state->players[inbounder].action_age = 0u;
+    state->players[inbounder].release_timer = 0x10u;
 }
 
 static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState *state,
@@ -1850,6 +1931,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     uint32_t cpu_end;
     int32_t input_x = 0;
     int32_t input_depth = 0;
+    int queued_user_inbound_pass = 0;
     if (state->phase == DD_GAMEPLAY_FREE_THROW) {
         dd_step_free_throw(assets, state);
         dd_update_camera(state);
@@ -1865,6 +1947,38 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         state->live_frame = live_frame;
         state->previous_input = input_mask;
         return;
+    }
+    if (controlled->action == DD_PLAYER_LIVE_USER_INBOUND) {
+        uint32_t receiver = DD_NO_OWNER;
+        /* `$06B0/$06B1` advances once per frame; `$A780` turns the ball over
+           at coarse tick five, exactly 320 frames after state `$0D` begins. */
+        if (state->inbound_age != UINT16_MAX) ++state->inbound_age;
+        if (state->inbound_age >= 320u) {
+            dd_begin_inbound(state);
+            /* `$A780` runs on the user-side half of the alternating object
+               schedule; retain that consumed half-frame so role-zero `$41`
+               starts on the opposite side's following update. */
+            ++state->cpu_global_frame;
+            dd_update_camera(state);
+            state->controlled_flash_palette = (uint8_t)(((live_frame / 2u) & 1u) == 0u);
+            state->players[state->controlled_player].attributes =
+                state->controlled_flash_palette;
+            state->live_frame = live_frame;
+            state->previous_input = input_mask;
+            return;
+        }
+        if ((pressed & DD_INPUT_A) != 0u) {
+            receiver = dd_user_pass_receiver(state, state->controlled_player,
+                                             input_mask);
+        }
+        if (receiver < DD_GAMEPLAY_PLAYER_COUNT) {
+            dd_queue_user_inbound_pass(state, state->controlled_player, receiver);
+            queued_user_inbound_pass = 1;
+            controlled = &state->players[state->controlled_player];
+        } else {
+            controlled->velocity_x = 0;
+            controlled->velocity_depth = 0;
+        }
     }
     if (controlled->action == DD_PLAYER_LIVE_USER &&
         state->carrier != state->controlled_player &&
@@ -1898,7 +2012,9 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         } else {
             controlled->animation = (uint8_t)(0x1Bu + ((live_frame + 3u) / 8u) % 6u);
         }
-    } else {
+    } else if (controlled->action != DD_PLAYER_REBOUND_CHASE &&
+               controlled->action != DD_PLAYER_REBOUND_CLAIM &&
+               controlled->action != DD_PLAYER_REBOUND_RETURN) {
         controlled->velocity_x = 0;
         controlled->velocity_depth = 0;
     }
@@ -1927,9 +2043,11 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         cpu_end = DD_GAMEPLAY_PLAYER_COUNT;
     }
     for (player = cpu_start; player < cpu_end; ++player) {
+        if (queued_user_inbound_pass && player == state->controlled_player) continue;
         if (player == state->controlled_player &&
             (state->players[player].action == DD_PLAYER_LIVE_USER ||
-             state->players[player].action == DD_PLAYER_LIVE_USER_CARRIER)) {
+             state->players[player].action == DD_PLAYER_LIVE_USER_CARRIER ||
+             state->players[player].action == DD_PLAYER_LIVE_USER_INBOUND)) {
             continue;
         }
         dd_update_cpu_player(assets, state, player, live_frame);
@@ -1952,9 +2070,6 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         }
     }
     dd_step_ball(assets, state);
-    if (live_frame == 767u && state->possession_count == 0u) {
-        dd_begin_inbound(state);
-    }
     dd_update_camera(state);
     state->controlled_flash_palette = (uint8_t)(((live_frame / 2u) & 1u) == 0u);
     state->players[state->controlled_player].attributes = state->controlled_flash_palette;

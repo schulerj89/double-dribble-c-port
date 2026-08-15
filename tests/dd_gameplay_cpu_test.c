@@ -46,6 +46,7 @@ int main(int argc, char **argv) {
     DDGameplayState state;
     DDGameplayState jump_state;
     DDGameplayState pass_state;
+    DDGameplayState inbound_pass_state;
     DDGameplayState dispatch_base;
     DDGameplayState dispatch_state;
     DDGameplayState period_state;
@@ -172,8 +173,32 @@ int main(int argc, char **argv) {
     check(state.live_frame == 387u && state.ball.action == DD_BALL_DRIBBLE && state.carrier == 0u,
           "live 387 reproduces the observed user-side recovery");
     check(dd_gameplay_advance_to(&pack, &state, 803u, 0u), "advance to out-of-bounds ball");
-    check(state.live_frame == 447u && state.ball.action == DD_BALL_AWARDED && state.carrier == 0xFFu,
-          "live 447 releases the recovered ball before the inbound decision");
+    check(state.live_frame == 447u && state.ball.action == DD_BALL_AWARDED &&
+          state.ball.owner == 0u && state.carrier == 0u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER_INBOUND,
+          "live 447 preserves the recovered ball for user inbound state $0D");
+    inbound_pass_state = state;
+    check(dd_gameplay_step(&pack, &inbound_pass_state,
+                           DD_INPUT_A | DD_INPUT_RIGHT),
+          "direction+A selects a user inbound receiver");
+    check(inbound_pass_state.players[0].action == DD_PLAYER_USER_PASS_RECOVER &&
+          inbound_pass_state.ball.action == DD_BALL_AWARDED &&
+          inbound_pass_state.ball.owner == 0u &&
+          inbound_pass_state.ball.receiver == 2u,
+          "$A129/$A21F queue the traced right-side receiver while the ball remains held");
+    check(inbound_pass_state.players[1].action == DD_PLAYER_LIVE_CPU &&
+          inbound_pass_state.players[2].action == DD_PLAYER_LIVE_CPU &&
+          inbound_pass_state.players[3].action == DD_PLAYER_LIVE_CPU_CUT &&
+          inbound_pass_state.players[4].action == DD_PLAYER_LIVE_CPU_ROUTE &&
+          inbound_pass_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE,
+          "$A482 restores the post-inbound dispatcher roles");
+    check(dd_gameplay_step(&pack, &inbound_pass_state, 0u) &&
+          dd_gameplay_step(&pack, &inbound_pass_state, 0u),
+          "advance to the queued user inbound release");
+    check(inbound_pass_state.ball.action == DD_BALL_PASS &&
+          inbound_pass_state.ball.receiver == 2u &&
+          inbound_pass_state.players[2].action == DD_PLAYER_USER_PASS_RECEIVE,
+          "the next user-side dispatcher turn launches ball $02 and receiver $0C");
     check(dd_gameplay_advance_to(&pack, &state, 1123u, 0u), "advance to inbound setup");
     check(state.live_frame == 767u && state.phase == DD_GAMEPLAY_INBOUND &&
           state.ball.action == DD_BALL_DEAD &&
@@ -487,6 +512,9 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].action = DD_PLAYER_REBOUND_CHASE;
     dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
     dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.players[5].target_zone = (uint8_t)(
+        (((uint32_t)(dispatch_state.players[5].court_depth >> 8) << 1u) & 0xE0u) |
+        (((uint32_t)dispatch_state.players[5].court_x >> 12u) & 0x1Fu));
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_REBOUND_CLAIM,
           "player state $2D advances to rebound claim $2E at its target");

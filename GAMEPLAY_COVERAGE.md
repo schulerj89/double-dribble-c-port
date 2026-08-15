@@ -87,15 +87,19 @@ uses the same alternating-frame timer. Controlled state `$30` probes cover the
 standard `$9018->$31` arrangement, mode-bit `$40` action `$0D` arrangement,
 and `$002C`'s additional opposite-role-zero `$0F` assignment. Both states are V.
 
-The no-input inbound path is also state-driven end to end rather than
-checkpoint-driven. The made-basket return installs the frame-2783 `$2D/$36`
-formation, reaches `$2E/$2F/$30/$0D` through scheduled dispatches, and feeds
-the frame-3324 `$36/$41` ordinary inbound. `$05D7/$05E7=$21/$01` is preserved
-as extended baseline depth `$98`. `$AD6D` installs the receiver and role-based
-`$25/$3C/$3E` actions without overwriting player coordinates. This strengthens
-the existing verified dispatcher entries, but the match-level inbound capability
-remains Partial until the other possession directions, user-entered inbound,
-and all out-of-bounds causes have natural traces.
+The inbound path is also state-driven end to end rather than checkpoint-driven.
+The made-basket return installs the frame-2783 `$2D/$36` formation, reaches
+`$2E/$2F/$30/$0D` through scheduled dispatches, and feeds the frame-3324
+`$36/$41` turnover inbound after `$0D`'s recovered 320-frame limit. Direction+A
+now follows `$A129/$A21F`: natural frame 3010 selects object `$04`, frame 3012
+launches ball `$02` and receiver `$0C`, and frame 3051 transfers control and
+ownership. `$A482` restores the role-based `$40/$3C/$3E` and opposite `$20`
+layout. `$05D7/$05E7=$21/$01` remains extended baseline depth `$98`, while
+`$AD6D` installs the ordinary receiver and `$25/$3C/$3E` actions without
+overwriting coordinates. This strengthens the verified dispatcher and user
+control entries, but the match-level inbound capability remains Partial until
+the opposite possession-direction formations and every sideline/baseline
+out-of-bounds cause have natural traces.
 
 States `$2C/$33/$34/$35` share the literal `$8BC5->$D98A->$A84C` tail. `$A84C`
 calls the longitudinal fixed-point integrator twice and the depth integrator
@@ -196,6 +200,15 @@ Thirteen tracked match-level capabilities produce this score.
 | M (0) | none |
 
 Score: `(6 + 7 × 0.5) / 13 = 73.1%`.
+
+The inbound entry remains Partial, but its user branch and turnover clock are
+now native. Ghidra `$A780/$A129/$A21F/$A482` and natural FCEUX frames
+3004-3051 prove directional receiver selection, held-ball ownership, delayed
+release, live-role restoration, reception, and control transfer. The no-input
+trace reaches `$A795->$9651` on frame 3324, exactly 320 frames after `$0D`
+begins, replacing the former absolute native-frame trigger. Remaining work is
+the full `$9583` sideline/baseline cause matrix and mirrored formations for
+every possession direction, so this capability is not promoted prematurely.
 
 The defensive entry is Partial: the original sustained-contact steal path,
 paired CPU shot contest, owned-ball block arbitration, landing-delayed
