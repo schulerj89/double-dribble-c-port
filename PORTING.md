@@ -604,7 +604,7 @@ shows `$8E71` and `$8EBF` both using `$D978` packed equality followed by
 target/action pairs at `$8507` select one `$2D` rebound chaser and nine `$36`
 formation routes. Natural and controlled traces show the low-entropy object
 phase changing individual targets by `$FE/$FF/$01/$02`; native preserves the
-observed per-slot phases while still batching the NES object cadence. DDAP v16
+observed per-slot phases while still batching the NES object cadence. DDAP v17
 contains both ROM tables. `$2D` keeps the `$FF01` longitudinal and signed
 `$000C` depth terms before `$2E->$2F->$30`. The subsequent `$8EE2` branch uses
 `$A0DA` to select an on-screen non-role-zero teammate for automatic state `$31`
@@ -1060,9 +1060,9 @@ Focused traces close the four former initializer gaps:
   multiplication by five rather than the removed native `/19` interpolation.
 - The natural inbound enters pass state `$02` at frame 3553. Its first logged
   integration starts from `$001A3C/$00965C` with `$03D9/$FCD6`, and `$AD41`
-  accepts receiver contact at frame 3572. The older verified pass/inbound path
-  retains a bounded legacy axis adapter; the exact `$B035` axis order is now
-  used by shooting, while universal route installation remains Partial.
+  accepts receiver contact at frame 3572. `$B035`'s exact longitudinal-first,
+  depth-second axis order is now shared by shot gather, dribble, award, pass,
+  and inbound pickup; universal route installation remains Partial.
 - The frame-2749 short shot enters `$B189` at `$005700/$004B00/$38C0` and
   returns from `$B376` with vector `$FF43/$00AB`, duration `$14`, curve `$05`,
   base `$0200`, and height `$3800`. The native minimum-21 normalization is gone.
@@ -1238,7 +1238,7 @@ outside/three. The three-point score probe keeps kind `$01` through counters
 cover these four boundary cases, the far-page cases, release ordering, and all
 one-/two-/three-point score branches.
 
-DDAP v16 retains the audible results, not only event numbers. Matched FCEUX
+DDAP v17 retains the audible results, not only event numbers. Matched FCEUX
 APU runs isolate `$09` as a 189-frame pulse-2 cue at duty 50%/volume 6 whose
 timer moves `256->162->255` before stopping. `$25` is a 42-frame two-pulse
 arpeggio; comparing shot kind 1 against kind 0 proves the simultaneous
@@ -1275,19 +1275,23 @@ entry rather than injecting a result after release.
 | Ghidra/ASM | Recovered behavior | Native C |
 | --- | --- | --- |
 | `$AA75` | clear `$04F0+X`, install height stream `$9B34` from `$9B26`, set player `$03`, release gate `$04E0=1`, and ball `$04` | `dd_begin_shot` |
-| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v16 `shot_animation[8]` and `player.animation` |
-| `$A504` | update movement, pose, projection, and `$9ABD` height stream; on the release gate call `$B189` and `$A7EA` | user-shot gather dispatcher |
+| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v17 `shot_animation[8]` and `player.animation` |
+| `$A504->$A84C` | integrate the takeoff depth vector twice and longitudinal vector twice, then update pose, projection, and `$9ABD` height; fresh input does not retarget the airborne state | user-shot gather dispatcher preserves takeoff momentum |
+| `$8D1F->$AAEE->$AA98->$B503` and `$8D57` | face the CPU shooter toward the active hoop, clear its three motion vectors, use shared pose selection, and advance the shot height stream | CPU shot initializer and state `$27` dispatcher |
 | `$B035` table 2 | add the first facing offset to longitudinal `$0370` and the second to depth `$03C0` | exact shot attachment path |
 | `$B189->$9D2D->$9BB0` | target virtual hoop object `$0D`, derive signed angle/vector, duration, curve, and vertical base | `dd_initialize_shot_flight` |
 | `$B2F8/$B318/$B32B` | keep full duration in divider `$0003` for `(target height-current height)/duration`; replace it with curve only for the half-duration term | corrected fixed-point vertical initializer |
 | `$AE25->$B377` | integrate flight and classify the descending ball at heights `$34-$37`; result `$01` scores through `$06`, results `$02-$04` enter `$08->$09` miss handling | airborne, score, miss, and rebound dispatcher states |
+| `$AE25/$AEDE->$98B5->$990A` and table `$9922` | select net phase 2 on the make, phase 1 at score counter `$08`, then phase 0 on underflow; patch four tiles at `$2168/$2188` or `$2576/$2596` | `net_animation_phase`, `net_basket_side`, and the renderer's pack-backed net patch |
 
-The selected bank-0 CPU addresses map to ROM offsets `$A504->$2514`,
-`$A896->$28A6`, `$A8E6->$28F6`, `$A9DC->$29EC`, `$AA75->$2A85`,
-`$B035->$3045`, `$B189->$3199`, `$B2F8->$3308`, `$B318->$3328`,
-`$B32B->$333B`, and `$B377->$3387`, including the iNES header. The headless
-export now anchors all of those code sites and prints the animation-pointer,
-eight-pose, and `$9B26` script-pointer tables.
+The selected bank-0 CPU addresses map to ROM offsets `$8D1F->$0D2F`,
+`$8D57->$0D67`, `$98B5->$18C5`, `$9922->$1932`, `$A504->$2514`,
+`$A84C->$285C`, `$A896->$28A6`, `$A8E6->$28F6`, `$A9DC->$29EC`,
+`$AA75->$2A85`, `$B035->$3045`, `$B189->$3199`, `$B2F8->$3308`,
+`$B318->$3328`, `$B32B->$333B`, and `$B377->$3387`, including the iNES
+header. The headless export anchors those code sites and prints the
+animation-pointer, eight-pose, net-tile, held-offset, and `$9B26`
+script-pointer tables.
 
 The controlled original make changes only the carrier's pre-shot position to
 X `$00F7`, depth `$61`, then runs unmodified `$AA75/$A504/$B189/$AE25/$B377`.
@@ -1300,6 +1304,22 @@ enters score state `$06` at frame 2790. The untouched neighboring start at X
 enters rebound state `$07` at frame 2816. Native regressions reproduce the
 make launch tuple exactly and drive both cases through the shipping input and
 dispatcher loop, proving one score and one non-score/rebound outcome.
+
+A second controlled trace starts at X `$00D0`, depth `$61` while holding
+right before the shot. `$AA75` leaves `$0130=$0260` intact; scheduled `$A504`
+updates move X from `$00D040` at frame 2602 to `$00D2A0`, `$00D500`, and
+onward while metasprite `$22` remains selected. The native `takeoff` and
+`airborne` checkpoints assert the same preserved vector and two-add cadence.
+This is the original form of in-air movement: existing takeoff momentum
+continues, but state `$03` does not accept a new steering vector mid-jump.
+
+The make trace also proves the net sequence independently of ball motion.
+Original frame 2792 has phase 2 applied, frame 2798 has phase 1, and frame
+2807 has restored phase 0. Table `$9922` is 24 bytes: two basket sides by
+three four-tile frames. DDAP v17 extracts those bytes, and the native renderer
+patches the equivalent two adjacent tiles on two rows before drawing the
+court. Native regression checks assert the exact table and phase transitions
+`2->1->0`.
 
 Ignored visual evidence includes original release/make/miss frames and eight
 native gather/release/result/inbound captures. Whole-frame differences are 17.6322%
@@ -1318,6 +1338,7 @@ Reproduce the evidence with:
 .\tools\ghidra\Run-GameplayLoopAnalysis.ps1
 .\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2815 -CaptureName original-user-shot-make-final -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -UserShotDepth 0x61 -UserShotX 0xF7 -DisablePcCounts
 .\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2820 -CaptureName original-user-shot-miss-final -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2588 -FinalFrame 2810 -CaptureName original-user-shot-moving-right -MoveStart 2588 -MoveEnd 2644 -MoveDirection right -UserShotX 0xD0 -UserShotDepth 0x61 -DisablePcCounts
 .\tools\Capture-NativeShooting.ps1
 .\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
 ```
@@ -1331,9 +1352,11 @@ confirmed in FCEUX are:
 | State / helper | Original effect | Native translation |
 | --- | --- | --- |
 | `$AE25` result `$01` | flip `$0050`, set/decrement gate `$0056`, enter ball score `$06` | change possession direction and arm `rebound_formation_pending` |
-| `$8491->$8503/$8507` | combine gate, role `$0690`, team side, and object phase; install one `$2D` plus nine `$36` targets | DDAP v16 tables plus the traced per-slot cadence adapter |
+| `$8491->$8503/$8507` | combine gate, role `$0690`, team side, and object phase; install one `$2D` plus nine `$36` targets | DDAP v17 tables plus the traced per-slot cadence adapter |
 | player `$2D->$2E->$2F->$30` | chase/claim the scored ball, return to the boundary, then wait for all `$36->$37` routes | native rebound-chase dispatcher chain and formation readiness gate |
-| `$8EE2->$A0DA->$9018` | when mode bit `$40` is clear, find an on-screen non-role-zero teammate and enter automatic release `$31` | `dd_automatic_inbound_receiver` and normal ball `$02` pass |
+| `$8EBF/$8C6B->$AD0E->$B035` | claim the scored or loose ball, reset its local phase, set held height `$10`, and add the table-0 longitudinal/depth hand offsets | exact owner/carrier assignment and pickup attachment |
+| `$8EE2->$A0DA->$9018->$B0B8` | find an on-screen non-role-zero teammate, enter release `$31`, and immediately install pass angle, facing, and velocity before the countdown | `dd_automatic_inbound_receiver`, `dd_start_inbound_release`, and `dd_prepare_pass_motion` |
+| `$8FE0` at timer `$04` | change ball `$00->$02` and clear camera carrier `$0048`; retain inbound owner `$005B` during flight | release gate without reattaching or recomputing the pass |
 | ball `$07->$AF46` | on an untouched miss, increment the rebound counter; its third dispatch may reach the boundary rule | outcome-zero guard lasts only while `action_age < 3` |
 | `$9635->$9651->$D6BD` | queue reason `$16`, flip possession, reset ten formation targets, and assign receiving role zero state `$41` | `dd_begin_common_inbound` and native `$36/$41` formation |
 | `$96AF-$96CA` | determine `$05E0` from the source side, then add `$9763` to `$05D0` with 8-bit wrap and no carry into `$05E0` | explicit low-byte wrap preserving the independently derived ninth bit |
@@ -1349,6 +1372,15 @@ expands to `x=$01D800, depth=$000800`. The earlier native 16-bit addition
 incorrectly produced `$011D` and parked the inbounder at depth `$88`, causing
 the visibly broken formation.
 
+The pickup follow anchors `$AD0E` at ROM `$2D1E`, `$B035` at `$3045`,
+`$9018` at `$1028`, and `$8FE0` at `$0FF0`. The `$B075` pointer table selects
+three 16-byte facing tables at `$B07B/$B08B/$B09B`; in all three, the first
+signed byte belongs to longitudinal X and the second to court depth. The old
+native adapter had those axes reversed for dribble, award, pass, and inbound.
+Original frames 2914 and 2942 plus native `make-pickup.png` and
+`miss-pickup.png` show the corrected baseline pickup, while regression checks
+pin the facing-zero table-0 attachment at X `+8`, depth `-1`, height `$10C0`.
+
 FCEUX frame 2944 and native `miss-inbound.png` now show the same baseline-side
 formation; frame 2929 and native `make-inbound.png` show the made-basket
 automatic inbound. The regression drives both shots from B input through the
@@ -1358,8 +1390,10 @@ the miss's reason `$16`, state `$41`, and exact `$001D` coordinates.
 Coverage remains **92.6% unrounded (93% displayed)** and match rules remain
 **80.8%**. The portable shot, result, score, and miss states were already
 Verified; adding a NES metasprite selection does not inflate the denominator.
-The corrected fixed-point math strengthens those verified entries, while the
-known legacy non-shot axis adapter keeps core movement physics Partial.
+The corrected fixed-point math, held-ball axes, inbound initialization, and
+net state strengthen those verified entries. Core movement physics remains
+Partial because route interpolation still uses the documented cadence adapter
+and lacks a dynamic original court-boundary rejection capture.
 
 ## Open research questions
 

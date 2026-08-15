@@ -194,6 +194,8 @@ typedef struct DDGameplayState {
     uint8_t period;
     uint8_t last_shooter;
     uint8_t shot_value;
+    uint8_t net_animation_phase;
+    uint8_t net_basket_side;
     uint8_t foul_shooter;
     uint8_t foul_offender;
     uint8_t match_clock_pulse;

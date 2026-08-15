@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 16u
+#define DD_PACK_VERSION 17u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -698,6 +698,7 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
     const size_t held_offsets = dd_bank_file_offset(0u, 0xB07Bu);
     const size_t height_scripts = dd_bank_file_offset(0u, 0x9B29u);
     const size_t shot_animation = dd_bank_file_offset(0u, 0xA9DCu);
+    const size_t net_animation_tiles = dd_bank_file_offset(0u, 0x9922u);
     const size_t rebound_target_phase = dd_bank_file_offset(0u, 0x8503u);
     const size_t rebound_formation = dd_bank_file_offset(0u, 0x8507u);
     const size_t cpu_role_targets = 16u + 7u * 0x4000u + (0xD745u - 0xC000u);
@@ -712,6 +713,7 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
     if (data == NULL || bank2_end > rom_size || held_offsets + sizeof(header->held_ball_offsets) > rom_size ||
         height_scripts + sizeof(header->height_scripts) > rom_size ||
         shot_animation + sizeof(header->shot_animation) > rom_size ||
+        net_animation_tiles + sizeof(header->net_animation_tiles) > rom_size ||
         rebound_target_phase + sizeof(header->rebound_target_phase) > rom_size ||
         rebound_formation + sizeof(header->rebound_formation) > rom_size ||
         cpu_role_targets + sizeof(header->cpu_role_targets) > rom_size ||
@@ -725,6 +727,8 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
     memcpy(header->held_ball_offsets, rom + held_offsets, sizeof(header->held_ball_offsets));
     memcpy(header->height_scripts, rom + height_scripts, sizeof(header->height_scripts));
     memcpy(header->shot_animation, rom + shot_animation, sizeof(header->shot_animation));
+    memcpy(header->net_animation_tiles, rom + net_animation_tiles,
+           sizeof(header->net_animation_tiles));
     memcpy(header->rebound_target_phase, rom + rebound_target_phase,
            sizeof(header->rebound_target_phase));
     memcpy(header->rebound_formation, rom + rebound_formation,
@@ -1618,7 +1622,7 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v16: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 8 shot poses, 20 rebound entries, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, %zu whistle events, %zu three-call events, %zu three-score events, and %zu DMC bytes.\n",
+    printf("Valid DDAP v17: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 8 shot poses, 6 four-tile net frames, 20 rebound entries, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, %zu whistle events, %zu three-call events, %zu three-score events, and %zu DMC bytes.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
            pack.select_music_count, pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count,
            pack.config_music_count,

@@ -728,6 +728,25 @@ static void dd_gameplay_patch_hud(uint8_t ppu[DD_PPU_SIZE], const DDGameplayStat
     }
 }
 
+static void dd_gameplay_patch_net(uint8_t ppu[DD_PPU_SIZE],
+                                  const DDTipoffAssetsHeader *assets,
+                                  const DDGameplayState *state) {
+    uint32_t table;
+    uint32_t address;
+    if (state->net_animation_phase == 0u || state->net_animation_phase > 2u ||
+        state->net_basket_side > 1u) return;
+    /* Bank-0 `$98B5->$990A` writes two adjacent tiles on each of two rows.
+       `$0056 == 1` selects right-basket PPU `$2576`; otherwise it selects
+       left-basket `$2168` and the first half of the `$9922` table. */
+    table = (state->net_basket_side != 0u ? 12u : 0u) +
+        (uint32_t)state->net_animation_phase * 4u;
+    address = state->net_basket_side != 0u ? 0x2576u : 0x2168u;
+    ppu[address] = assets->net_animation_tiles[table];
+    ppu[address + 1u] = assets->net_animation_tiles[table + 1u];
+    ppu[address + 0x20u] = assets->net_animation_tiles[table + 2u];
+    ppu[address + 0x21u] = assets->net_animation_tiles[table + 3u];
+}
+
 int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
                        uint32_t *pixels, uint32_t width, uint32_t height) {
     const DDTipoffAssetsHeader *assets;
@@ -750,6 +769,7 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
     assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
     memcpy(ppu, pack->tipoff_ppu, sizeof(ppu));
     dd_gameplay_patch_hud(ppu, state);
+    dd_gameplay_patch_net(ppu, assets, state);
     if (state->camera_chr_side == 0u) {
         memcpy(ppu + 0x1B00u, assets->court_chr_left, sizeof(assets->court_chr_left));
     } else if (state->camera_chr_side == 2u) {

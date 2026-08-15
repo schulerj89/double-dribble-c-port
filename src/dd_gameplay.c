@@ -587,6 +587,13 @@ static uint8_t dd_pack_cpu_position(const DDPlayerState *player) {
     return dd_pack_cpu_coordinates(player->court_x, player->court_depth);
 }
 
+static uint16_t dd_pack_extended_coordinates(int32_t court_x, int32_t court_depth) {
+    uint32_t x = (uint32_t)dd_clamp(court_x >> 8, 0, 0x1FF);
+    uint32_t depth = (uint32_t)dd_clamp(court_depth >> 8, 0, 0xFF);
+    return (uint16_t)(((depth & 0x80u) << 1u) |
+        ((depth << 1u) & 0xE0u) | ((x >> 4u) & 0x1Fu));
+}
+
 /* $AC64 mirrors the five-bit packed court column when direction bit $40 is set. */
 static uint8_t dd_mirror_packed_target(uint8_t packed) {
     return (uint8_t)((packed & 0xE0u) | (0x1Fu - (packed & 0x1Fu)));
@@ -961,25 +968,6 @@ static void dd_attach_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *
         (int32_t)assets->held_ball_offsets[offset + 1u] * 256;
 }
 
-/* The established pass/dribble timeline predates the exact `$B035` axis
-   recovery and still stores its two native court axes through the legacy
-   adapter.  Keep that bounded adapter outside shot table 2 so correcting the
-   shooting path does not invalidate the separately verified inbound slice. */
-static void dd_attach_ball_legacy(const DDTipoffAssetsHeader *assets,
-                                  DDGameplayState *state, uint32_t table) {
-    uint32_t owner_index = state->ball.owner < DD_GAMEPLAY_PLAYER_COUNT
-        ? state->ball.owner : state->carrier;
-    const DDPlayerState *owner;
-    uint32_t offset;
-    if (owner_index >= DD_GAMEPLAY_PLAYER_COUNT) return;
-    owner = &state->players[owner_index];
-    offset = table * 16u + (uint32_t)(owner->facing & 7u) * 2u;
-    state->ball.court_depth = owner->court_depth +
-        (int32_t)assets->held_ball_offsets[offset] * 256;
-    state->ball.court_x = owner->court_x +
-        (int32_t)assets->held_ball_offsets[offset + 1u] * 256;
-}
-
 /* $A129 scores every eligible teammate against the held direction bits.  A
    candidate receives one point for each matching horizontal/vertical half
    plane; equal nonzero scores prefer the later object slot. */
@@ -1022,18 +1010,14 @@ static uint32_t dd_user_pass_receiver(const DDGameplayState *state, uint32_t car
     return receiver;
 }
 
-static void dd_begin_pass(const DDTipoffAssetsHeader *assets, DDGameplayState *state,
-                          uint32_t carrier, uint32_t receiver) {
+static void dd_prepare_pass_motion(DDGameplayState *state,
+                                   uint32_t carrier, uint32_t receiver) {
     DDBallState *ball = &state->ball;
     int32_t unit_x;
     int32_t unit_depth;
     uint8_t angle;
     if (carrier >= DD_GAMEPLAY_PLAYER_COUNT || receiver >= DD_GAMEPLAY_PLAYER_COUNT ||
         carrier == receiver) return;
-    /* $B0AB first runs $B035 with held-offset table zero while ownership is
-       still intact, then targets receiver $0052 from ball slot zero. */
-    ball->owner = (uint8_t)carrier;
-    dd_attach_ball_legacy(assets, state, 0u);
     angle = dd_target_motion_vector(ball->court_x, ball->court_depth,
                                     state->players[receiver].court_x,
                                     state->players[receiver].court_depth,
@@ -1041,6 +1025,18 @@ static void dd_begin_pass(const DDTipoffAssetsHeader *assets, DDGameplayState *s
     ball->velocity_x = (int32_t)(int16_t)(uint16_t)(unit_x * 5);
     ball->velocity_depth = (int32_t)(int16_t)(uint16_t)(unit_depth * 5);
     state->players[carrier].facing = dd_facing_from_angle(angle);
+}
+
+static void dd_begin_pass(const DDTipoffAssetsHeader *assets, DDGameplayState *state,
+                          uint32_t carrier, uint32_t receiver) {
+    DDBallState *ball = &state->ball;
+    if (carrier >= DD_GAMEPLAY_PLAYER_COUNT || receiver >= DD_GAMEPLAY_PLAYER_COUNT ||
+        carrier == receiver) return;
+    /* `$B0AB` first runs `$B035` with held-offset table zero while ownership
+       is intact, then `$B0B8` aims from ball slot zero toward receiver `$0052`. */
+    ball->owner = (uint8_t)carrier;
+    dd_attach_ball(assets, state, 0u);
+    dd_prepare_pass_motion(state, carrier, receiver);
     ball->action = DD_BALL_PASS;
     ball->owner = DD_NO_OWNER;
     ball->receiver = (uint8_t)receiver;
@@ -1094,6 +1090,7 @@ static void dd_queue_cpu_pass(DDGameplayState *state, uint32_t carrier,
 static void dd_step_inbound_release(const DDTipoffAssetsHeader *assets,
                                     DDGameplayState *state, uint32_t player_index) {
     DDPlayerState *player = &state->players[player_index];
+    (void)assets;
     --player->release_timer;
     if ((player->release_timer & 0x80u) != 0u) {
         player->action = DD_PLAYER_LIVE_CPU;
@@ -1103,9 +1100,12 @@ static void dd_step_inbound_release(const DDTipoffAssetsHeader *assets,
     if (player->release_timer == 4u) {
         uint32_t receiver = state->ball.receiver;
         if (receiver < DD_GAMEPLAY_PLAYER_COUNT && receiver != player_index) {
-            dd_begin_pass(assets, state, player_index, receiver);
-            player->action = DD_PLAYER_INBOUND_READY;
-            player->action_age = 0u;
+            /* `$9018->$B0B8` already installed facing and velocity. `$8FE0`
+               now only changes ball `$00->$02` and clears camera carrier
+               `$0048`; owner `$005B` remains the inbounder during flight. */
+            state->ball.action = DD_BALL_PASS;
+            state->ball.action_age = 0u;
+            state->carrier = DD_NO_OWNER;
         } else {
             state->ball.action = DD_BALL_PASS;
             state->ball.owner = DD_NO_OWNER;
@@ -1199,6 +1199,7 @@ static void dd_start_inbound_release(DDGameplayState *state, uint32_t inbounder,
     state->ball.held_height_offset = 0x08u;
     state->ball.receiver = (uint8_t)receiver;
     state->ball.action_age = 0u;
+    dd_prepare_pass_motion(state, inbounder, receiver);
 }
 
 static void dd_start_inbound_alternate(DDGameplayState *state, uint32_t inbounder) {
@@ -1247,10 +1248,6 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
     state->ball.rim_contact = 0u;
     state->last_shooter = (uint8_t)shooter;
     state->shot_value = 2u;
-    /* `$A896` indexes the state-$03/$27 table at `$A9DC` by facing and
-       stores the selected metasprite in `$0300+X`.  Both user and CPU shot
-       gathers point at this same eight-byte table. */
-    player->animation = assets->shot_animation[player->facing & 7u];
     if (shooter == state->controlled_player && shooter < 5u) {
         /* Bank-0 $AA75 is the user B-button shot initializer: install the
            $9B26/$9B27 height stream, expose dispatcher state $03, and put
@@ -1260,10 +1257,26 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
         player->release_timer = 1u;
         player->action = DD_PLAYER_USER_SHOOT;
     } else {
+        int32_t ignored_x;
+        int32_t ignored_depth;
+        int32_t hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
+        uint8_t angle = dd_target_motion_vector(
+            player->court_x, player->court_depth, hoop_x, 0x005800,
+            &ignored_x, &ignored_depth);
+        /* CPU `$8D1F->$AAEE->$AA98` faces the active hoop before `$B503`
+           clears all three motion vectors. */
+        player->facing = dd_facing_from_angle(angle);
+        player->velocity_x = 0;
+        player->velocity_depth = 0;
+        player->velocity_height = 0;
         player->height_script_index = 11u;
         player->height_script_reverse = 0u;
         player->action = DD_PLAYER_LIVE_CARRIER_DECIDE;
     }
+    /* `$A896` indexes the state-$03/$27 table at `$A9DC` by facing and
+       stores the selected metasprite in `$0300+X`.  Both user and CPU shot
+       gathers point at this same eight-byte table. */
+    player->animation = assets->shot_animation[player->facing & 7u];
     player->action_age = 0u;
 }
 
@@ -1622,7 +1635,10 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         }
         case DD_PLAYER_LIVE_CARRIER_ROUTE:
-            speed = 0x0280;
+            /* `$8D1F` finishes through `$B503->$D98D`: the shot begins from
+               rest after facing the hoop, and the shared shot pose must not
+               be replaced by the route walk animation on this dispatch. */
+            speed = 0;
             dd_begin_shot(assets, state, player_index);
             break;
         case DD_PLAYER_LIVE_CARRIER_DECIDE:
@@ -1631,9 +1647,12 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             speed = 0;
             player->velocity_x = 0;
             player->velocity_depth = 0;
+            player->animation = assets->shot_animation[player->facing & 7u];
             if (dd_step_player_height_script(assets, player)) {
                 player->action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
                 player->action_age = 16u;
+                player->animation = dd_animation_for_facing(
+                    player->facing, live_frame / 3u + player_index);
             }
             break;
         case DD_PLAYER_LIVE_SHOOTER_RECOVER:
@@ -1883,8 +1902,9 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_REBOUND_RETURN:
             /* `$8EBF->$D978` tests packed equality before `$D98D` integrates
-               the existing vectors twice.  The small depth term reverses at
-               the packed lane boundary while the longitudinal term advances. */
+               the existing vectors twice.  Native interpolation stops at the
+               target center crossing that reproduces the observed `$BD`
+               arrival frame; the small depth term reverses around its lane. */
             speed = 0;
             if ((player->velocity_x < 0 && player->court_x <= player->target_x) ||
                 (player->velocity_x > 0 && player->court_x >= player->target_x) ||
@@ -2033,7 +2053,9 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_INBOUNDER:
             /* $8C6B tests the extended packed arrival through $D978, writes
-               owner/carrier, copies player coordinates to the ball, and enters $30. */
+               owner/carrier, copies player coordinates to the ball, and enters $30.
+               The native route interpolation retains its calibrated sub-cell
+               tolerance so this boundary lands on the observed frame. */
             speed = 0x01BC;
             if (dd_cpu_at_target(player, speed)) {
                 speed = 0;
@@ -2220,8 +2242,12 @@ static void dd_step_dribble(const DDTipoffAssetsHeader *assets, DDGameplayState 
     int32_t height = 0x10C0;
     if (state->carrier >= DD_GAMEPLAY_PLAYER_COUNT) return;
     state->ball.owner = state->carrier;
-    dd_attach_ball_legacy(assets, state, 0u);
-    phase = state->live_frame % 18u;
+    dd_attach_ball(assets, state, 0u);
+    /* `$AD0E` resets the ball's own `$04F0` animation phase when a player
+       collects it.  A local action age keeps a fresh inbound pickup at the
+       recovered `$10` height instead of inheriting the global match phase. */
+    phase = state->ball.action_age == 0u
+        ? 0u : (uint32_t)(state->ball.action_age - 1u) % 18u;
     if (phase >= 6u && phase <= 9u) {
         for (index = 5u; index < phase; ++index) {
             height += (int32_t)assets->height_scripts[index] * 256;
@@ -2377,7 +2403,7 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             /* $ACB6 attaches with table index 2, then adds 24 height units in
                tip modes $01/$03 and eight during ordinary held play. */
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
-                dd_attach_ball_legacy(assets, state, 1u);
+                dd_attach_ball(assets, state, 1u);
                 ball->height = state->players[ball->owner].height +
                     ((int32_t)(ball->held_height_offset == 0u
                         ? 0x08u : ball->held_height_offset) << 8u);
@@ -2474,6 +2500,11 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                     ball->height = (ball->height & 0x00FF) | 0x3200;
                     ball->velocity_x = 0;
                     ball->velocity_depth = 0;
+                    /* `$AE25` writes phase two to `$0053` and `$98B5`
+                       patches the basket selected by `$0056` before
+                       possession direction flips for the inbound. */
+                    state->net_animation_phase = 2u;
+                    state->net_basket_side = state->possession_direction;
                     state->possession_direction ^= 1u;
                     dd_begin_rebound_formation(state);
                 }
@@ -2498,12 +2529,18 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                the post-decrement value reaches $08 (fourth dispatch), lowers
                integer height only for values $05-$00, then enters $07 when
                the next decrement underflows. */
-            if (ball->action_age == 4u) dd_apply_made_basket_score(state);
+            if (ball->action_age == 4u) {
+                dd_apply_made_basket_score(state);
+                /* Counter `$004A == $08` selects `$0053 == 1`. */
+                state->net_animation_phase = 1u;
+            }
             if (ball->action_age >= 7u && ball->action_age <= 12u &&
                 ball->height >= 0x0100) {
                 ball->height -= 0x0100;
             }
             if (ball->action_age >= 13u) {
+                /* Counter underflow restores `$0053 == 0` through `$98B5`. */
+                state->net_animation_phase = 0u;
                 ball->action = DD_BALL_REBOUND;
                 ball->action_age = 0u;
                 ball->velocity_x = 0;
@@ -2600,13 +2637,6 @@ static uint8_t dd_inbound_packed_adjustment(uint8_t packed) {
     if (lane == 0u) ++adjustment;
     else if (lane == 0x1Fu) --adjustment;
     return (uint8_t)adjustment;
-}
-
-static uint16_t dd_pack_extended_coordinates(int32_t court_x, int32_t court_depth) {
-    uint32_t x = (uint32_t)dd_clamp(court_x >> 8, 0, 0x1FF);
-    uint32_t depth = (uint32_t)dd_clamp(court_depth >> 8, 0, 0xFF);
-    return (uint16_t)(((depth & 0x80u) << 1u) |
-        ((depth << 1u) & 0xE0u) | ((x >> 4u) & 0x1Fu));
 }
 
 static uint16_t dd_clamp_inbound_lane(uint16_t packed) {
@@ -2978,7 +3008,8 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         } else {
             controlled->animation = (uint8_t)(0x1Bu + ((live_frame + 3u) / 8u) % 6u);
         }
-    } else if (controlled->action != DD_PLAYER_REBOUND_CHASE &&
+    } else if (controlled->action != DD_PLAYER_USER_SHOOT &&
+               controlled->action != DD_PLAYER_REBOUND_CHASE &&
                controlled->action != DD_PLAYER_REBOUND_CLAIM &&
                controlled->action != DD_PLAYER_REBOUND_RETURN) {
         controlled->velocity_x = 0;
@@ -3001,11 +3032,23 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     if (controlled->action == DD_PLAYER_USER_SHOOT &&
         (state->cpu_global_frame & 1u) == 0u) {
         if (controlled->action_age != UINT16_MAX) ++controlled->action_age;
-        controlled->velocity_x = 0;
-        controlled->velocity_depth = 0;
+        /* `$A504->$A84C` consumes the user's already-installed motion twice
+           per scheduled update.  Input no longer retargets state `$03`, but
+           the takeoff momentum remains live throughout the jump. */
+        dd_integrate_depth(&controlled->court_depth,
+                           &controlled->velocity_depth);
+        dd_integrate_depth(&controlled->court_depth,
+                           &controlled->velocity_depth);
+        dd_integrate_longitudinal(&controlled->court_x,
+                                  &controlled->velocity_x);
+        dd_integrate_longitudinal(&controlled->court_x,
+                                  &controlled->velocity_x);
+        controlled->animation = assets->shot_animation[controlled->facing & 7u];
         if (dd_step_player_height_script(assets, controlled)) {
             controlled->action = DD_PLAYER_LIVE_USER;
             controlled->action_age = 0u;
+            controlled->animation = dd_animation_for_facing(
+                controlled->facing, live_frame / 3u);
         }
     }
     if (controlled->action == DD_PLAYER_USER_CONTEST_RECOVER &&
@@ -3038,6 +3081,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             (state->players[player].action == DD_PLAYER_LIVE_USER ||
              state->players[player].action == DD_PLAYER_LIVE_USER_CARRIER ||
              state->players[player].action == DD_PLAYER_LIVE_USER_INBOUND ||
+             state->players[player].action == DD_PLAYER_USER_SHOOT ||
              state->players[player].action == DD_PLAYER_USER_CONTEST_RECOVER ||
              state->players[player].action == DD_PLAYER_USER_CONTEST)) {
             continue;
@@ -3170,7 +3214,7 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
                 assets, sequence_frame, state->tip_user_jump_frame);
         }
         state->players[5].height = dd_jump_height(assets, sequence_frame);
-        dd_attach_ball_legacy(assets, state, 0u);
+        dd_attach_ball(assets, state, 0u);
         state->ball.height = state->players[state->carrier].height + 0x1800;
     }
     if (sequence_frame == state->live_start_frame) {

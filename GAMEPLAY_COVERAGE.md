@@ -59,10 +59,13 @@ to `$3E` with phase targets `$8C/$E6`. `$3A` implements its shorter packed
 arrival loop. States `$39/$3A` are therefore V.
 
 State `$21` now uses exact `$D978` packed equality and clears `$0600`; a
-controlled `$EC==$EC` probe records `$21->$20` and `$55->$00`. State `$41`
-uses the same arrival rule before copying the inbounder's position to the ball:
-natural frame 3501 records position/target/ball `$0121`, owner/carrier `$07`,
-and `$41->$30`. Both states are V.
+controlled `$EC==$EC` probe records `$21->$20` and `$55->$00`. Original state
+`$41` uses the same packed arrival rule before copying the inbounder's position
+to the ball: natural frame 3501 records position/target/ball `$0121`,
+owner/carrier `$07`, and `$41->$30`. The native state handler preserves that
+data flow while its shared route interpolation uses the cadence-calibrated
+sub-cell target crossing documented under Partial core movement. Both explicit
+state handlers remain V; the movement caveat is counted once in the core loop.
 
 States `$23/$24` now translate `$8AF4->$8B12->$9ABD` instead of using a
 ballistic approximation. `$8AF4->$B503` clears all three motion vectors and
@@ -77,15 +80,18 @@ an opt-in contact probe additionally prove `$22->$23->$24`, `$A6C3`'s shifted
 4-by-4 contact, `$8B27` taking an owned airborne ball, and `$8B44->$9208`
 delaying the possession/team reset until landing. Both states are therefore V.
 
-State `$31` now follows `$8FE0`'s complete release countdown. Natural original
-frames 3545-3563 record timer `$08->$FF`, ball `$00->$02` and carrier `$07->$00`
-at timer `$04`, metasprite index subtraction by eight below `$06`, and the
-underflow transition `$31->$40`. Controlled probes separately prove the launch
-and underflow branches. The native inbound phase now enters `$31` from state
-`$30` only when every remaining `$36` formation object has reached `$37`, then
-uses the same alternating-frame timer. Controlled state `$30` probes cover the
-standard `$9018->$31` arrangement, mode-bit `$40` action `$0D` arrangement,
-and `$002C`'s additional opposite-role-zero `$0F` assignment. Both states are V.
+State `$31` now follows `$9018->$B0B8->$8FE0`'s complete release countdown.
+Natural original frames 3545-3563 record the pass angle/facing/vector being
+installed on entry, timer `$08->$FF`, ball `$00->$02` and camera carrier
+`$07->$00` at timer `$04`, preserved owner `$005B`, metasprite index
+subtraction by eight below `$06`, and the underflow transition `$31->$40`.
+Controlled probes separately prove the launch and underflow branches. The
+native inbound phase now enters `$31` from state `$30` only when every
+remaining `$36` formation object has reached `$37`, prepares the pass once on
+entry, and uses the timer-four gate only to expose flight. Controlled state
+`$30` probes cover the standard `$9018->$31` arrangement, mode-bit `$40`
+action `$0D` arrangement, and `$002C`'s additional opposite-role-zero `$0F`
+assignment. Both states are V.
 
 The inbound path is also state-driven end to end rather than checkpoint-driven.
 The made-basket return installs `$2D/$36` from ROM tables `$8503/$8507` on
@@ -202,14 +208,19 @@ separate integer-height path.
 
 The user-shooting slice is verified end to end. `$AA75` installs player state
 `$03`, ball state `$04`, release gate `$04E0=1`, and height-script pointer
-`$9B34`. `$A896` resolves state `$03` through the pointer table at `$A8E6` and
-selects one of `$22,$28,$23,$27,$21,$25,$24,$26` from `$A9DC` by facing.
-`$A504->$B189` releases to ball state `$05`; `$AE25->$B377` produces result
-`$01` for a make or results `$02-$04` for `$08->$09` miss/rebound handling.
-DDAP v16 stores the eight recovered pose indices and the `$8503/$8507`
-post-basket formation data. Controlled original
-make/miss traces and shipping-loop native tests prove both outcomes. The pose
-table itself remains excluded from the percentage as NES metasprite/OAM
+`$9B34` without clearing the takeoff court vectors. `$A504->$A84C` consumes
+those vectors twice per scheduled update, so momentum continues in the air
+while fresh steering is disabled. `$A896` resolves state `$03` through the
+pointer table at `$A8E6` and selects one of
+`$22,$28,$23,$27,$21,$25,$24,$26` from `$A9DC` by facing. CPU
+`$8D1F->$AAEE->$AA98->$B503` faces the active hoop, stops court motion, and
+uses the same pose table in state `$27`. `$A504->$B189` releases to ball state
+`$05`; `$AE25->$B377` produces result `$01` for a make or results `$02-$04`
+for `$08->$09` miss/rebound handling. DDAP v17 stores the eight recovered pose
+indices, six four-tile net frames, and `$8503/$8507` post-basket formation
+data. Controlled original moving/make/miss traces and shipping-loop native
+tests prove momentum, both shooter pose paths, and both outcomes. Metasprite
+construction itself remains excluded from the percentage as NES/OAM
 presentation; the portable state, flight, and outcome handlers were already
 present in the Verified dispatcher denominators.
 
@@ -222,9 +233,11 @@ depth `$004B00->$004BAB` with `$00AB`, and height `$3800->$39CD` from base
 the next `$3B67` sample, valid double additions, and preserve-and-stop behavior
 at all four court limits for both dispatcher and user-controlled movement.
 The exact `$AA07->$9E2D/$9E4C` user vectors, `$ABCD->$9D2D/$AA98/$9BB0`
-route installer outputs, `$B035->$B0AB` pass initializer, contact-only `$AD41`
-reception, and byte-exact `$B189` short-shot duration/curve are translated and
-covered by native regressions. This subsystem remains Partial because the
+route installer outputs, `$B035->$B0AB` pass initializer and all three
+longitudinal/depth hand-offset tables, `$9018->$B0B8` early inbound pass
+initializer, contact-only `$AD41` reception, and byte-exact `$B189` short-shot
+duration/curve are translated and covered by native regressions. This
+subsystem remains Partial because the
 native 30 Hz route scheduler still uses its verified per-state arrival-cadence
 adapter instead of universally consuming `$ABCD`'s installed unit vectors, and
 because an original dynamic court-boundary rejection has not yet been captured.
@@ -333,17 +346,22 @@ entry remains Partial because, although the shared sloped boundary and reasons
 inbound inventory remain incomplete.
 
 The made-shot and score/HUD entries are Verified from `$A7EA/$A834`,
-`$AE25->$AEDE`, and fixed bank `$C477/$C6AD`. `$A7EA` mirrors the two court
+`$AE25->$AEDE`, `$98B5->$990A/$9922`, and fixed bank `$C477/$C6AD`.
+`$A7EA` mirrors the two court
 directions and applies the exact 23-byte curved line at `$A834`; the native
 release stores shot kind 0/1 for two/three points and preserves kind 2 for a
 one-point free throw. The score trace enters state `$06` with counter `$0C`,
 writes both score copies only on `$09->$08`, lowers height for `$05-$00`, and
-enters rebound `$07` on underflow. Controlled inside/outside traces cover the
-boundary in both directions, and native checks prove deferred one-, two-, and
-three-point awards. DDAP v16 retains the recovered `$09` line-call
+enters rebound `$07` on underflow. The same counter selects net phase 2 on the
+make, phase 1 at `$08`, and phase 0 on underflow; DDAP v17's exact 24-byte
+table supplies three four-tile frames for each basket side. Controlled
+inside/outside and net-phase traces cover the boundary in both directions, and
+native checks prove deferred one-, two-, and three-point awards plus the
+`2->1->0` net sequence. DDAP v17 also retains the recovered `$09` line-call
 and `$25` three-point scoring cues. The renderer derives the same blank-leading
-two decimal HUD tiles from native score state. Buffered PPU queue mechanics
-remain excluded as NES-only presentation machinery.
+two decimal HUD tiles and pack-backed net phases from native score state.
+Buffered PPU queue mechanics remain excluded as NES-only presentation
+machinery.
 
 Period transitions/end conditions are Verified. The earlier long trace proves
 the delayed period-one reset to a second-period formation. The final-match trace

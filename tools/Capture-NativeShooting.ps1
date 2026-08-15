@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Force -Path $captureRoot | Out-Null
 Add-Type -AssemblyName System.Drawing
 
 foreach ($outcome in @('make', 'miss')) {
-    foreach ($checkpoint in @('gather', 'release', 'result', 'inbound')) {
+    foreach ($checkpoint in @('gather', 'release', 'result', 'pickup', 'inbound')) {
         $bmpPath = Join-Path $captureRoot ("$outcome-$checkpoint.bmp")
         $pngPath = Join-Path $captureRoot ("$outcome-$checkpoint.png")
         & $CliPath --render-gameplay-shot $AssetPackPath $outcome $checkpoint $bmpPath
@@ -28,4 +28,20 @@ foreach ($outcome in @('make', 'miss')) {
         }
         Write-Host "Native shooting frame: $pngPath"
     }
+}
+
+foreach ($checkpoint in @('takeoff', 'airborne')) {
+    $bmpPath = Join-Path $captureRoot ("moving-$checkpoint.bmp")
+    $pngPath = Join-Path $captureRoot ("moving-$checkpoint.png")
+    & $CliPath --render-gameplay-moving-shot $AssetPackPath $checkpoint $bmpPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Native moving-shot/$checkpoint capture failed."
+    }
+    $bitmap = [System.Drawing.Bitmap]::FromFile($bmpPath)
+    try {
+        $bitmap.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+    } finally {
+        $bitmap.Dispose()
+    }
+    Write-Host "Native moving-shot frame: $pngPath"
 }

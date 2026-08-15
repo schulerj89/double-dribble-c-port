@@ -84,6 +84,7 @@ int main(int argc, char **argv) {
     DDGameplayState contest_state;
     DDGameplayState free_throw_state;
     DDGameplayState period_state;
+    DDGameplayState net_state;
     const DDTipoffAssetsHeader *assets;
     int32_t live_start_x[DD_GAMEPLAY_PLAYER_COUNT];
     int32_t live_start_depth[DD_GAMEPLAY_PLAYER_COUNT];
@@ -134,6 +135,15 @@ int main(int argc, char **argv) {
           assets->shot_animation[6] == 0x24u &&
           assets->shot_animation[7] == 0x26u,
           "asset pack exposes $A9DC's eight facing-indexed shot poses");
+    check(assets->net_animation_tiles[0] == 0xB4u &&
+          assets->net_animation_tiles[4] == 0xD3u &&
+          assets->net_animation_tiles[8] == 0xB4u &&
+          assets->net_animation_tiles[10] == 0xD1u &&
+          assets->net_animation_tiles[12] == 0xB0u &&
+          assets->net_animation_tiles[16] == 0xD3u &&
+          assets->net_animation_tiles[20] == 0xB0u &&
+          assets->net_animation_tiles[23] == 0xD2u,
+          "asset pack exposes $9922's left/right three-phase net tiles");
     check((uint8_t)assets->rebound_target_phase[0] == 0xFEu &&
           (uint8_t)assets->rebound_target_phase[1] == 0xFFu &&
           assets->rebound_target_phase[2] == 0x01 &&
@@ -218,6 +228,11 @@ int main(int argc, char **argv) {
     check_checkpoint(&state, 166u, 5u, DD_PLAYER_LIVE_CARRIER_DECIDE, 0x85u);
     check(state.ball.action == DD_BALL_SHOT_GATHER,
           "live 166 follows $8D1F into original shot-gather ball state $04");
+    check(state.players[5].animation ==
+              assets->shot_animation[state.players[5].facing & 7u] &&
+          state.players[5].velocity_x == 0 &&
+          state.players[5].velocity_depth == 0,
+          "$8D1F faces the hoop, clears route motion, and retains $A9DC's CPU shot pose");
 
     check(dd_gameplay_advance_to(&pack, &state, 548u, 0u), "advance to shot release");
     check(state.live_frame == 192u && state.ball.action == DD_BALL_AIRBORNE,
@@ -1116,6 +1131,7 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_INBOUNDER;
+    dispatch_state.players[5].facing = 0u;
     dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
     dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
     dispatch_state.players[5].target_zone = (uint8_t)(
@@ -1125,8 +1141,11 @@ int main(int argc, char **argv) {
     dispatch_state.carrier = 0xFFu;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD &&
-          dispatch_state.ball.owner == 5u,
-          "player state $41 claims and aligns the inbound ball before state $30");
+          dispatch_state.ball.owner == 5u &&
+          dispatch_state.ball.court_x == dispatch_state.players[5].court_x + 0x0800 &&
+          dispatch_state.ball.court_depth == dispatch_state.players[5].court_depth - 0x0100 &&
+          dispatch_state.ball.height == 0x10C0,
+          "$8C6B->$AD0E->$B035 claims the inbound ball at facing-zero X/depth offsets before state $30");
 
     dispatch_state = dispatch_base;
     dispatch_state.carrier = 5u;
@@ -1341,10 +1360,10 @@ int main(int argc, char **argv) {
           dispatch_state.players[4].action == DD_PLAYER_USER_PASS_RECEIVE &&
           dispatch_state.controlled_player == 0u,
           "$A129 selects the later left-side teammate while $AD41 keeps control on the passer in flight");
-    check(dispatch_state.ball.velocity_x == -0x04F6 &&
-          dispatch_state.ball.velocity_depth == 0x007D &&
+    check(dispatch_state.ball.velocity_x == -0x04FB &&
+          dispatch_state.ball.velocity_depth == 0x003C &&
           dispatch_state.players[0].facing == 4u,
-          "$B0AB multiplies the signed $FF02/$0019 unit vector by five with 16-bit wrap");
+          "$B0AB multiplies exact-$B035's signed $FF01/$000C unit vector by five");
     live_start_x[0] = dispatch_state.players[0].court_x;
     check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT),
           "hold movement during user pass recovery");
@@ -1538,6 +1557,38 @@ int main(int argc, char **argv) {
     dispatch_state.possession_direction = 1u;
     dispatch_state.controlled_player = 0u;
     dispatch_state.carrier = 0u;
+    dispatch_state.cpu_global_frame = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].facing = 0u;
+    dispatch_state.players[0].court_x = 0x00D000;
+    dispatch_state.players[0].court_depth = 0x006100;
+    dispatch_state.players[0].height = 0x1000;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT | DD_INPUT_B),
+          "start a moving user shot through the real B edge");
+    live_start_x[0] = dispatch_state.players[0].court_x;
+    check(dispatch_state.players[0].action == DD_PLAYER_USER_SHOOT &&
+          dispatch_state.players[0].velocity_x != 0 &&
+          dispatch_state.players[0].animation == assets->shot_animation[0],
+          "$AA75 preserves takeoff velocity and selects the facing-zero shot pose");
+    for (player = 0u; player < 4u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance moving user shot through $A504->$A84C");
+    }
+    check(dispatch_state.players[0].court_x > live_start_x[0] &&
+          dispatch_state.players[0].action == DD_PLAYER_USER_SHOOT &&
+          dispatch_state.players[0].animation == assets->shot_animation[0],
+          "$A504 double-integrates takeoff momentum while $A896 retains the shot sprite");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
     dispatch_state.ball.action = DD_BALL_DRIBBLE;
     dispatch_state.ball.owner = 0u;
     dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
@@ -1573,6 +1624,23 @@ int main(int argc, char **argv) {
     check(dispatch_state.ball.action == DD_BALL_SCORE &&
           dispatch_state.ball.outcome == 1u,
           "original make coordinates reach $B377 result one through the shipping shot loop");
+    check(dispatch_state.net_animation_phase == 2u &&
+          dispatch_state.net_basket_side == 1u,
+          "$AE25 selects right-basket net phase two on the made shot");
+    net_state = dispatch_state;
+    while (net_state.ball.action == DD_BALL_SCORE &&
+           net_state.ball.action_age < 4u) {
+        check(dd_gameplay_step(&pack, &net_state, 0u),
+              "advance score state to $AEDE counter $08");
+    }
+    check(net_state.net_animation_phase == 1u,
+          "$AEDE counter $08 selects net phase one with the score update");
+    while (net_state.ball.action == DD_BALL_SCORE) {
+        check(dd_gameplay_step(&pack, &net_state, 0u),
+              "advance score state through counter underflow");
+    }
+    check(net_state.net_animation_phase == 0u,
+          "$AEDE counter underflow restores the normal net tiles");
     check(dd_gameplay_step(&pack, &dispatch_state, 0u) &&
           dd_gameplay_step(&pack, &dispatch_state, 0u),
           "dispatch both teams through the pending $8491 formation gate");

@@ -98,6 +98,7 @@ typedef struct DDTipoffAssetsHeader {
     int8_t held_ball_offsets[48];
     int8_t height_scripts[32];
     uint8_t shot_animation[8];
+    uint8_t net_animation_tiles[24];
     int8_t rebound_target_phase[4];
     uint8_t rebound_formation[40];
     uint8_t cpu_role_targets[20];
