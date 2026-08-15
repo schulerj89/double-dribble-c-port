@@ -789,6 +789,107 @@ int main(int argc, char **argv) {
           "ball state $02 catches only after $B138 reports receiver overlap");
 
     dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.previous_input = DD_INPUT_LEFT;
+    dispatch_state.camera_x = 0x008000;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].role = 0u;
+    dispatch_state.players[0].court_x = 0x010000;
+    dispatch_state.players[0].court_depth = 0x005800;
+    dispatch_state.players[0].height = 0;
+    dispatch_state.ball.court_x = dispatch_state.players[0].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[0].court_depth;
+    for (player = 1u; player < 5u; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+        dispatch_state.players[player].role = (uint8_t)player;
+        dispatch_state.players[player].court_depth = 0x005800;
+        dispatch_state.players[player].height = 0;
+    }
+    dispatch_state.players[1].court_x = 0x014000;
+    dispatch_state.players[2].court_x = 0x00C000;
+    dispatch_state.players[3].court_x = 0x012000;
+    dispatch_state.players[4].court_x = 0x00A000;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_LEFT | DD_INPUT_A),
+          "start a directional user pass");
+    check(dispatch_state.ball.action == DD_BALL_PASS &&
+          dispatch_state.ball.receiver == 4u &&
+          dispatch_state.players[0].action == DD_PLAYER_USER_PASS_RECOVER &&
+          dispatch_state.players[4].action == DD_PLAYER_USER_PASS_RECEIVE &&
+          dispatch_state.controlled_player == 0u,
+          "$A129 selects the later left-side teammate while $AD41 keeps control on the passer in flight");
+    live_start_x[0] = dispatch_state.players[0].court_x;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT),
+          "hold movement during user pass recovery");
+    check(dispatch_state.players[0].court_x == live_start_x[0],
+          "pass-recovery state $05 ignores movement input while the ball is in flight");
+    dispatch_state.ball.action_age = 18u;
+    dispatch_state.ball.court_x = dispatch_state.players[4].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[4].court_depth;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "finish a directional user pass reception");
+    check(dispatch_state.ball.action == DD_BALL_DRIBBLE &&
+          dispatch_state.ball.owner == 4u && dispatch_state.carrier == 4u &&
+          dispatch_state.controlled_player == 4u &&
+          dispatch_state.players[4].action == DD_PLAYER_LIVE_USER_CARRIER &&
+          dispatch_state.players[0].action == DD_PLAYER_USER_PASS_RECOVER,
+          "$AD58 transfers owner, camera/control, and user-carrier state only to the receiver");
+    live_start_x[4] = dispatch_state.players[4].court_x;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT),
+          "move the newly controlled receiver");
+    check(dispatch_state.players[4].court_x == live_start_x[4] + 0x0140 &&
+          dispatch_state.controlled_player == 4u,
+          "the dynamic CPU scheduler skips the passed-to user instead of continuing to drive it");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER;
+    dispatch_state.players[6].action = DD_PLAYER_ROUTE_WAIT;
+    dispatch_state.ball.action = DD_BALL_PASS;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.receiver = 6u;
+    dispatch_state.ball.action_age = 18u;
+    dispatch_state.ball.court_x = dispatch_state.players[6].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[6].court_depth;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "finish a CPU-team pass reception");
+    check(dispatch_state.ball.owner == 6u && dispatch_state.carrier == 6u &&
+          dispatch_state.controlled_player == 0u &&
+          dispatch_state.players[6].action == DD_PLAYER_LIVE_CARRIER,
+          "$AD6D's CPU possession branch leaves user control on the defending team");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.court_x = 0x010000;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.ball.height = 0;
+    for (player = 0u; player < 5u; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_LIVE_TEAMMATE;
+        dispatch_state.players[player].court_depth = 0x005800;
+        dispatch_state.players[player].height = 0;
+    }
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER;
+    dispatch_state.players[0].court_x = 0x004000;
+    dispatch_state.players[1].court_x = 0x018000;
+    dispatch_state.players[2].court_x = 0x012000;
+    dispatch_state.players[3].court_x = 0x01C000;
+    dispatch_state.players[4].court_x = 0x000000;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "switch the controlled defender with B");
+    check(dispatch_state.controlled_player == 2u &&
+          dispatch_state.players[0].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[2].action == DD_PLAYER_LIVE_USER,
+          "$A29D-$A342 transfers state $0F to the closest teammate and returns the old user to state $20");
+
+    dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_PASS;
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.ball.receiver = 0u;

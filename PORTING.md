@@ -754,9 +754,55 @@ stable earlier gameplay comparison remains 2,560/57,344 differing pixels
 the original message is NES presentation and remains outside portable coverage;
 the match termination and timing rules themselves are native state transitions.
 
+### User pass ownership and defensive switching
+
+Bank-0 `$A129` (bank offset `$2129`, ROM file offset `$2139`) is the user-pass
+receiver selector. It scans the five original team objects `$02-$06`, rejects
+the role-zero current object through `$0690` and offscreen objects through
+`$0460`, and scores each candidate against
+the held direction byte `$0670`: left/right compare projected X `$0320`, while
+up/down compare projected Y `$0330`. Every matching half-plane adds one point;
+the greatest nonzero score wins and an equal score selects the later object.
+The native `dd_user_pass_receiver` translates that scoring directly, mapping
+original slots `$02-$06` to native players `0-4`. A without a direction therefore
+does not start a pass, matching the original.
+
+The catch path is bank-0 `$AD41` (bank offset `$2D41`, ROM offset `$2D51`). Once
+`$B138` accepts receiver contact, `$AD58-$AD67` copies receiver `$0052` to both
+owner `$005B` and camera/control `$0048`, then writes action `$02` to that one
+receiver. The CPU-side branch at `$AD6D-$ADBA` instead installs action `$25`
+without changing the user's defending-team control. Native reception now makes
+the same distinction, changes `controlled_player` only for the user's receiver,
+and makes the alternating team scheduler skip that new dynamic slot. The former
+passer remains in pass recovery and later returns to off-ball action `$40`.
+
+Focused FCEUX traces make the handoff observable. With the opening tip won on
+frame 2502, direction+A on frame 2600 selected original receiver `$04` for left,
+`$06` for right/up, and `$05` for down. In the left trace, ball state `$02` and
+receiver action `$0C` appear on frame 2602; `$AD58` runs on frame 2608 and owner,
+camera/control, and action become `$04/$04/$02`. The former `$02` passer reaches
+action `$40` on frame 2634. The added native regression starts the same
+directional pass, forces the `$B138` contact boundary, proves that only the
+receiver becomes controlled, and then moves that receiver with user input. A
+separate CPU-reception check proves that user control does not cross teams.
+
+Defensive switching comes from bank-0 `$A29D` (bank offset `$229D`, ROM offset
+`$22AD`). It runs only for the role-zero action `$0F` player. `$A2A4-$A30E`
+retains two candidates using projected X distance from the ball, adds projected
+Y distance to each, and selects the smaller wrapped total. Eligibility is the
+`$AA20` screen gate (bank offset `$2A20`, ROM offset `$2A30`): after subtracting
+12, the projected X must remain on page zero and below `$E8`. Pressed input bit
+`$40` (NES B, native Z) then runs the transfer helpers, writes `$20` to the old
+player, `$0F` to the selected player, and updates `$0046` before clearing `$0061`.
+On original frame 2684, the focused trace records `$0680=$40`, old slot `$02`
+changing `$0F->$20`, and selected slot `$04` changing `$20->$0F`. The native
+selector preserves the same one's-complement distance, two-candidate shortlist,
+byte-wrapped totals, eligibility bounds, and action/control writes; its regression
+proves B selects native player 2 in the corresponding controlled layout.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **89% portable Ghidra-to-C gameplay-loop coverage** and **69.2% match-rules completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **91% portable Ghidra-to-C gameplay-loop coverage** and **73.1% match-rules completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

@@ -4,9 +4,9 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 89%**
+**Portable Ghidra-to-C gameplay-loop coverage: 91%**
 
-**Match-rules completeness: 69.2%**
+**Match-rules completeness: 73.1%**
 
 The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, blocks, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 88.5%`, rounded to **89%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 91.0%`, rounded to **91%**.
 
 ## Player action dispatcher — 100%
 
@@ -143,34 +143,45 @@ camera carrier and rim latch exactly as the original does. The ball dispatcher
 is therefore fully Verified. Higher-level block, foul, and general rim-contact
 eligibility remain tracked under core/rules rather than hidden in this score.
 
-## Portable core per-frame loop — 78.6%
+## Portable core per-frame loop — 85.7%
 
 Seven portable subsystems produce this score.
 
 | Status | Subsystems |
 | --- | --- |
-| V (4) | native object state, alternating 30 Hz team scheduler, packed target coordinates, state-driven dribble audio |
-| P (3) | user control/control ownership, fixed-point height and movement physics, general player/ball collision resolution |
+| V (5) | native object state, alternating 30 Hz team scheduler, packed target coordinates, state-driven dribble audio, user control/control ownership |
+| P (2) | fixed-point height and movement physics, general player/ball collision resolution |
 | M (0) | none |
 
-Score: `(4 + 3 × 0.5) / 7 = 78.6%`.
+Score: `(5 + 2 × 0.5) / 7 = 85.7%`.
+
+User control/control ownership is Verified from bank-0 `$A129`, `$AD41`, and
+`$A29D`. Direction+A uses the original directional half-plane scoring and
+later-slot tie rule. Reception writes the receiver to both owner `$005B` and
+camera/control `$0048`, and the native scheduler now excludes that dynamic
+controlled slot rather than always excluding player zero. On defense, B uses
+the original two-candidate screen-distance search and transfers action `$0F`
+to the selected teammate while restoring `$20` to the former user. Focused
+FCEUX traces cover four pass directions, both reception branches, and the
+defensive switch; deterministic native checks cover handoff and post-catch
+movement.
 
 Excluded NES-only presentation mechanisms: camera-driven CHR streaming,
 metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
 switching are likewise excluded globally and are not represented as gameplay
 coverage entries.
 
-## Match rules and possession flow — 69.2%
+## Match rules and possession flow — 73.1%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
-| V (5) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions |
-| P (8) | live user control, CPU pass/shot choice, rebound sequence, inbound sequence, possession transfer, game clock, defensive steals/blocks, fouls and general out-of-bounds rules |
+| V (6) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions; live user control |
+| P (7) | CPU pass/shot choice, rebound sequence, inbound sequence, possession transfer, game clock, defensive steals/blocks, fouls and general out-of-bounds rules |
 | M (0) | none |
 
-Score: `(5 + 8 × 0.5) / 13 = 69.2%`.
+Score: `(6 + 7 × 0.5) / 13 = 73.1%`.
 
 The defensive entry is Partial: the original sustained-contact steal path and
 immediate loose-ball possession arbitration are now native, but shot blocks and

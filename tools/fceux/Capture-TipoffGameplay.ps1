@@ -7,6 +7,12 @@ param(
     [string]$CaptureName = 'original-tipoff-gameplay',
     [int]$JumpStart = -1,
     [int]$JumpEnd = -1,
+    [int]$PassFrame = -1,
+    [int]$PassEnd = -1,
+    [ValidateSet('A', 'B')]
+    [string]$PassButton = 'A',
+    [ValidateSet('none', 'left', 'right', 'up', 'down')]
+    [string]$PassDirection = 'none',
     [int]$ContactFrame = -1,
     [int]$ContactClockGate = -1,
     [int]$BasketFrame = -1,
@@ -34,6 +40,10 @@ $env:DD_TRACE_END = $FinalFrame.ToString([Globalization.CultureInfo]::InvariantC
 $env:DD_TIP_JUMP_START = $JumpStart.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_TIP_JUMP_END = $JumpEnd.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_TIP_JUMP_BUTTON = $JumpButton
+$env:DD_PASS_FRAME = $PassFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_PASS_END = $(if ($PassEnd -ge 0) { $PassEnd } else { $PassFrame }).ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_PASS_BUTTON = $PassButton
+$env:DD_PASS_DIRECTION = $PassDirection
 $env:DD_ENABLE_PC_COUNTS = if ($DisablePcCounts) { '0' } else { '1' }
 $env:DD_INJECT_CONTACT_FRAME = $ContactFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_CONTACT_CLOCK_GATE = $ContactClockGate.ToString([Globalization.CultureInfo]::InvariantCulture)

@@ -9,6 +9,10 @@ local trace_end = tonumber(os.getenv("DD_TRACE_END") or "2760")
 local jump_start = tonumber(os.getenv("DD_TIP_JUMP_START") or "-1")
 local jump_end = tonumber(os.getenv("DD_TIP_JUMP_END") or "-1")
 local jump_button = os.getenv("DD_TIP_JUMP_BUTTON") or "A"
+local pass_frame = tonumber(os.getenv("DD_PASS_FRAME") or "-1")
+local pass_end = tonumber(os.getenv("DD_PASS_END") or tostring(pass_frame))
+local pass_button = os.getenv("DD_PASS_BUTTON") or "A"
+local pass_direction = os.getenv("DD_PASS_DIRECTION") or "none"
 local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
@@ -92,6 +96,8 @@ local score_calls = assert(io.open(join_path(capture_root, "gameplay-score-calls
 score_calls:write("frame,counter,ball_state,score_copy_a,score_copy_b,height,scoring_side,shot_kind\n")
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
+local control_calls = assert(io.open(join_path(capture_root, "gameplay-control-calls.csv"), "w"))
+control_calls:write("frame,pc,current_object,receiver,switch_candidate,ball_state,owner,carrier,direction,mode,input,pressed,p2,p3,p4,p5,p6\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 local previous_ball_state = -1
 local previous_player_state = {}
@@ -201,13 +207,29 @@ end
 for _, address in ipairs({0xD759, 0xD772, 0xD820, 0xD862, 0xD99A, 0xDA36, 0xDA38}) do
     memory.registerexecute(address, 1, record_cpu_decision)
 end
+for _, address in ipairs({0xA29D, 0xA314, 0xA329, 0xA33D, 0xA342,
+                          0xAD41, 0xAD58, 0xAD6D, 0xADAD, 0xADBA}) do
+    memory.registerexecute(address, 1, function(address, size, value)
+        local frame = emu.framecount()
+        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+            local object = memory.readbyte(0x004B)
+            control_calls:write(string.format("%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+                frame, address, memory.readbyte(0x004B), memory.readbyte(0x0052), memory.readbyte(0x0061),
+                memory.readbyte(0x0340), memory.readbyte(0x005B), memory.readbyte(0x0048),
+                memory.readbyte(0x0050), memory.readbyte(0x002C),
+                memory.readbyte(0x0670 + object), memory.readbyte(0x0680 + object),
+                memory.readbyte(0x0342), memory.readbyte(0x0343), memory.readbyte(0x0344),
+                memory.readbyte(0x0345), memory.readbyte(0x0346)))
+        end
+    end)
+end
 
 local capture_frames = {
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
     [2460]=true,[2480]=true,[2500]=true,[2519]=true,[2520]=true,[2530]=true,[2531]=true,
     [2540]=true,[2550]=true,[2557]=true,[2560]=true,[2570]=true,[2580]=true,[2590]=true,
-    [2600]=true,[2620]=true,[2640]=true,
-    [2660]=true,[2680]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,[2774]=true,
+    [2600]=true,[2608]=true,[2614]=true,[2618]=true,[2620]=true,[2640]=true,
+    [2660]=true,[2680]=true,[2684]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,[2774]=true,
     [2770]=true,[2783]=true,[2929]=true,[2944]=true,[3004]=true,[3324]=true,
     [3501]=true,[3545]=true,[3553]=true,[3572]=true,[3600]=true,[3640]=true,
     [3680]=true,[3720]=true,[3800]=true,[3900]=true,[4000]=true,[4100]=true,[4200]=true,
@@ -255,6 +277,10 @@ while emu.framecount() < final_frame do
     input.A = next_frame == 2112 or next_frame == 2113
     if next_frame >= jump_start and next_frame <= jump_end then
         input[jump_button] = true
+    end
+    if next_frame >= pass_frame and next_frame <= pass_end then
+        input[pass_button] = true
+        if pass_direction ~= "none" then input[pass_direction] = true end
     end
     if next_frame == inject_rim_frame then
         -- Controlled reverse-engineering probe for bank-0 $B473.  This is
@@ -494,6 +520,7 @@ clock_calls:close()
 collision_calls:close()
 score_calls:close()
 cpu_decisions:close()
+control_calls:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")
 for phase, phase_counts in pairs(counts) do

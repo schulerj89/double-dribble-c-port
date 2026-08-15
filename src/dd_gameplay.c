@@ -585,6 +585,48 @@ static uint32_t dd_cpu_pass_receiver(const DDGameplayState *state, uint32_t carr
     return receiver;
 }
 
+/* $A129 scores every eligible teammate against the held direction bits.  A
+   candidate receives one point for each matching horizontal/vertical half
+   plane; equal nonzero scores prefer the later object slot. */
+static uint32_t dd_user_pass_receiver(const DDGameplayState *state, uint32_t carrier,
+                                      uint32_t input_mask) {
+    uint32_t first = carrier < 5u ? 0u : 5u;
+    uint32_t last = first + 5u;
+    uint32_t receiver = DD_NO_OWNER;
+    uint32_t best_score = 0u;
+    uint8_t carrier_x;
+    uint8_t carrier_y;
+    uint32_t player;
+    if (carrier >= DD_GAMEPLAY_PLAYER_COUNT ||
+        (input_mask & (DD_INPUT_LEFT | DD_INPUT_RIGHT | DD_INPUT_UP | DD_INPUT_DOWN)) == 0u) {
+        return DD_NO_OWNER;
+    }
+    carrier_x = (uint8_t)((state->players[carrier].court_x - state->camera_x) >> 8);
+    carrier_y = (uint8_t)(0xF0 - (state->players[carrier].court_depth >> 8) -
+                          (state->players[carrier].height >> 8));
+    for (player = first; player < last; ++player) {
+        const DDPlayerState *candidate = &state->players[player];
+        int32_t projected_x = (candidate->court_x - state->camera_x) >> 8;
+        uint8_t candidate_x;
+        uint8_t candidate_y;
+        uint32_t score = 0u;
+        if (player == carrier || candidate->role == 0u ||
+            projected_x < 12 || projected_x >= 244) continue;
+        candidate_x = (uint8_t)projected_x;
+        candidate_y = (uint8_t)(0xF0 - (candidate->court_depth >> 8) -
+                                (candidate->height >> 8));
+        if ((input_mask & DD_INPUT_LEFT) != 0u && candidate_x < carrier_x) ++score;
+        if ((input_mask & DD_INPUT_RIGHT) != 0u && candidate_x >= carrier_x) ++score;
+        if ((input_mask & DD_INPUT_UP) != 0u && candidate_y < carrier_y) ++score;
+        if ((input_mask & DD_INPUT_DOWN) != 0u && candidate_y >= carrier_y) ++score;
+        if (score != 0u && score >= best_score) {
+            best_score = score;
+            receiver = player;
+        }
+    }
+    return receiver;
+}
+
 static void dd_begin_pass(DDGameplayState *state, uint32_t carrier, uint32_t receiver) {
     DDBallState *ball = &state->ball;
     if (carrier >= DD_GAMEPLAY_PLAYER_COUNT || receiver >= DD_GAMEPLAY_PLAYER_COUNT ||
@@ -597,7 +639,15 @@ static void dd_begin_pass(DDGameplayState *state, uint32_t carrier, uint32_t rec
     ball->velocity_x = (state->players[receiver].court_x - ball->court_x) / 19;
     ball->velocity_depth = (state->players[receiver].court_depth - ball->court_depth) / 19;
     ball->velocity_height = 0x0300;
-    state->players[carrier].action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
+    if (carrier == state->controlled_player && carrier < 5u) {
+        state->players[carrier].action = DD_PLAYER_USER_PASS_RECOVER;
+        state->players[receiver].action = DD_PLAYER_USER_PASS_RECEIVE;
+        state->players[receiver].action_age = 0u;
+        state->players[receiver].velocity_x = 0;
+        state->players[receiver].velocity_depth = 0;
+    } else {
+        state->players[carrier].action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
+    }
     state->players[carrier].action_age = 0u;
     state->carrier = DD_NO_OWNER;
 }
@@ -719,6 +769,20 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
     if (player->action_age != UINT16_MAX) ++player->action_age;
     if (dd_step_possession_contact(state, player_index)) return;
     switch (player->action) {
+        case DD_PLAYER_USER_PASS_RECOVER:
+            speed = 0;
+            player->velocity_x = 0;
+            player->velocity_depth = 0;
+            if (player->action_age >= 17u) {
+                player->action = DD_PLAYER_LIVE_CPU;
+                player->action_age = 0u;
+            }
+            break;
+        case DD_PLAYER_USER_PASS_RECEIVE:
+            speed = 0;
+            player->velocity_x = 0;
+            player->velocity_depth = 0;
+            break;
         case DD_PLAYER_LIVE_CARRIER:
             speed = 0x0320;
             dd_cpu_avoid_ball_or_defender(state, player_index);
@@ -1310,9 +1374,57 @@ static void dd_step_bounce_height(DDGameplayState *state) {
     }
 }
 
+static uint8_t dd_ones_complement_distance(uint8_t origin, uint8_t target) {
+    uint8_t distance = (uint8_t)(origin - target);
+    if ((distance & 0x80u) != 0u) distance ^= 0xFFu;
+    return distance;
+}
+
+/* $A29D first keeps the two smallest screen-X distances, then compares their
+   wrapped X+Y totals. $AA20 supplies the 12..243 screen-X eligibility gate. */
+static uint32_t dd_user_switch_candidate(const DDGameplayState *state) {
+    uint32_t first = state->controlled_player < 5u ? 0u : 5u;
+    uint32_t nearest = first;
+    uint32_t alternate = first;
+    uint8_t nearest_x = 0x7Fu;
+    uint8_t alternate_x = 0x7Fu;
+    uint8_t ball_x = (uint8_t)((state->ball.court_x - state->camera_x) >> 8);
+    uint8_t ball_y = (uint8_t)(0xF0 - (state->ball.court_depth >> 8) -
+                               (state->ball.height >> 8));
+    uint32_t player;
+    for (player = first; player < first + 5u; ++player) {
+        int32_t screen_x = (state->players[player].court_x - state->camera_x) >> 8;
+        uint8_t distance;
+        if (screen_x < 12 || screen_x >= 244) continue;
+        distance = dd_ones_complement_distance(ball_x, (uint8_t)screen_x);
+        if (distance < nearest_x) {
+            alternate = nearest;
+            alternate_x = nearest_x;
+            nearest = player;
+            nearest_x = distance;
+        }
+    }
+    {
+        uint8_t alternate_y = (uint8_t)(0xF0 -
+            (state->players[alternate].court_depth >> 8) -
+            (state->players[alternate].height >> 8));
+        uint8_t nearest_y = (uint8_t)(0xF0 -
+            (state->players[nearest].court_depth >> 8) -
+            (state->players[nearest].height >> 8));
+        uint8_t alternate_total = (uint8_t)(alternate_x +
+            dd_ones_complement_distance(ball_y, alternate_y));
+        uint8_t nearest_total = (uint8_t)(nearest_x +
+            dd_ones_complement_distance(ball_y, nearest_y));
+        if (nearest_total >= alternate_total) nearest = alternate;
+    }
+    return nearest;
+}
+
 static void dd_finish_ball_reception(const DDTipoffAssetsHeader *assets,
                                      DDGameplayState *state, uint32_t receiver) {
+    uint32_t previous_control;
     if (receiver >= DD_GAMEPLAY_PLAYER_COUNT) return;
+    previous_control = state->controlled_player;
     state->carrier = (uint8_t)receiver;
     state->ball.owner = (uint8_t)receiver;
     state->ball.receiver = DD_NO_OWNER;
@@ -1321,8 +1433,15 @@ static void dd_finish_ball_reception(const DDTipoffAssetsHeader *assets,
     state->ball.velocity_x = 0;
     state->ball.velocity_depth = 0;
     state->ball.velocity_height = 0;
-    state->players[receiver].action = receiver == state->controlled_player
-        ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_CARRIER;
+    if (receiver < 5u) {
+        if (previous_control < DD_GAMEPLAY_PLAYER_COUNT && previous_control != receiver) {
+            state->players[previous_control].attributes = 0u;
+        }
+        state->controlled_player = (uint8_t)receiver;
+        state->players[receiver].action = DD_PLAYER_LIVE_USER_CARRIER;
+    } else {
+        state->players[receiver].action = DD_PLAYER_LIVE_CARRIER;
+    }
     state->players[receiver].action_age = 0u;
     state->players[receiver].route_step = 0u;
     ++state->possession_count;
@@ -1671,6 +1790,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     DDPlayerState *controlled = &state->players[state->controlled_player];
     uint32_t player;
     uint32_t live_frame = state->live_frame + 1u;
+    uint32_t pressed = input_mask & ~state->previous_input;
     uint32_t cpu_start;
     uint32_t cpu_end;
     int32_t input_x = 0;
@@ -1691,23 +1811,49 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         state->previous_input = input_mask;
         return;
     }
-    if ((input_mask & DD_INPUT_LEFT) != 0u) input_x -= 0x0140;
-    if ((input_mask & DD_INPUT_RIGHT) != 0u) input_x += 0x0140;
-    if ((input_mask & DD_INPUT_UP) != 0u) input_depth += 0x0140;
-    if ((input_mask & DD_INPUT_DOWN) != 0u) input_depth -= 0x0140;
-    controlled->velocity_x = input_x;
-    controlled->velocity_depth = input_depth;
-    controlled->court_x = dd_clamp(controlled->court_x + input_x, 0x001000, 0x01F000);
-    controlled->court_depth = dd_clamp(controlled->court_depth + input_depth, 0x0400, 0x9800);
-    controlled->facing = dd_facing_from_velocity(input_x, input_depth, controlled->facing);
-    if (input_x != 0 || input_depth != 0) {
-        controlled->animation = dd_animation_for_facing(controlled->facing, live_frame / 3u);
+    if (controlled->action == DD_PLAYER_LIVE_USER &&
+        state->carrier != state->controlled_player &&
+        (pressed & DD_INPUT_B) != 0u) {
+        uint32_t selected = dd_user_switch_candidate(state);
+        if (selected != state->controlled_player) {
+            controlled->action = DD_PLAYER_LIVE_TEAMMATE;
+            controlled->action_age = 0u;
+            controlled->attributes = 0u;
+            state->controlled_player = (uint8_t)selected;
+            controlled = &state->players[selected];
+            controlled->action = DD_PLAYER_LIVE_USER;
+            controlled->action_age = 0u;
+            controlled->velocity_x = 0;
+            controlled->velocity_depth = 0;
+        }
+    }
+    if (controlled->action == DD_PLAYER_LIVE_USER ||
+        controlled->action == DD_PLAYER_LIVE_USER_CARRIER) {
+        if ((input_mask & DD_INPUT_LEFT) != 0u) input_x -= 0x0140;
+        if ((input_mask & DD_INPUT_RIGHT) != 0u) input_x += 0x0140;
+        if ((input_mask & DD_INPUT_UP) != 0u) input_depth += 0x0140;
+        if ((input_mask & DD_INPUT_DOWN) != 0u) input_depth -= 0x0140;
+        controlled->velocity_x = input_x;
+        controlled->velocity_depth = input_depth;
+        controlled->court_x = dd_clamp(controlled->court_x + input_x, 0x001000, 0x01F000);
+        controlled->court_depth = dd_clamp(controlled->court_depth + input_depth, 0x0400, 0x9800);
+        controlled->facing = dd_facing_from_velocity(input_x, input_depth, controlled->facing);
+        if (input_x != 0 || input_depth != 0) {
+            controlled->animation = dd_animation_for_facing(controlled->facing, live_frame / 3u);
+        } else {
+            controlled->animation = (uint8_t)(0x1Bu + ((live_frame + 3u) / 8u) % 6u);
+        }
     } else {
-        controlled->animation = (uint8_t)(0x1Bu + ((live_frame + 3u) / 8u) % 6u);
+        controlled->velocity_x = 0;
+        controlled->velocity_depth = 0;
+    }
+    if (controlled->action == DD_PLAYER_USER_PASS_RECOVER &&
+        (state->cpu_global_frame & 1u) == 0u && controlled->action_age != UINT16_MAX) {
+        ++controlled->action_age;
     }
     ++state->cpu_global_frame;
     if ((state->cpu_global_frame & 1u) != 0u) {
-        cpu_start = 1u;
+        cpu_start = 0u;
         cpu_end = 5u;
     } else {
         state->cpu_priority_player = (uint8_t)(state->cpu_priority_player + 1u);
@@ -1716,6 +1862,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         cpu_end = DD_GAMEPLAY_PLAYER_COUNT;
     }
     for (player = cpu_start; player < cpu_end; ++player) {
+        if (player == state->controlled_player) continue;
         dd_update_cpu_player(assets, state, player, live_frame);
     }
     if (state->phase == DD_GAMEPLAY_FREE_THROW) {
@@ -1725,12 +1872,14 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         return;
     }
     if (state->carrier == state->controlled_player && state->ball.action == DD_BALL_DRIBBLE) {
-        uint32_t pressed = input_mask & ~state->previous_input;
         if ((pressed & DD_INPUT_B) != 0u) {
             dd_begin_shot(state, state->controlled_player);
         } else if ((pressed & DD_INPUT_A) != 0u) {
-            dd_begin_pass(state, state->controlled_player,
-                          dd_cpu_pass_receiver(state, state->controlled_player));
+            uint32_t receiver = dd_user_pass_receiver(state, state->controlled_player,
+                                                      input_mask);
+            if (receiver < DD_GAMEPLAY_PLAYER_COUNT) {
+                dd_begin_pass(state, state->controlled_player, receiver);
+            }
         }
     }
     dd_step_ball(assets, state);
@@ -1746,7 +1895,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     }
     dd_update_camera(state);
     state->controlled_flash_palette = (uint8_t)(((live_frame / 2u) & 1u) == 0u);
-    controlled->attributes = state->controlled_flash_palette;
+    state->players[state->controlled_player].attributes = state->controlled_flash_palette;
     state->live_frame = live_frame;
     state->previous_input = input_mask;
 }
