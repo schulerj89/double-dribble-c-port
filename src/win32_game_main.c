@@ -116,6 +116,13 @@ static void dd_update_config(uint32_t frame) {
         } else {
             g_config_boundary_reached = 1;
             g_tipoff_start_frame = frame;
+            if (!dd_gameplay_configure(&g_pack, &g_gameplay,
+                                       g_config_view.time_index,
+                                       g_config_view.team_index,
+                                       g_config_view.level_index)) {
+                g_config_boundary_reached = 0;
+                return;
+            }
             if (g_end_wav != NULL) {
                 PlaySoundA((LPCSTR)g_end_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
             }

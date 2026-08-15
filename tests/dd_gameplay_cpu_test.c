@@ -82,13 +82,14 @@ static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
     uint32_t changed = 0u;
     uint32_t player;
     int hud_clean = 1;
+    int top_edge_visible = 0;
     size_t pixel;
     int rendered = baseline != NULL && expected != NULL && solo != NULL && combined != NULL;
     memset(&base, 0, sizeof(base));
     base.phase = DD_GAMEPLAY_LIVE;
     base.scene_frame = 356u;
     base.period = 1u;
-    base.hud_split_y = 48u;
+    base.hud_split_y = 64u;
     base.ball.animation = 0xFFu;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         base.players[player].animation = 0xFFu;
@@ -121,8 +122,8 @@ static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
           memcmp(expected, combined, pixel_count * sizeof(*expected)) == 0,
           "native gameplay draws every metasprite piece past the NES eight-sprites-per-scanline limit");
     /* Live objects use signed projected coordinates. Exercise every base Y
-       around the viewport: player anchors above the $60 court line are fully
-       culled, and no remaining record may byte-wrap into the fixed HUD/gap. */
+       around the viewport: records clip at the 64-pixel court raster, while
+       an anchor between $40 and $5F must retain any lower visible records. */
     for (player = 0u; rendered && player <= 287u; ++player) {
         uint32_t row;
         int32_t base_y = (int32_t)player - 32;
@@ -133,11 +134,11 @@ static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
             (240 - base_y - 16) * 256;
         view.players[0].height = 0x1000;
         rendered = dd_render_gameplay(pack, &view, solo, width, height);
-        if (rendered && base_y < 0x60 &&
+        if (rendered && base_y >= (int32_t)base.hud_split_y && base_y < 0x60 &&
             memcmp(solo, baseline, pixel_count * sizeof(*solo)) != 0) {
-            hud_clean = 0;
+            top_edge_visible = 1;
         }
-        for (row = 0u; rendered && row < base.hud_split_y + 8u; ++row) {
+        for (row = 0u; rendered && row < base.hud_split_y; ++row) {
             if (memcmp(solo + (size_t)row * width,
                        baseline + (size_t)row * width,
                        width * sizeof(*solo)) != 0) {
@@ -148,10 +149,42 @@ static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
     }
     check(rendered && hud_clean,
           "signed gameplay metasprites clip at the court raster instead of wrapping into the scoreboard");
+    check(rendered && top_edge_visible,
+          "top-edge players retain visible metasprite records instead of disappearing at anchor Y $60");
     free(combined);
     free(solo);
     free(expected);
     free(baseline);
+}
+
+static void check_team_palette_continuity(const DDAssetPack *pack) {
+    const size_t pixel_count = (size_t)pack->tipoff_meta.width * pack->tipoff_meta.height;
+    uint32_t *new_york = (uint32_t *)malloc(pixel_count * sizeof(*new_york));
+    uint32_t *los_angeles = (uint32_t *)malloc(pixel_count * sizeof(*los_angeles));
+    DDGameplayState first;
+    DDGameplayState second;
+    int ok = new_york != NULL && los_angeles != NULL;
+    memset(&first, 0, sizeof(first));
+    memset(&second, 0, sizeof(second));
+    if (ok) ok = dd_gameplay_configure(pack, &first, 0u, 0u, 0u) &&
+        dd_gameplay_configure(pack, &second, 2u, 3u, 2u);
+    if (ok) {
+        first.scene_frame = 144u;
+        second.scene_frame = 144u;
+        ok = dd_render_gameplay(pack, &first, new_york,
+                                pack->tipoff_meta.width, pack->tipoff_meta.height) &&
+            dd_render_gameplay(pack, &second, los_angeles,
+                               pack->tipoff_meta.width, pack->tipoff_meta.height);
+    }
+    check(ok && second.match_time_index == 2u && second.match_time_bcd == 0x20u &&
+          second.clock_minutes == 0x20u && second.match_team_index == 3u &&
+          second.match_level_index == 2u,
+          "configuration time, team, and level persist in native match state");
+    check(ok && memcmp(new_york, los_angeles,
+                       pixel_count * sizeof(*new_york)) != 0,
+          "selected 1P team palette changes the tip-off/gameplay framebuffer");
+    free(los_angeles);
+    free(new_york);
 }
 
 int main(int argc, char **argv) {
@@ -188,6 +221,7 @@ int main(int argc, char **argv) {
     }
     assets = (const DDTipoffAssetsHeader *)pack.tipoff_assets;
     check_unlimited_native_gameplay_sprites(&pack);
+    check_team_palette_continuity(&pack);
     check(assets->cpu_role_targets[6] == 0xD5u && assets->cpu_role_targets[7] == 0x5Au &&
           assets->cpu_role_targets[16] == 0x54u && assets->cpu_role_targets[17] == 0xD7u,
           "asset pack exposes the observed role targets at both half-court phases");
@@ -261,8 +295,10 @@ int main(int argc, char **argv) {
           "bank-0 $9431/$9490 clock reaches the traced 04:59 rollover");
     check(dd_gameplay_step(&pack, &jump_state, DD_INPUT_B), "B starts the tip-off jump");
     check(jump_state.players[0].action == DD_PLAYER_TIP_USER_AIRBORNE &&
-          jump_state.tip_user_jump_frame == 301u,
-          "native B timing reproduces original frame 2502 state $10->$11");
+          jump_state.tip_user_jump_frame == 301u &&
+          jump_state.players[0].facing == 0u &&
+          jump_state.players[0].animation == 0x22u,
+          "native B timing reproduces original frame 2502 state $10->$11 and facing-zero pose $22");
     check(dd_gameplay_advance_to(&pack, &jump_state, 330u, 0u), "advance to CPU contact");
     check(jump_state.carrier == 5u, "CPU slot wins the first contact frame");
     check(jump_state.hud_split_y == 64u,

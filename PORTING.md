@@ -1650,6 +1650,57 @@ These changes repair behavior inside already-catalogued Verified or Partial
 entries; the honest score does not rise merely because the same states gained
 more faithful side effects.
 
+### Comprehensive completion plan and first visible-continuity repairs
+
+`PORTING_PLAN.json` is the machine-readable execution contract for the final
+portable-completion goal. It distinguishes the existing **92.6% catalogued**
+score from comprehensive coverage, which remains intentionally unset until an
+all-bank executed-PC and Ghidra call-graph inventory proves that every reachable
+non-NES routine is represented. The plan defines six ordered phases, evidence
+requirements for every routine, milestone commit rules, explicit NES-only
+exclusions, and the zero-Partial/zero-Missing exit gate.
+
+The first visible repair removes a native-only whole-object cull in
+`dd_gameplay_emit`. Signed per-record clipping already prevents negative
+metasprite coordinates from wrapping into the fixed HUD; additionally rejecting
+every player whose anchor was above `$60` made otherwise visible lower records
+disappear between the 64-pixel court raster and Y `$5F`. The renderer now clips
+each record at the raster and keeps the visible portion. A framebuffer sweep
+covers every anchor Y from -32 through 255, requires an object to remain visible
+in the `$40-$5F` interval, and still proves that no record modifies the HUD.
+
+The user tip-off pose is grounded in a fresh controlled FCEUX capture. With NES
+B pressed at original frame 2502, object `$02` changes `$0342:10->11` at bank-0
+PC `$A61F`. `$A896` records facing `$00`, metasprite `$1C` on the input frame,
+then metasprite `$22` at frame 2504 and throughout the height-script rise.
+Object `$07`, facing `$04`, independently uses `$21`. Native code had assigned
+the CPU's `$21` pose to the user, which visually faced backward; it now selects
+the recovered `$22` pose and a regression pins action, facing, and animation.
+
+Finally, configuration values now become match state instead of renderer-only
+UI. `dd_gameplay_configure` validates and stores TIME, TEAM, and LEVEL, reads
+the pack-backed bank-1 `$A368` time table (`$05,$10,$20,$30`), and preserves the
+chosen values across the match. The gameplay renderer carries the selected
+team's four-byte sprite palette from the existing configuration asset entry
+into tip-off and live sprite palette two while retaining the fixed opponent in
+palette three. Tests render New York and Los Angeles from otherwise identical
+formation state and require different framebuffers.
+
+Reproduce the ignored evidence and native frames with:
+
+```powershell
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2495 -FinalFrame 2535 -CaptureName phase1-tip-facing -JumpStart 2502 -JumpEnd 2502 -JumpButton B -DisablePcCounts
+.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+.\build\double_dribble_port.exe --render-gameplay-team .\build\double-dribble.assetpack 0 .\captures\phase1-native\team-new-york.bmp
+.\build\double_dribble_port.exe --render-gameplay-team .\build\double-dribble.assetpack 3 .\captures\phase1-native\team-los-angeles.bmp
+.\build\double_dribble_port.exe --render-gameplay-top-edge .\build\double-dribble.assetpack .\captures\phase1-native\top-edge.bmp
+.\build\double_dribble_port.exe --render-gameplay-tip-jump .\build\double-dribble.assetpack .\captures\phase1-native\tip-jump.bmp
+```
+
+This milestone deliberately leaves catalogued coverage at **92.6%**. Natural
+dunk eligibility, complete blocking, exhaustive CPU audit, free throws, and the
+comprehensive routine manifest remain active phases in `PORTING_PLAN.json`.
+
 ## Open research questions
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.

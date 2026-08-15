@@ -194,6 +194,10 @@ typedef struct DDGameplayState {
     uint8_t clock_minutes;
     uint8_t clock_seconds;
     uint8_t period;
+    uint8_t match_time_index;
+    uint8_t match_time_bcd;
+    uint8_t match_team_index;
+    uint8_t match_level_index;
     uint8_t last_shooter;
     uint8_t shot_value;
     uint8_t net_animation_phase;
@@ -212,6 +216,9 @@ typedef struct DDGameplayState {
 } DDGameplayState;
 
 void dd_gameplay_reset(DDGameplayState *state);
+int dd_gameplay_configure(const DDAssetPack *pack, DDGameplayState *state,
+                          uint32_t time_index, uint32_t team_index,
+                          uint32_t level_index);
 int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t input_mask);
 int dd_gameplay_advance_to(const DDAssetPack *pack, DDGameplayState *state,
                            uint32_t scene_frame, uint32_t input_mask);

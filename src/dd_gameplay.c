@@ -2347,7 +2347,7 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
     state->live_start_frame = DD_LIVE_FRAME;
     state->camera_chr_side = 1u;
     state->hud_split_y = 64u;
-    state->clock_minutes = 0x05u;
+    state->clock_minutes = state->match_time_bcd;
     state->clock_seconds = 0u;
     state->clock_expired = 0;
     state->clock_expired_frame = UINT_MAX;
@@ -2382,11 +2382,32 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
 void dd_gameplay_reset(DDGameplayState *state) {
     if (state == NULL) return;
     memset(state, 0, sizeof(*state));
+    state->match_time_index = 0u;
+    state->match_time_bcd = 0x05u;
+    state->match_team_index = 0u;
+    state->match_level_index = 0u;
     state->scene_frame = DD_FORMATION_VISIBLE_FRAME - 1u;
     state->period = 1u;
     dd_prepare_period_formation(state);
     state->next_clock_frame = DD_FIRST_CLOCK_TICK_FRAME;
     state->initialized = 1;
+}
+
+int dd_gameplay_configure(const DDAssetPack *pack, DDGameplayState *state,
+                          uint32_t time_index, uint32_t team_index,
+                          uint32_t level_index) {
+    const DDConfigAssetsHeader *config;
+    if (pack == NULL || state == NULL || pack->config_assets == NULL ||
+        pack->config_assets_size < sizeof(*config) || time_index >= 4u ||
+        team_index >= 4u || team_index == 1u || level_index >= 3u) return 0;
+    config = (const DDConfigAssetsHeader *)pack->config_assets;
+    dd_gameplay_reset(state);
+    state->match_time_index = (uint8_t)time_index;
+    state->match_time_bcd = config->time_values[time_index];
+    state->match_team_index = (uint8_t)team_index;
+    state->match_level_index = (uint8_t)level_index;
+    state->clock_minutes = state->match_time_bcd;
+    return 1;
 }
 
 static void dd_update_camera(DDGameplayState *state) {
@@ -3467,7 +3488,9 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
         state->tip_user_jump_frame == UINT_MAX && (input_mask & DD_INPUT_B) != 0u) {
         state->tip_user_jump_frame = sequence_frame;
         state->players[0].action = DD_PLAYER_TIP_USER_AIRBORNE;
-        state->players[0].animation = 0x21u;
+        /* Controlled FCEUX frame 2504 reaches `$A896` with facing zero and
+           writes metasprite `$22`; `$21` is the opposing facing-four pose. */
+        state->players[0].animation = 0x22u;
     }
     if (sequence_frame <= DD_AWARD_FRAME) {
         age = sequence_frame - DD_TOSS_START_FRAME;

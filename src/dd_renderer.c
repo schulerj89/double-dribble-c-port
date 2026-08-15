@@ -678,14 +678,13 @@ int dd_render_tipoff(const DDAssetPack *pack, uint32_t *pixels, uint32_t width, 
 static uint32_t dd_gameplay_emit(const DDAssetPack *pack, const DDTipoffAssetsHeader *assets,
                                  uint8_t oam[256], uint32_t sprite, uint8_t animation,
                                  int32_t screen_x, int32_t screen_y, uint8_t attributes,
-                                 int32_t clip_top, int32_t anchor_top) {
+                                 int32_t clip_top) {
     uint32_t offset;
     uint32_t size;
     uint32_t record;
     size_t position = 1u;
     uint8_t record_attributes = attributes;
     if (animation >= DD_GAMEPLAY_METASPRITE_COUNT || screen_x < -32 || screen_x > 287 ||
-        screen_y < anchor_top ||
         screen_y < -32 || screen_y > 255) return sprite;
     offset = assets->metasprite_offset[animation];
     size = assets->metasprite_size[animation];
@@ -694,9 +693,10 @@ static uint32_t dd_gameplay_emit(const DDAssetPack *pack, const DDTipoffAssetsHe
     /* Gameplay uses native signed screen coordinates. Feeding them through
        the intro's byte-wrapping emitter made a player just below/left of the
        viewport wrap individual metasprite records into the scoreboard once
-       the NES scanline cap was removed. Decode the same records, cull player
-       anchors before the court line, and clip signed record positions before
-       writing bounded OAM bytes. */
+       the NES scanline cap was removed. Decode the same records and clip each
+       signed record at the court raster. Do not cull the entire metasprite
+       when its anchor crosses the top edge: lower body records can still be
+       visible on the legal court. */
     {
         const uint8_t *metasprite = pack->tipoff_assets + offset;
         for (record = 0u; record < metasprite[0] && sprite < 64u; ++record) {
@@ -812,6 +812,22 @@ static void dd_gameplay_patch_net(uint8_t ppu[DD_PPU_SIZE],
     ppu[address + 0x21u] = assets->net_animation_tiles[table + 3u];
 }
 
+static void dd_gameplay_patch_team_palette(uint8_t ppu[DD_PPU_SIZE],
+                                           const DDAssetPack *pack,
+                                           const DDGameplayState *state) {
+    const DDConfigAssetsHeader *config;
+    uint32_t team;
+    if (pack->config_assets == NULL ||
+        pack->config_assets_size < sizeof(DDConfigAssetsHeader)) return;
+    config = (const DDConfigAssetsHeader *)pack->config_assets;
+    team = state->match_team_index < 4u ? state->match_team_index : 0u;
+    /* Bank-1 configuration writes the selected 1P palette to sprite palette
+       two and the fixed opponent palette to sprite palette three. Gameplay
+       keeps those attribute assignments, so carry the same bytes forward. */
+    memcpy(ppu + 0x3F18u, config->team_sprite_palette + team * 4u, 4u);
+    memcpy(ppu + 0x3F1Cu, config->team_sprite_palette + 4u, 4u);
+}
+
 int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
                        uint32_t *pixels, uint32_t width, uint32_t height) {
     const DDTipoffAssetsHeader *assets;
@@ -831,9 +847,21 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
         for (pixel = 0u; pixel < width * height; ++pixel) pixels[pixel] = 0x000000A8u;
         return 1;
     }
-    if (state->scene_frame < 270u) return dd_render_tipoff(pack, pixels, width, height);
+    if (state->scene_frame < 270u) {
+        memcpy(ppu, pack->tipoff_ppu, sizeof(ppu));
+        dd_gameplay_patch_team_palette(ppu, pack, state);
+        return dd_render_scrolled_scene(ppu, sizeof(ppu),
+                                        pack->tipoff_oam, pack->tipoff_oam_size,
+                                        pack->tipoff_meta.background_pattern_base,
+                                        pack->tipoff_meta.nametable_base,
+                                        pack->tipoff_meta.ppu_control,
+                                        pack->tipoff_meta.sprite_count,
+                                        pack->tipoff_meta.scroll_x, 64u, 1,
+                                        pixels, width, height);
+    }
     assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
     memcpy(ppu, pack->tipoff_ppu, sizeof(ppu));
+    dd_gameplay_patch_team_palette(ppu, pack, state);
     dd_gameplay_patch_hud(ppu, state);
     dd_gameplay_patch_net(ppu, assets, state);
     if (state->camera_chr_side == 0u) {
@@ -850,18 +878,17 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
     sprite = dd_gameplay_emit(pack, assets, oam, sprite, 2u,
                               (state->ball.court_x >> 8) - camera,
                               0xF0 - ((state->ball.court_depth >> 8) + 2), 0u,
-                              world_top, world_top);
+                              world_top);
     sprite = dd_gameplay_emit(pack, assets, oam, sprite, state->ball.animation,
                               (state->ball.court_x >> 8) - camera,
                               0xF0 - (state->ball.court_depth >> 8) - (state->ball.height >> 8),
-                              state->ball.attributes, world_top, world_top);
+                              state->ball.attributes, world_top);
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         const DDPlayerState *object = &state->players[player];
         sprite = dd_gameplay_emit(pack, assets, oam, sprite, object->animation,
                                   (object->court_x >> 8) - camera,
                                   0xF0 - (object->court_depth >> 8) - (object->height >> 8),
-                                  object->attributes, world_top,
-                                  0x60);
+                                  object->attributes, world_top);
     }
     while (sprite < 64u) {
         oam[sprite * 4u] = 0xF4u;

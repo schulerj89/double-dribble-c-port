@@ -26,6 +26,9 @@ static void dd_usage(void) {
     puts("  --render-gameplay-moving-shot <input.assetpack> <takeoff|held|airborne> <output.bmp>");
     puts("  --render-gameplay-rule <input.assetpack> <oob|backpass> <output.bmp>");
     puts("  --render-gameplay-dunk <input.assetpack> <make|miss> <gather|airborne|result> <output.bmp>");
+    puts("  --render-gameplay-team <input.assetpack> <0|2|3> <output.bmp>");
+    puts("  --render-gameplay-top-edge <input.assetpack> <output.bmp>");
+    puts("  --render-gameplay-tip-jump <input.assetpack> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
@@ -223,6 +226,67 @@ int main(int argc, char **argv) {
         ok = pixels != NULL && dd_gameplay_advance_to(&pack, &state, (uint32_t)frame, input_mask) &&
              dd_render_gameplay(&pack, &state, pixels, pack.tipoff_meta.width, pack.tipoff_meta.height) &&
              dd_write_bmp(argv[output_argument], pixels, pack.tipoff_meta.width, pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-gameplay-team") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        unsigned long team;
+        char *end;
+        int ok;
+        team = strtoul(argv[3], &end, 10);
+        if (*argv[3] == '\0' || *end != '\0' ||
+            (team != 0u && team != 2u && team != 3u) ||
+            !dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_configure(&pack, &state, 0u, (uint32_t)team, 0u) &&
+            dd_gameplay_advance_to(&pack, &state, 144u, 0u);
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+            dd_render_gameplay(&pack, &state, pixels,
+                               pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+            dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
+                         pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 4 && (strcmp(argv[1], "--render-gameplay-top-edge") == 0 ||
+                      strcmp(argv[1], "--render-gameplay-tip-jump") == 0)) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t player;
+        int top_edge = strcmp(argv[1], "--render-gameplay-top-edge") == 0;
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        if (top_edge) {
+            ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+            if (ok) {
+                state.ball.animation = 0xFFu;
+                for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                    state.players[player].animation = 0xFFu;
+                }
+                state.players[0].animation = 0x1Bu;
+                state.players[0].court_x = state.camera_x + 0x008000;
+                state.players[0].court_depth = 0x009000;
+                state.players[0].height = 0x1000;
+            }
+        } else {
+            ok = dd_gameplay_advance_to(&pack, &state, 300u, 0u) &&
+                dd_gameplay_step(&pack, &state, DD_INPUT_B) &&
+                dd_gameplay_advance_to(&pack, &state, 304u, 0u);
+        }
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+            dd_render_gameplay(&pack, &state, pixels,
+                               pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+            dd_write_bmp(argv[3], pixels, pack.tipoff_meta.width,
+                         pack.tipoff_meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;
