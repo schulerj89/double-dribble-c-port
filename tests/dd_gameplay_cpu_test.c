@@ -536,6 +536,23 @@ int main(int argc, char **argv) {
           "ball state $03 follows $ADF2's zero vertical-term branch into state $0C");
 
     dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_PASS_BOUNCE;
+    dispatch_state.ball.height = 0x0B00;
+    dispatch_state.ball.velocity_height = 0x0100;
+    dispatch_state.ball.vertical_phase = 0x3Du;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step $B167's traced negative bounce-height branch");
+    check(dispatch_state.ball.action == DD_BALL_PASS_BOUNCE &&
+          dispatch_state.ball.height == 0x0B00 &&
+          dispatch_state.ball.velocity_height == 0 &&
+          dispatch_state.ball.vertical_phase == 0u,
+          "ball state $03 reproduces original frame 2602 velocity decrement and phase reset");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step completed bounce pass into hidden state");
+    check(dispatch_state.ball.action == DD_BALL_HIDDEN,
+          "ball state $03 enters $0C after vertical velocity reaches zero");
+
+    dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_AIRBORNE;
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.ball.court_x = 0x004C00;
@@ -561,10 +578,37 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_LOOSE_LAUNCH;
-    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step loose-ball launch state $08");
+    dispatch_state.ball.outcome = 4u;
+    dispatch_state.ball.velocity_x = 0x0100;
+    dispatch_state.ball.velocity_depth = 0x0080;
+    dispatch_state.ball.rim_contact = 1u;
+    dispatch_state.carrier = 5u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step outcome $04 loose launch");
     check(dispatch_state.ball.action == DD_BALL_LOOSE_AIRBORNE &&
-          dispatch_state.ball.owner == 0xFFu,
-          "ball state $08 initializes velocity and advances to $09");
+          dispatch_state.ball.owner == 0xFFu && dispatch_state.carrier == 5u &&
+          dispatch_state.ball.velocity_x == -0x0080 &&
+          dispatch_state.ball.velocity_depth == -0x0040 &&
+          dispatch_state.ball.rim_contact == 1u,
+          "ball state $08 reverses outcome $04 while retaining camera follow and rim latch");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_LOOSE_LAUNCH;
+    dispatch_state.ball.outcome = 2u;
+    dispatch_state.ball.velocity_x = 0x00B4;
+    dispatch_state.ball.velocity_depth = 0x00B4;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step outcome $02 loose launch");
+    check(dispatch_state.ball.velocity_x == 0x005A &&
+          dispatch_state.ball.velocity_depth == 0x005A,
+          "$AF72 outcome $02 preserves direction and halves its vector");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_LOOSE_LAUNCH;
+    dispatch_state.ball.outcome = 3u;
+    dispatch_state.ball.velocity_x = 0x0080;
+    dispatch_state.ball.velocity_depth = 0x0040;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step outcome $03 loose launch");
+    check(dispatch_state.ball.velocity_x == 0 && dispatch_state.ball.velocity_depth == 0,
+          "$AF72 outcome $03 retains the setup path's cleared horizontal terms");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_LOOSE_AIRBORNE;

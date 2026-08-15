@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 75%**
+**Portable Ghidra-to-C gameplay-loop coverage: 77%**
 
 **End-to-end match completeness: approximately 50%**
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 74.8%`, rounded to **75%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 76.7%`, rounded to **77%**.
 
 ## Player action dispatcher — 73.5%
 
@@ -46,17 +46,17 @@ partial group still uses bounded timing, movement, collision, or formation logic
 where important original branches remain, especially the full `$D99A` obstacle
 search and several `$D759-$DA39` CPU branches.
 
-## Ball action dispatcher — 92.3%
+## Ball action dispatcher — 100%
 
 Ghidra anchor `$AC83` dispatches ball action `$0340` through the 13-entry table at `$AC91`, covering states `$00-$0C`.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 11 | `$00` award/attachment, `$01` dribble, `$02` pass, `$04` gather, `$05` flight, `$06` score/rim, `$07` rebound, `$09` loose-ball flight, `$0A` launch preparation, `$0B/$0C` dead/hidden ball |
-| P | 2 | `$03` bounce pass, `$08` loose-ball launch |
+| V | 13 | `$00-$0C` |
+| P | 0 | none |
 | M | 0 | none |
 
-Score: `(11 + 2 × 0.5) / 13 = 92.3%`.
+Score: `13 / 13 = 100%`.
 
 Every table entry now has an explicit native handler. State `$0A` reproduces the
 observed one-dispatch `$B017` initializer, including vertical term `$0305` and
@@ -68,9 +68,14 @@ State `$00` now reproduces both observed `$ACB6` height branches: `$18` for
 tip-award modes and `$08` for ordinary held play. State `$09` integrates until
 the exact unsigned integer-height threshold `$E0`, then enters `$07` with
 vertical term `$02E0` and a cleared rim latch; the natural result-four trace
-crosses that threshold on frame 61. States `$03/$08` remain Partial because
-their unobserved vertical/outcome branches and broader block/rim interaction
-are not complete.
+crosses that threshold on frame 61. State `$03` follows `$ADF2` and byte-exact
+helper `$B167`: controlled frames 2601-2603 prove vertical term `$0100->$0000`,
+gravity phase `$3D->$00`, and the next dispatch `$03->$0C`. State `$08` follows
+`$AF72`; controlled outcome probes prove forward half-speed (`$02`), cleared
+horizontal terms (`$03`), and reverse half-speed (`$04`), while retaining the
+camera carrier and rim latch exactly as the original does. The ball dispatcher
+is therefore fully Verified. Higher-level block, foul, and general rim-contact
+eligibility remain tracked under core/rules rather than hidden in this score.
 
 ## Portable core per-frame loop — 78.6%
 
@@ -128,6 +133,6 @@ When updating this ledger:
 
 1. Deepen the partial dispatcher handlers with dynamic FCEUX branch captures, especially `$21/$23/$24` and `$38-$3A`.
 2. Translate the remaining `$D99A` CPU decision/search branches and pass-lane rejection.
-3. Complete the remaining `$B473` hoop/rim sweep and contested-rebound branches behind ball `$03/$08/$09`.
+3. Translate the higher-level block, contested-rebound, and general rim-contact eligibility branches around `$B473`.
 4. Match the clock's presentation-state call gaps and implement fourth-period/final match end conditions.
 5. Add steals, blocks, fouls, and non-scripted out-of-bounds handling.

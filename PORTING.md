@@ -547,11 +547,27 @@ later inbound cannot accidentally retain the tip offset. Loose flight `$09` at
 `>= $E0` changes to rebound `$07`, writes vertical term `$02E0`, and clears the
 rim latch. The observed result-four arc reaches that condition on its 61st
 frame, and the native regression now asserts both the threshold and writes.
-States `$00` and `$09` therefore move to Verified; `$03/$08` remain Partial.
+States `$00` and `$09` therefore move to Verified.
+
+Bounce-pass state `$03` at `$ADF2` calls the rim sweep and then `$B167`, whose
+byte operations update the integer height using velocity high minus gravity
+phase. A negative trial decrements the high velocity byte and resets phase only
+when that decremented velocity remains nonnegative. Controlled original frames
+2601-2603 prove height `$0B00`, velocity `$0100->$0000`, phase `$3D->$00`, then
+the next dispatch `$03->$0C`; native checks reproduce both dispatches.
+
+Loose launch `$08` at `$AF72` clears owner `$005B` but not camera carrier `$0048`,
+sets integer height `$38`, vertical term `$0100`, and advances to `$09`. Three
+controlled FCEUX probes with angle `$20` distinguish its outcome branches:
+`$02` produces vector `$005A/$005A`, `$03` leaves `$0000/$0000`, and `$04`
+produces `$FFA5/$FFA5`. The routine also retains the rim latch until `$AFDD`.
+The native handler reproduces those branches and ownership/latch side effects,
+promoting `$03/$08` and completing all 13 ball dispatcher states. Broader block,
+foul, and general rim-contact eligibility remains incomplete at the rule level.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **75% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **77% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

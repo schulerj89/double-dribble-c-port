@@ -974,6 +974,25 @@ static void dd_step_dribble(const DDTipoffAssetsHeader *assets, DDGameplayState 
     state->ball.height = height;
 }
 
+/* $B167 updates bounce-pass integer height with the high velocity byte and
+   gravity phase $004A.  A negative trial decrements the high velocity byte;
+   a still-nonnegative velocity restarts gravity at zero. */
+static void dd_step_bounce_height(DDGameplayState *state) {
+    DDBallState *ball = &state->ball;
+    uint8_t velocity_high = (uint8_t)(((uint32_t)ball->velocity_height >> 8u) & 0xFFu);
+    uint8_t height_high = (uint8_t)(((uint32_t)ball->height >> 8u) & 0xFFu);
+    uint8_t trial = (uint8_t)(velocity_high - ball->vertical_phase + height_high);
+    if ((trial & 0x80u) == 0u) {
+        ball->height = (ball->height & 0x00FF) | ((int32_t)trial << 8u);
+        if ((state->cpu_global_frame & 1u) == 0u) ++ball->vertical_phase;
+    } else {
+        velocity_high = (uint8_t)(velocity_high - 1u);
+        ball->velocity_height = (ball->velocity_height & 0x00FF) |
+            ((int32_t)velocity_high << 8u);
+        if ((velocity_high & 0x80u) == 0u) ball->vertical_phase = 0u;
+    }
+}
+
 static void dd_finish_ball_reception(const DDTipoffAssetsHeader *assets,
                                      DDGameplayState *state, uint32_t receiver) {
     if (receiver >= DD_GAMEPLAY_PLAYER_COUNT) return;
@@ -1034,15 +1053,10 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 ball->action_age = 0u;
                 break;
             }
+            dd_step_bounce_height(state);
             ball->court_x += ball->velocity_x;
             ball->court_depth = dd_clamp(ball->court_depth + ball->velocity_depth,
                                          0x0400, 0x9800);
-            ball->height += ball->velocity_height;
-            ball->velocity_height -= 0x0060;
-            if (ball->height <= 0x1000) {
-                ball->height = 0x1000;
-                ball->velocity_height = dd_absolute(ball->velocity_height) / 2;
-            }
             break;
         case DD_BALL_SHOT_GATHER:
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
@@ -1125,13 +1139,20 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         case DD_BALL_LOOSE_LAUNCH:
             /* $AF72 clears ownership, seeds height/velocity, plays SFX $14,
                and increments the ball dispatcher to state $09. */
-            state->carrier = DD_NO_OWNER;
             ball->owner = DD_NO_OWNER;
             ball->height = (ball->height & 0x00FF) | 0x3800;
-            ball->velocity_x = -ball->velocity_x / 2;
-            ball->velocity_depth = -ball->velocity_depth / 2;
+            if (ball->outcome == 2u) {
+                ball->velocity_x /= 2;
+                ball->velocity_depth /= 2;
+            } else if (ball->outcome == 3u) {
+                ball->velocity_x = 0;
+                ball->velocity_depth = 0;
+            } else {
+                ball->velocity_x = -ball->velocity_x / 2;
+                ball->velocity_depth = -ball->velocity_depth / 2;
+            }
             ball->velocity_height = 0x0100;
-            ball->rim_contact = 0u;
+            ball->vertical_phase = 0u;
             ball->action = DD_BALL_LOOSE_AIRBORNE;
             ball->action_age = 0u;
             break;

@@ -12,8 +12,8 @@ $components = @(
     },
     [pscustomobject]@{
         Name = 'Ball actions'; Weight = 0.25; Expected = 13
-        Verified = @('00','01','02','04','05','06','07','09','0A','0B','0C')
-        Partial = @('03','08')
+        Verified = @('00','01','02','03','04','05','06','07','08','09','0A','0B','0C')
+        Partial = @()
         Missing = @()
     },
     [pscustomobject]@{

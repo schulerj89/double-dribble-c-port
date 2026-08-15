@@ -14,6 +14,8 @@ local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
 local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME") or "-1")
 local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
+local inject_loose_launch_frame = tonumber(os.getenv("DD_INJECT_LOOSE_LAUNCH_FRAME") or "-1")
+local inject_loose_outcome = tonumber(os.getenv("DD_INJECT_LOOSE_OUTCOME") or "2")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -286,6 +288,18 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x03F0, 0xBB)
         memory.writebyte(0x0430, 0x00)
         memory.writebyte(0x0440, 0x67)
+    end
+    if next_frame == inject_loose_launch_frame then
+        -- Controlled $AF72 branch probe for outcomes $02/$03/$04.
+        memory.writebyte(0x0340, 0x08)
+        memory.writebyte(0x0480, inject_loose_outcome)
+        memory.writebyte(0x0470, 0x20)
+        memory.writebyte(0x0390, 0x00)
+        memory.writebyte(0x03A0, 0x80)
+        memory.writebyte(0x03E0, 0x00)
+        memory.writebyte(0x03F0, 0x40)
+        memory.writebyte(0x0410, 0x37)
+        memory.writebyte(0x0420, 0x55)
     end
     joypad.set(1, input)
     emu.frameadvance()
