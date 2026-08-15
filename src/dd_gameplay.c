@@ -283,6 +283,78 @@ static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed) {
     dd_unpack_cpu_target(packed, &player->target_x, &player->target_depth);
 }
 
+/* $8C5B contains signed 16-bit deltas in the game's packed court space.
+   Directions 0-7 are right, down-right, down, down-left, left, up-left,
+   up, and up-right respectively. */
+static uint16_t dd_project_packed_position(uint8_t packed, uint8_t direction,
+                                           uint32_t steps) {
+    static const int16_t delta[8] = {1, -33, -32, -31, -1, 31, 32, 33};
+    return (uint16_t)((uint16_t)packed + delta[direction & 7u] * (int32_t)steps);
+}
+
+/* $8CF3 rejects packed-coordinate overflow, the top gutter, and positions
+   outside the seven depth-band bounds at $8D0F. */
+static int dd_cpu_packed_position_valid(uint16_t projected) {
+    static const uint8_t bounds[16] = {
+        0x02u, 0x1Du, 0x22u, 0x3Cu, 0x42u, 0x5Bu, 0x62u, 0x7Au,
+        0x82u, 0x99u, 0xA2u, 0xB8u, 0xC2u, 0xD7u, 0xE2u, 0xF6u
+    };
+    uint8_t packed = (uint8_t)projected;
+    uint8_t index;
+    if ((projected >> 8u) != 0u || (packed & 0xE0u) == 0u) return 0;
+    index = (uint8_t)((packed & 0xE0u) >> 4u);
+    return (uint8_t)(packed - bounds[index]) < bounds[index + 1u];
+}
+
+/* Fixed bank $D99A predicts one packed step along the current facing.  Only
+   a collision with the ball or the linked opponent triggers avoidance.  It
+   then tries the four $8BC8 direction candidates two steps out and installs
+   the first in-bounds packed target. */
+static int dd_cpu_avoid_ball_or_defender(DDGameplayState *state, uint32_t player_index) {
+    static const uint8_t candidates[8][4] = {
+        {2u, 6u, 4u, 0u}, {0u, 0u, 0u, 0u},
+        {6u, 4u, 0u, 2u}, {0u, 0u, 0u, 0u},
+        {2u, 6u, 0u, 4u}, {0u, 0u, 0u, 0u},
+        {2u, 4u, 0u, 6u}, {0u, 0u, 0u, 0u}
+    };
+    DDPlayerState *player;
+    uint8_t packed;
+    uint8_t predicted;
+    uint8_t ball;
+    uint8_t linked;
+    uint8_t order[4];
+    uint8_t attack_facing;
+    uint32_t index;
+    uint16_t projected;
+    if (player_index >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
+    player = &state->players[player_index];
+    packed = dd_pack_cpu_position(player);
+    predicted = (uint8_t)dd_project_packed_position(packed, player->facing, 1u);
+    /* The original owned ball keeps the carrier's packed $05B0 coordinate;
+       native rendering offsets it to the hand, so exclude that visual offset
+       from the lookahead comparison for the current owner. */
+    ball = state->ball.owner == player_index ? packed
+        : dd_pack_cpu_coordinates(state->ball.court_x, state->ball.court_depth);
+    linked = dd_pack_cpu_position(&state->players[state->controlled_player]);
+    if (predicted != ball && predicted != linked) return 0;
+    memcpy(order, candidates[player->facing & 7u], sizeof(order));
+    attack_facing = state->possession_direction == 0u ? 4u : 0u;
+    if (attack_facing == (player->facing & 7u) &&
+        (state->cpu_global_frame & 2u) == 0u) {
+        uint8_t swap = order[0];
+        order[0] = order[1];
+        order[1] = swap;
+    }
+    for (index = 0u; index < 4u; ++index) {
+        projected = dd_project_packed_position(packed, order[index], 2u);
+        if (dd_cpu_packed_position_valid(projected)) {
+            dd_set_cpu_target(player, (uint8_t)projected);
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static int dd_cpu_at_target(const DDPlayerState *player, int32_t tolerance) {
     return dd_absolute(player->target_x - player->court_x) <= tolerance &&
            dd_absolute(player->target_depth - player->court_depth) <= tolerance;
@@ -443,6 +515,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
     switch (player->action) {
         case DD_PLAYER_LIVE_CARRIER:
             speed = 0x0320;
+            dd_cpu_avoid_ball_or_defender(state, player_index);
             if (player->route_step == 4u) {
                 /* At original frame 3572 state $25 holds the inbound receiver in
                    place; state $27/ball state $04 begin 28 frames later. */
@@ -470,6 +543,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_LIVE_CPU_SETUP:
             speed = 0x0280;
+            dd_cpu_avoid_ball_or_defender(state, player_index);
             if (state->cpu_global_frame == 0x80u) {
                 player->action = DD_PLAYER_LIVE_CARRIER_ROUTE;
                 player->action_age = 0u;
@@ -1073,14 +1147,10 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             }
             break;
         case DD_BALL_SHOT_LAUNCH: {
-            /* $B017 is an initializer, not a wait state: it seeds the launch
-               terms and writes ball action $05 before returning. */
-            int32_t hoop_x = state->possession_direction == 0u ? 0x001C00 : 0x01E400;
-            ball->owner = DD_NO_OWNER;
-            state->carrier = DD_NO_OWNER;
-            ball->velocity_x = (hoop_x - ball->court_x) / 21;
-            ball->velocity_depth = (0x005800 - ball->court_depth) / 21;
-            ball->velocity_height = 0x0500;
+            /* Tip-toss/launch initializer $B017 writes vertical term $0305,
+               curve byte $D8, and state $05 on its very next dispatch. */
+            ball->velocity_height = 0x0305;
+            ball->flight_curve = 0xD8u;
             ball->action = DD_BALL_AIRBORNE;
             ball->action_age = 0u;
             break;
@@ -1089,10 +1159,7 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         case DD_BALL_HIDDEN:
             /* $ACAB is shared by states $0B/$0C: zero height and project the
                non-live object without advancing its dispatcher state. */
-            ball->height = 0;
-            ball->velocity_x = 0;
-            ball->velocity_depth = 0;
-            ball->velocity_height = 0;
+            ball->height &= 0x00FF;
             break;
         default:
             break;

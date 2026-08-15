@@ -17,7 +17,7 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
     private static final long[] BANK0_ANCHORS = {
         0x8195L, 0x81A2L, 0x8266L, 0x8297L, 0x829EL, 0x8371L, 0x83C5L, 0x8460L,
         0x89B2L, 0x8A16L, 0x8A3AL, 0x8A98L, 0x8AF4L, 0x8B12L, 0x8B5AL, 0x8BC5L,
-        0x8C6BL, 0x8D1FL, 0x8D57L, 0x8D9CL, 0x8DABL, 0x8DD2L, 0x8DF7L,
+        0x8C36L, 0x8C6BL, 0x8CF3L, 0x8D1FL, 0x8D57L, 0x8D9CL, 0x8DABL, 0x8DD2L, 0x8DF7L,
         0x8E71L, 0x8E88L, 0x8EBFL, 0x8EE2L, 0x8FE0L, 0x904DL, 0x9094L,
         0x9102L, 0x91A6L, 0x92BDL, 0x9395L, 0x9431L, 0x9490L, 0x9583L, 0x9645L,
         0xA347L, 0xA61FL, 0xA68AL, 0xA6C3L,
@@ -46,6 +46,18 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
         report.println();
     }
 
+    private void printByteTable(PrintWriter report, String name, long tableAddress,
+                                int count) throws Exception {
+        report.printf("==== %s byte table at $%04X ====%n", name, tableAddress);
+        for (int index = 0; index < count; ++index) {
+            if ((index & 15) == 0) report.printf("$%04X:", tableAddress + index);
+            report.printf(" %02X", currentProgram.getMemory().getByte(
+                toAddr(tableAddress + index)) & 0xff);
+            if ((index & 15) == 15 || index + 1 == count) report.println();
+        }
+        report.println();
+    }
+
     @Override
     public void run() throws Exception {
         if (getScriptArgs().length != 2) {
@@ -69,6 +81,7 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
             if (!"fixed".equals(getScriptArgs()[0])) {
                 printDispatchTable(report, "player", 0x89C0L, 0x20, 34);
                 printDispatchTable(report, "ball", 0xAC91L, 0x00, 13);
+                printByteTable(report, "CPU avoidance direction", 0x8BC8L, 32);
             }
             for (long value : anchors) {
                 Address address = toAddr(value);

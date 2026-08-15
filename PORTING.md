@@ -511,9 +511,36 @@ These additions promote player states `$28,$29,$2D,$2E,$2F` to Verified and
 defensive steals/blocks from Missing to Partial. Blocks and the remaining
 defensive eligibility rules are still outstanding.
 
+### CPU packed avoidance and terminal ball states
+
+The fixed-bank `$D99A-$DA39` helper is a short lookahead rather than a general
+pathfinder. Bank-0 `$8C36` adds signed packed-coordinate deltas
+`+1,-33,-32,-31,-1,+31,+32,+33`; `$D99A` projects one step in the player's
+current facing and reacts only if that byte equals the ball or linked opponent.
+It then reads four direction candidates from `$8BC8`, projects each two steps,
+and uses `$8CF3` plus the seven court-band bounds at `$8D0F` to install the first
+valid target. Original frame 2559 supplies the successful dynamic branch:
+object `$07`, facing `$04`, position `$B0`, linked object `$02` at `$AF`, global
+phase `$DE`, and direction `$08` change target `$D4->$70` at return `$DA36`.
+The same trace records 83 no-change returns at `$DA38`. Native isolated checks
+reproduce both outcomes. This helper now runs in carrier `$25` and CPU setup
+`$32`; the surrounding region/timer policy in `$D759-$D8B0` remains Partial.
+
+Ball launch state `$0A` is a one-frame initializer at `$B017`, not a wait state.
+The unmodified trace changes `$0A->$05` at frames 2470-2471 and shows vertical
+term `$0305` plus curve byte `$D8`. The routine does not write owner or camera
+carrier, and the native version now preserves both. Dispatcher states `$0B` and
+`$0C` share `$ACAB`, which clears only integer height `$0410` before projection.
+The long natural capture contains 1,542 `$0B` frames. An opt-in state `$0C`
+probe converts injected height `$467B->$007B` at frame 2601 while retaining
+state `$0C`; Ghidra proves the shared target and absence of velocity writes.
+Native tests cover `$0A`, `$0B`, and `$0C`, promoting all three to Verified.
+Selected-bank offsets are `$8C36->$0C46`, `$8CF3->$0D03`, `$B017->$3027`, and
+`$ACAB->$2CBB`; fixed-bank `$D99A` is offset `$199A` in the fixed 16 KiB bank.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **70% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **73% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

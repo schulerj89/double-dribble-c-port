@@ -222,6 +222,38 @@ int main(int argc, char **argv) {
           "player state $21 returns to $20 on target arrival");
 
     dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    dispatch_state.players[5].route_step = 1u;
+    dispatch_state.players[5].action_age = 0u;
+    dispatch_state.players[5].court_x = 0x010800;
+    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[5].facing = 4u;
+    dispatch_state.players[5].target_zone = 0xD4u;
+    dispatch_state.players[0].court_x = 0x00F800;
+    dispatch_state.players[0].court_depth = 0x005800;
+    dispatch_state.ball.court_x = 0x001000;
+    dispatch_state.ball.court_depth = 0x002000;
+    dispatch_state.cpu_global_frame = 0xDCu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].target_zone == 0x70u,
+          "$D99A reproduces original frame 2559 packed avoidance target $D4->$70");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CPU_SETUP;
+    dispatch_state.players[5].court_x = 0x010800;
+    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[5].facing = 4u;
+    dispatch_state.players[5].target_zone = 0x85u;
+    dispatch_state.players[0].court_x = 0x004800;
+    dispatch_state.players[0].court_depth = 0x003800;
+    dispatch_state.ball.court_x = 0x001000;
+    dispatch_state.ball.court_depth = 0x002000;
+    dispatch_state.cpu_global_frame = 0xDCu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].target_zone == 0x85u,
+          "$D99A leaves the CPU target unchanged when forward lookahead is clear");
+
+    dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_JUMP_START;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_JUMP_CONTEST &&
@@ -531,17 +563,36 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_SHOT_LAUNCH;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.carrier = 5u;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step shot initializer state $0A");
     check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
-          dispatch_state.ball.velocity_height == 0x0500,
-          "ball state $0A initializes and advances to airborne state $05");
+          dispatch_state.ball.velocity_height == 0x0305 &&
+          dispatch_state.ball.flight_curve == 0xD8u &&
+          dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u,
+          "ball state $0A reproduces $B017's launch terms and advances to $05");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.ball.action = DD_BALL_DEAD;
+    dispatch_state.ball.height = 0x34AAu;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step dead ball state $0B");
+    check(dispatch_state.ball.action == DD_BALL_DEAD &&
+          dispatch_state.ball.height == 0x00AAu,
+          "ball state $0B clears only the integer height through $ACAB");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_HIDDEN;
-    dispatch_state.ball.height = 0x2200;
+    dispatch_state.ball.height = 0x227Bu;
+    dispatch_state.ball.velocity_x = 0x0123;
+    dispatch_state.ball.velocity_depth = -0x0045;
+    dispatch_state.ball.velocity_height = 0x0067;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step hidden ball state $0C");
-    check(dispatch_state.ball.action == DD_BALL_HIDDEN && dispatch_state.ball.height == 0,
-          "ball state $0C shares the original $ACAB zero-height handler");
+    check(dispatch_state.ball.action == DD_BALL_HIDDEN &&
+          dispatch_state.ball.height == 0x007Bu &&
+          dispatch_state.ball.velocity_x == 0x0123 &&
+          dispatch_state.ball.velocity_depth == -0x0045 &&
+          dispatch_state.ball.velocity_height == 0x0067,
+          "ball state $0C shares $ACAB's integer-height clear without changing velocity");
 
     period_state = dispatch_base;
     period_state.clock_minutes = 0u;

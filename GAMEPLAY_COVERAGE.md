@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 70%**
+**Portable Ghidra-to-C gameplay-loop coverage: 73%**
 
 **End-to-end match completeness: approximately 50%**
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 70.0%`, rounded to **70%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 72.9%`, rounded to **73%**.
 
 ## Player action dispatcher — 73.5%
 
@@ -46,19 +46,26 @@ partial group still uses bounded timing, movement, collision, or formation logic
 where important original branches remain, especially the full `$D99A` obstacle
 search and several `$D759-$DA39` CPU branches.
 
-## Ball action dispatcher — 73.1%
+## Ball action dispatcher — 84.6%
 
 Ghidra anchor `$AC83` dispatches ball action `$0340` through the 13-entry table at `$AC91`, covering states `$00-$0C`.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 6 | `$01` dribble, `$02` pass, `$04` gather, `$05` flight, `$06` score/rim, `$07` rebound |
-| P | 7 | `$00` award/attachment, `$03` bounce pass, `$08/$09` loose-ball launch/flight, `$0A` shot launch preparation, `$0B/$0C` dead/hidden ball |
+| V | 9 | `$01` dribble, `$02` pass, `$04` gather, `$05` flight, `$06` score/rim, `$07` rebound, `$0A` launch preparation, `$0B/$0C` dead/hidden ball |
+| P | 4 | `$00` award/attachment, `$03` bounce pass, `$08/$09` loose-ball launch/flight |
 | M | 0 | none |
 
-Score: `(6 + 7 × 0.5) / 13 = 73.1%`.
+Score: `(9 + 4 × 0.5) / 13 = 84.6%`.
 
-Every table entry now has an explicit native handler. Although states `$04-$09` are present, their current made-shot and loose-ball paths are bounded. General rim outcomes, misses, blocks, contested rebounds, and every branch of `$B377/$B473` are not complete.
+Every table entry now has an explicit native handler. State `$0A` reproduces the
+observed one-dispatch `$B017` initializer, including vertical term `$0305` and
+curve byte `$D8`, while preserving owner/carrier fields the original does not
+write. States `$0B/$0C` share `$ACAB`: only the integer height byte is cleared,
+leaving the fractional byte and motion terms untouched. Natural FCEUX traces
+cover `$0A` and 1,542 frames of `$0B`; an opt-in controlled trace covers `$0C`.
+States `$03/$08/$09` remain Partial because general rim outcomes, blocks,
+contested rebounds, and every branch of `$B377/$B473` are not complete.
 
 ## Portable core per-frame loop — 78.6%
 

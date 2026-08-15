@@ -12,6 +12,8 @@ local jump_button = os.getenv("DD_TIP_JUMP_BUTTON") or "A"
 local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
+local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME") or "-1")
+local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -72,6 +74,8 @@ local clock_calls = assert(io.open(join_path(capture_root, "gameplay-clock-calls
 clock_calls:write("frame,clock_minutes,clock_seconds,ball_state,phase\n")
 local collision_calls = assert(io.open(join_path(capture_root, "gameplay-collision-calls.csv"), "w"))
 collision_calls:write("frame,pc,current_object,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier,contact_timer,contact_limit\n")
+local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
+cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 local previous_ball_state = -1
 local previous_player_state = {}
@@ -149,6 +153,24 @@ memory.registerexecute(0xB377, 1, record_collision_call)
 memory.registerexecute(0xB473, 1, record_collision_call)
 memory.registerexecute(0xB435, 1, record_collision_call)
 memory.registerexecute(0xA347, 1, record_collision_call)
+
+local function record_cpu_decision(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+        local object = memory.readbyte(0x004B)
+        local linked = memory.readbyte(0x0580 + object)
+        cpu_decisions:write(string.format("%d,%04X,%02X,%02X,%02X,%02X%02X,%02X%02X,%02X,%02X%02X,%02X,%02X,%02X\n",
+            frame, address, object, memory.readbyte(0x0340 + object),
+            memory.readbyte(0x0350 + object), memory.readbyte(0x05C0 + object),
+            memory.readbyte(0x05B0 + object), memory.readbyte(0x05E0 + object),
+            memory.readbyte(0x05D0 + object), linked, memory.readbyte(0x05C0 + linked),
+            memory.readbyte(0x05B0 + linked), memory.readbyte(0x004D),
+            memory.readbyte(0x001A), memory.readbyte(0x0050)))
+    end
+end
+for _, address in ipairs({0xD759, 0xD772, 0xD820, 0xD862, 0xD99A, 0xDA36, 0xDA38}) do
+    memory.registerexecute(address, 1, record_cpu_decision)
+end
 
 local capture_frames = {
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
@@ -252,6 +274,19 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0690 + player, 0x01)
         memory.writebyte(0x06A0 + player, 0x00)
     end
+    if next_frame == inject_ball_state_frame then
+        -- Controlled dispatcher probe, disabled by default.  It verifies that
+        -- unobserved state $0C shares $0B's $ACAB projection handler.
+        memory.writebyte(0x0340, inject_ball_state)
+        memory.writebyte(0x0410, 0x46)
+        memory.writebyte(0x0420, 0x7B)
+        memory.writebyte(0x0390, 0x01)
+        memory.writebyte(0x03A0, 0x23)
+        memory.writebyte(0x03E0, 0xFF)
+        memory.writebyte(0x03F0, 0xBB)
+        memory.writebyte(0x0430, 0x00)
+        memory.writebyte(0x0440, 0x67)
+    end
     joypad.set(1, input)
     emu.frameadvance()
     local frame = emu.framecount()
@@ -282,6 +317,7 @@ states:close()
 dispatch:close()
 clock_calls:close()
 collision_calls:close()
+cpu_decisions:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")
 for phase, phase_counts in pairs(counts) do

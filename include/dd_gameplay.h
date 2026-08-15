@@ -114,6 +114,7 @@ typedef struct DDBallState {
     uint8_t receiver;
     uint8_t outcome;
     uint8_t rim_contact;
+    uint8_t flight_curve;
     uint16_t action_age;
     int32_t velocity_x;
     int32_t velocity_depth;
