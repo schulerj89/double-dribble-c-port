@@ -560,7 +560,11 @@ static int32_t dd_jump_height(const DDTipoffAssetsHeader *assets, uint32_t scene
 }
 
 static void dd_attach_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *state, uint32_t table) {
-    const DDPlayerState *owner = &state->players[state->carrier];
+    uint32_t owner_index = state->ball.owner < DD_GAMEPLAY_PLAYER_COUNT
+        ? state->ball.owner : state->carrier;
+    const DDPlayerState *owner;
+    if (owner_index >= DD_GAMEPLAY_PLAYER_COUNT) return;
+    owner = &state->players[owner_index];
     uint32_t offset = table * 16u + (uint32_t)(owner->facing & 7u) * 2u;
     state->ball.court_x = owner->court_x + (int32_t)assets->held_ball_offsets[offset] * 256;
     state->ball.court_depth = owner->court_depth + (int32_t)assets->held_ball_offsets[offset + 1u] * 256;
@@ -734,7 +738,9 @@ static void dd_start_inbound_alternate(DDGameplayState *state, uint32_t inbounde
 }
 
 static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
+    DDPlayerState *player;
     if (shooter >= DD_GAMEPLAY_PLAYER_COUNT) return;
+    player = &state->players[shooter];
     state->ball.action = DD_BALL_SHOT_GATHER;
     state->ball.owner = (uint8_t)shooter;
     state->ball.receiver = DD_NO_OWNER;
@@ -743,8 +749,18 @@ static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
     state->ball.rim_contact = 0u;
     state->last_shooter = (uint8_t)shooter;
     state->shot_value = 2u;
-    state->players[shooter].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
-    state->players[shooter].action_age = 0u;
+    if (shooter == state->controlled_player && shooter < 5u) {
+        /* Bank-0 $AA75 is the user B-button shot initializer: install the
+           $9B26/$9B27 height stream, expose dispatcher state $03, and put
+           the ball in state $04.  Paired CPU defense reads that $03. */
+        player->height_script_index = 11u;
+        player->height_script_reverse = 0u;
+        player->release_timer = 1u;
+        player->action = DD_PLAYER_USER_SHOOT;
+    } else {
+        player->action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+    }
+    player->action_age = 0u;
 }
 
 static void dd_cpu_decide_possession(DDGameplayState *state, uint32_t carrier) {
@@ -924,7 +940,12 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         case DD_PLAYER_LIVE_PAIRED_DEFENDER: {
             uint32_t opponent = player_index < 5u ? player_index + 5u : player_index - 5u;
             speed = 0;
-            if (!dd_paired_player_contact(state, player_index)) {
+            if (state->players[opponent].action == DD_PLAYER_USER_SHOOT) {
+                /* $8A98 shares $9139 with state $20: an already-latched
+                   paired defender also converts $22->$23 for a user shot. */
+                player->action = DD_PLAYER_JUMP_START;
+                player->action_age = 0u;
+            } else if (!dd_paired_player_contact(state, player_index)) {
                 player->action = DD_PLAYER_LIVE_TEAMMATE;
                 player->action_age = 0u;
             }
@@ -950,17 +971,20 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_JUMP_CONTEST:
             /* $8B12 tests $A6C3 contact, then runs the byte-exact $9ABD
-               interpreter.  A non-owner lands in $28 with $04F0=$10. */
+               interpreter. Contact replaces even an owned shot with ball
+               state $00; the blocker receives the full $9208 possession
+               reset only after landing. */
             speed = 0;
-            if (state->ball.owner == DD_NO_OWNER &&
+            if (state->ball.owner != player_index &&
                 dd_jump_ball_contact(state, player_index)) {
-                dd_claim_loose_ball(state, player_index);
+                state->ball.owner = (uint8_t)player_index;
+                state->ball.receiver = DD_NO_OWNER;
+                state->ball.action = DD_BALL_AWARDED;
+                state->ball.action_age = 0u;
             }
             if (dd_step_player_height_script(assets, player)) {
-                if (state->carrier == player_index) {
-                    player->action = player_index == state->controlled_player
-                        ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_CARRIER;
-                    player->action_age = 0u;
+                if (state->ball.owner == player_index) {
+                    dd_transfer_contact_possession(state, player_index);
                 } else {
                     player->action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
                     /* $28's native age counts upward while the ROM's $04F0
@@ -1456,7 +1480,6 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             /* $ACB6 attaches with table index 2, then adds 24 height units in
                tip modes $01/$03 and eight during ordinary held play. */
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
-                state->carrier = ball->owner;
                 dd_attach_ball(assets, state, 1u);
                 ball->height = state->players[ball->owner].height +
                     ((int32_t)(ball->held_height_offset == 0u
@@ -1499,11 +1522,12 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 dd_attach_ball(assets, state, 2u);
                 ball->height = state->players[ball->owner].height + 0x1200;
             }
-            if (ball->action_age > 26u) {
+            if ((ball->owner < DD_GAMEPLAY_PLAYER_COUNT &&
+                 state->players[ball->owner].action == DD_PLAYER_USER_SHOOT &&
+                 ball->action_age >= 2u) || ball->action_age > 26u) {
                 int32_t hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
                 ball->action = DD_BALL_AIRBORNE;
                 ball->action_age = 0u;
-                ball->owner = DD_NO_OWNER;
                 ball->velocity_x = (hoop_x - ball->court_x) / 21;
                 ball->velocity_depth = (0x005800 - ball->court_depth) / 21;
                 ball->height = (ball->height & 0x00FF) | 0x3800;
@@ -1850,6 +1874,16 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     if (controlled->action == DD_PLAYER_USER_PASS_RECOVER &&
         (state->cpu_global_frame & 1u) == 0u && controlled->action_age != UINT16_MAX) {
         ++controlled->action_age;
+    }
+    if (controlled->action == DD_PLAYER_USER_SHOOT &&
+        (state->cpu_global_frame & 1u) == 0u) {
+        if (controlled->action_age != UINT16_MAX) ++controlled->action_age;
+        controlled->velocity_x = 0;
+        controlled->velocity_depth = 0;
+        if (dd_step_player_height_script(assets, controlled)) {
+            controlled->action = DD_PLAYER_LIVE_USER;
+            controlled->action_age = 0u;
+        }
     }
     ++state->cpu_global_frame;
     if ((state->cpu_global_frame & 1u) != 0u) {

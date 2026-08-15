@@ -303,6 +303,13 @@ int main(int argc, char **argv) {
           "player state $20 follows $9139 paired action $03 into jump state $23");
 
     dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_PAIRED_DEFENDER;
+    dispatch_state.players[0].action = DD_PLAYER_USER_SHOOT;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_JUMP_START,
+          "player state $22 shares $9139 and contests paired user shot state $03");
+
+    dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_JUMP_START;
     dispatch_state.players[5].height = 0x1055;
     dispatch_state.players[5].velocity_x = 0x0123;
@@ -324,6 +331,9 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].height_script_index = 11u;
     dispatch_state.ball.owner = 0u;
     dispatch_state.carrier = 0u;
+    dispatch_state.ball.action = DD_BALL_AIRBORNE;
+    dispatch_state.ball.court_x = 0x001000;
+    dispatch_state.ball.height = 0x5000;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].height == 0x1555 &&
           dispatch_state.players[5].height_script_index == 12u,
@@ -390,8 +400,30 @@ int main(int argc, char **argv) {
     dispatch_state.ball.court_x = dispatch_state.players[5].court_x - 0x0600;
     dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
-    check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u,
-          "player state $24 uses $A6C3's shifted 4x4 boxes to claim a contacted ball");
+    check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 0xFFu &&
+          dispatch_state.ball.action == DD_BALL_AWARDED,
+          "player state $24 uses $A6C3's boxes and $8B12 converts contact to owned ball state $00");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_JUMP_CONTEST;
+    dispatch_state.players[5].height = 0x2000;
+    dispatch_state.players[5].height_script_index = 11u;
+    dispatch_state.ball.action = DD_BALL_AIRBORNE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x - 0x0600;
+    dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 0xFFu &&
+          dispatch_state.ball.action == DD_BALL_AWARDED,
+          "$8B12 block contact takes an owned airborne shot without transferring early");
+    for (player = 0u; player < 26u; ++player) {
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    }
+    check(dispatch_state.carrier == 5u && dispatch_state.ball.owner == 5u &&
+          dispatch_state.ball.action == DD_BALL_DRIBBLE &&
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER,
+          "$8B44->$9208 transfers possession and resets teams when the blocker lands");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_CONTINUE;
@@ -760,6 +792,7 @@ int main(int argc, char **argv) {
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
     dispatch_state.ball.action = DD_BALL_AWARDED;
     dispatch_state.ball.owner = 5u;
+    dispatch_state.carrier = 5u;
     dispatch_state.ball.held_height_offset = 0x18u;
     dispatch_state.players[5].height = 0x2600;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step tip-awarded ball state $00");
@@ -770,11 +803,12 @@ int main(int argc, char **argv) {
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
     dispatch_state.ball.action = DD_BALL_AWARDED;
     dispatch_state.ball.owner = 0u;
+    dispatch_state.carrier = 0xFFu;
     dispatch_state.ball.held_height_offset = 0x08u;
     dispatch_state.players[0].height = 0x1000;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step ordinary awarded ball state $00");
-    check(dispatch_state.ball.height == 0x1800 && dispatch_state.carrier == 0u,
-          "ball state $00 applies $ACB6's ordinary held-ball height offset $08");
+    check(dispatch_state.ball.height == 0x1800 && dispatch_state.carrier == 0xFFu,
+          "ball state $00 attaches to its owner without changing $0048 camera ownership");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_PASS;
@@ -843,6 +877,35 @@ int main(int argc, char **argv) {
     check(dispatch_state.players[4].court_x == live_start_x[4] + 0x0140 &&
           dispatch_state.controlled_player == 4u,
           "the dynamic CPU scheduler skips the passed-to user instead of continuing to drive it");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.cpu_global_frame = 0u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].court_x = 0x010000;
+    dispatch_state.players[0].court_depth = 0x005800;
+    dispatch_state.players[0].height = 0x1000;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_PAIRED_DEFENDER;
+    dispatch_state.players[5].court_x = dispatch_state.players[0].court_x;
+    dispatch_state.players[5].court_depth = dispatch_state.players[0].court_depth;
+    dispatch_state.ball.court_x = dispatch_state.players[0].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[0].court_depth;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "start a user shot through the live B-button path");
+    check(dispatch_state.players[0].action == DD_PLAYER_USER_SHOOT &&
+          dispatch_state.ball.action == DD_BALL_SHOT_GATHER &&
+          dispatch_state.ball.owner == 0u,
+          "$AA75 exposes player state $03 and ball state $04 to paired defense");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "advance the user shot to the paired CPU dispatcher");
+    check(dispatch_state.players[5].action == DD_PLAYER_JUMP_START &&
+          dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.ball.owner == 0u && dispatch_state.carrier == 0xFFu,
+          "$8A98->$9139 starts the contest as $B189 releases owned ball state $05");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;

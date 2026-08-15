@@ -20,6 +20,7 @@ local inject_contact_clock_gate = tonumber(os.getenv("DD_INJECT_CONTACT_CLOCK_GA
 local inject_basket_frame = tonumber(os.getenv("DD_INJECT_BASKET_FRAME") or "-1")
 local inject_basket_result = tonumber(os.getenv("DD_INJECT_BASKET_RESULT") or "1")
 local inject_basket_counter = tonumber(os.getenv("DD_INJECT_BASKET_COUNTER") or "0")
+local inject_block_frame = tonumber(os.getenv("DD_INJECT_BLOCK_FRAME") or "-1")
 local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME") or "-1")
 local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
 local inject_loose_launch_frame = tonumber(os.getenv("DD_INJECT_LOOSE_LAUNCH_FRAME") or "-1")
@@ -98,6 +99,8 @@ local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decis
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
 local control_calls = assert(io.open(join_path(capture_root, "gameplay-control-calls.csv"), "w"))
 control_calls:write("frame,pc,current_object,receiver,switch_candidate,ball_state,owner,carrier,direction,mode,input,pressed,p2,p3,p4,p5,p6\n")
+local block_calls = assert(io.open(join_path(capture_root, "gameplay-block-calls.csv"), "w"))
+block_calls:write("frame,pc,current_object,player_state,ball_state,owner,carrier,input,pressed,player_x,player_depth,player_height,ball_x,ball_depth,ball_height,paired,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 local previous_ball_state = -1
 local previous_player_state = {}
@@ -223,13 +226,34 @@ for _, address in ipairs({0xA29D, 0xA314, 0xA329, 0xA33D, 0xA342,
         end
     end)
 end
+for _, address in ipairs({0xA3E2, 0xA504, 0xA607, 0x9102, 0x9139,
+                          0x8AF4, 0x8B12, 0x8B21, 0x8B27, 0x8B33, 0x8B44,
+                          0x9208, 0xA6C3, 0xAE0C, 0xAE25}) do
+    memory.registerexecute(address, 1, function(address, size, value)
+        local frame = emu.framecount()
+        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+            local object = memory.readbyte(0x004B)
+            local states = {}
+            for slot = 2, 11 do states[#states + 1] = memory.readbyte(0x0340 + slot) end
+            block_calls:write(string.format(
+                "%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+                frame, address, object, memory.readbyte(0x0340 + object), memory.readbyte(0x0340),
+                memory.readbyte(0x005B), memory.readbyte(0x0048),
+                memory.readbyte(0x0670 + object), memory.readbyte(0x0680 + object),
+                memory.readbyte(0x0370 + object), memory.readbyte(0x03C0 + object),
+                memory.readbyte(0x0410 + object), memory.readbyte(0x0370),
+                memory.readbyte(0x03C0), memory.readbyte(0x0410),
+                memory.readbyte(0x0580 + object), unpack(states)))
+        end
+    end)
+end
 
 local capture_frames = {
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
     [2460]=true,[2480]=true,[2500]=true,[2519]=true,[2520]=true,[2530]=true,[2531]=true,
     [2540]=true,[2550]=true,[2557]=true,[2560]=true,[2570]=true,[2580]=true,[2590]=true,
-    [2600]=true,[2608]=true,[2614]=true,[2618]=true,[2620]=true,[2640]=true,
-    [2660]=true,[2680]=true,[2684]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,[2774]=true,
+    [2600]=true,[2606]=true,[2608]=true,[2614]=true,[2618]=true,[2620]=true,[2640]=true,
+    [2644]=true,[2658]=true,[2660]=true,[2680]=true,[2684]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,[2774]=true,
     [2770]=true,[2783]=true,[2929]=true,[2944]=true,[3004]=true,[3324]=true,
     [3501]=true,[3545]=true,[3553]=true,[3572]=true,[3600]=true,[3640]=true,
     [3680]=true,[3720]=true,[3800]=true,[3900]=true,[4000]=true,[4100]=true,[4200]=true,
@@ -281,6 +305,20 @@ while emu.framecount() < final_frame do
     if next_frame >= pass_frame and next_frame <= pass_end then
         input[pass_button] = true
         if pass_direction ~= "none" then input[pass_direction] = true end
+    end
+    if next_frame == inject_block_frame then
+        -- Controlled branch proof for bank-0 $8B12->$A6C3.  The natural
+        -- frame-2606 contest already has the shifted X coordinates aligned,
+        -- but the shot is too high.  Put only the ball's integer X/height
+        -- inside the traced 4x4 boxes so $8B27's ownership write is observed.
+        local defender = 0x07
+        local shifted_x = memory.readbyte(0x0360 + defender) * 0x100 +
+            memory.readbyte(0x0370 + defender) - 0x06
+        if shifted_x < 0 then shifted_x = shifted_x + 0x10000 end
+        memory.writebyte(0x0360, math.floor(shifted_x / 0x100))
+        memory.writebyte(0x0370, shifted_x % 0x100)
+        memory.writebyte(0x0410, (memory.readbyte(0x0410 + defender) + 0x08) % 0x100)
+        memory.writebyte(0x0420, memory.readbyte(0x0420 + defender))
     end
     if next_frame == inject_rim_frame then
         -- Controlled reverse-engineering probe for bank-0 $B473.  This is
@@ -521,6 +559,7 @@ collision_calls:close()
 score_calls:close()
 cpu_decisions:close()
 control_calls:close()
+block_calls:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")
 for phase, phase_counts in pairs(counts) do

@@ -46,6 +46,7 @@ typedef enum DDBallAction {
 
 typedef enum DDPlayerAction {
     DD_PLAYER_LIVE_USER_CARRIER = 0x02,
+    DD_PLAYER_USER_SHOOT = 0x03,
     DD_PLAYER_USER_PASS_RECOVER = 0x05,
     DD_PLAYER_USER_PASS_RECEIVE = 0x0C,
     DD_PLAYER_LIVE_USER_INBOUND = 0x0D,

@@ -4,7 +4,7 @@ Source-only native C port of **Double Dribble (USA) (Rev 1)** for NES. The runti
 
 ## Current milestone
 
-The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue and 1P-confirm music, plays the complete 1P city/road introduction, implements the original shooting-driven configuration screen with its looping four-channel music, and follows END through tip-off, the opening CPU shot/rebound sequence, dead-ball formation, inbound pass, and resumed possession. B can contest the tip; native CPU carriers now choose a pass or shot and all players continue updating on the original alternating 30 Hz team cadence. The post-inbound receiver takes the observed shot-decision branch instead of repeating the opening basket run, and the recovered off-ball states remain active. DDAP v12 carries the camera-selected court CHR streams, CPU route tables, and the observed 18-frame live dribble/gameplay APU sequence. Stable title, intro, configuration, and pre-jump tip-off checkpoints match local FCEUX references exactly; later gameplay remains a bounded port rather than a complete match. Every build runs deterministic gameplay regressions against the generated asset pack.
+The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue and 1P-confirm music, plays the complete 1P city/road introduction, implements the original shooting-driven configuration screen with its looping four-channel music, and follows END through tip-off, the opening CPU shot/rebound sequence, dead-ball formation, inbound pass, and resumed possession. B can contest the tip; native CPU carriers choose a pass or shot, paired CPU defenders recognize the native user-shot state and can block the owned airborne ball, and all players continue updating on the original alternating 30 Hz team cadence. The post-inbound receiver takes the observed shot-decision branch instead of repeating the opening basket run, and the recovered off-ball states remain active. DDAP v12 carries the camera-selected court CHR streams, CPU route tables, and the observed 18-frame live dribble/gameplay APU sequence. Stable title, intro, configuration, and pre-jump tip-off checkpoints match local FCEUX references exactly; later gameplay remains a bounded port rather than a complete match. Every build runs deterministic gameplay regressions against the generated asset pack.
 
 ## Build
 
@@ -44,6 +44,9 @@ Reproduce the reference and native captures:
 .\tools\ghidra\Run-GameplayAudioAnalysis.ps1
 .\tools\Capture-NativeGameplay.ps1
 .\tools\Compare-GameplayCaptures.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2580 -FinalFrame 2660 -CaptureName original-user-shot-block -JumpStart 2502 -JumpEnd 2502 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -BlockFrame 2606 -DisablePcCounts
+.\tools\Capture-NativeDefenseBlock.ps1
+.\tools\Compare-DefenseBlockCaptures.ps1
 .\build\double_dribble_port.exe --dump-gameplay-wav .\build\double-dribble.assetpack .\build\gameplay-dribble.wav
 # Render the same live frame while holding Right (input mask 2).
 .\tools\Capture-NativeGameplay.ps1 -TransitionFrames 399 -HeldInputMask 2

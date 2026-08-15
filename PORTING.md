@@ -549,7 +549,7 @@ The frame-12430 miss supplies a dynamic branch for `$B377/$AF72/$AFDD`. `$B377` 
 
 Native shot flight now aims at the original hoop centers `$0048/$01B8`, evaluates the same result-1-through-4 boxes, sends misses through `$08/$09`, and reproduces the reverse/half and `$10`-gravity behavior. `$B473` is also translated as seven diagonal samples: left-side X runs `$45->$3F`, right-side X runs `$01BB->$01C1`, and the combined depth/height sample runs `$9E->$92`. A controlled, opt-in FCEUX probe at original frame 2601 placed ball state `$03` on the first left sample; the original wrote `$0490=1` at `$B4D4`, cleared owner `$005B` at `$B4D8`, retained camera-follow `$0048`, and negated injected velocity `+$0100 -> -$0100` at `$B4FB`. The equivalent native test proves the same latch, ownership, camera-follow, and reflection behavior, while the unmodified made-shot trace proves that `$B473` is called every flight frame without a false latch.
 
-Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, the `$B473` rim probe, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. Shot-block arbitration and all remaining state `$03` vertical branches are still incomplete; general collision and misses therefore remain **Partial**, not Verified.
+Deterministic checks now cover a clean opening make, a synthetic result-four miss, exact miss velocity reflection, the 61-frame loose arc, pass collision, collision-boundary exclusion, jump-ball contact, the `$B473` rim probe, and state `$03`'s zero-vertical-term branch to hidden state `$0C`. CPU shot-block arbitration is now covered below; all remaining state `$03` vertical and contested-rebound branches keep general collision **Partial**.
 
 ### Defensive contact and shooter recovery slice
 
@@ -590,8 +590,9 @@ target, and hold branches. Selected-bank ROM offsets are `$8D9C->$0DAC`,
 `$B435->$3445`.
 
 These additions promote player states `$28,$29,$2D,$2E,$2F` to Verified and
-defensive steals/blocks from Missing to Partial. Blocks and the remaining
-defensive eligibility rules are still outstanding.
+defensive steals/blocks from Missing to Partial. The CPU shot-block branch is
+now translated below; user-triggered contests and the remaining eligibility
+rules are still outstanding.
 
 ### Foul/free-throw rule and complete basket-result slice
 
@@ -800,6 +801,63 @@ selector preserves the same one's-complement distance, two-candidate shortlist,
 byte-wrapped totals, eligibility bounds, and action/control writes; its regression
 proves B selects native player 2 in the corresponding controlled layout.
 
+### Paired CPU shot contest and block ownership
+
+The user-shot initializer is bank-0 `$AA75` (bank offset `$2A75`, ROM file
+offset `$2A85`). It installs height pointer `$9B34`, clears the direction byte,
+writes user action `$03`, and writes ball action `$04`. The user dispatcher
+entry `$03->$A504` (bank offset `$2504`, ROM offset `$2514`) runs movement and
+the shared `$9ABD` height interpreter. When the shot is released it calls
+`$B189/$A7EA`; the natural trace records player `$02=$03` and ball `$04` on
+frame 2600, then ball `$05` with owner still `$02` and camera object `$00` on
+frame 2602. Native user shooting now exposes that distinct action instead of
+reusing CPU carrier-decision state `$27`, and retains the shooter as owner
+during flight just as the original does.
+
+Paired CPU defense enters through bank-0 `$8A16/$8A98` (ROM offsets
+`$0A26/$0AA8`) and shared helper `$9139` (ROM offset `$1149`). The already
+latched original defender `$07` reads its paired player’s action `$03` on frame
+2601 and changes `$22->$23`. `$8AF4` (ROM offset `$0B04`) clears motion,
+installs `$9B34`, and advances `$23->$24`; the natural unmodified attempt then
+calls `$8B12->$A6C3` every other frame. `$A6C3` (bank offset `$26C3`, ROM offset
+`$26D3`) compares 4+4 integer units in height and longitudinal X after shifting
+original user slots `$02-$06` by +6 and CPU slots `$07-$0B` by -6.
+
+The natural frame-2606 attempt proves the no-contact branch: shifted defender X
+is `$00` but ball height `$2A` is above defender-height-plus-eight `$18`. The
+opt-in `-BlockFrame 2606` probe changes only the ball X/height to enter those
+same boxes. On that frame `$8B27` (ROM offset `$0B37`) changes owner `$02->$07`,
+`$8B2B` changes ball `$05->$00`, and the original issues sound request `$10`
+through fixed-bank audio entry `$C141` (fixed bank 7, ROM offset `$1C151`);
+camera/current carrier remains `$00`. The state/ownership path is native in this
+slice, but dynamic SFX `$10` still needs its own pack-backed Win32 playback path.
+When the defender lands, `$8B44->$9208` (ROM offsets
+`$0B54/$1218`) performs the delayed reset. Original frame 2644 records ball
+`$00->$01`, camera `$00->$07`, defender `$24->$25`, the user player `$03->$0F`,
+and the remaining team actions restored for live possession.
+
+`dd_jump_ball_contact` and the `$9ABD` interpreter already express the geometry
+and jump data natively. The completed branch now permits contact with an owned
+airborne shot, changes only ball ownership/action at contact, and calls the
+native possession/team reset after the blocker lands. Deterministic regression
+checks cover `$22->$23`, the owned-shot contact, the pre-landing camera value,
+and the final CPU possession. Reproduce the ignored visual/trace evidence with:
+
+```powershell
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2580 -FinalFrame 2660 -CaptureName original-user-shot-block -JumpStart 2502 -JumpEnd 2502 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -BlockFrame 2606 -DisablePcCounts
+.\tools\Capture-NativeDefenseBlock.ps1
+.\tools\Compare-DefenseBlockCaptures.ps1
+```
+
+Original frames 2606/2644 and native `contact`/`landing` are screenshots of the
+same two state boundaries. The native probe enters through `dd_gameplay_step`
+and renders current C state; it does not replay RAM or the original screenshot.
+Exact player/camera positions still differ because the broader live route and
+object-swap logic remain incomplete, so this pair is state/visual evidence, not
+a pixel-equality claim. The logical 256x224 crop reports 11,441/57,344 differing
+pixels (19.9515%) at contact and 6,919/57,344 (12.0658%) after landing; the
+repeatable diff makes that remaining visual gap explicit rather than hiding it.
+
 ## Open research questions
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **91% portable Ghidra-to-C gameplay-loop coverage** and **73.1% match-rules completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
@@ -808,4 +866,4 @@ The current implementation percentage and its reproducible scoring rules are mai
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
 - Determine the full successful B timing window around the proven original-frame-2502 user jump.
-- Name and translate the steal, block, remaining rim-contact, and out-of-bounds branches after the initial inbound slice.
+- Translate the user-defender `$A3E2->$A607` contest trigger, contested-rebound, remaining rim-contact, and out-of-bounds branches.

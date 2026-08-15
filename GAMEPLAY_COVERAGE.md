@@ -8,7 +8,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 **Match-rules completeness: 73.1%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, blocks, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, the CPU shot-block path, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, user-triggered contests, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -72,8 +72,10 @@ pointer direction and sign at `$81`, and restores integer height `$10` at the
 backward `$80` sentinel. Controlled FCEUX frames 2601-2657 record
 `$23->$24`, height `$1055->$2655->$1055`, pointer `$9B34->$9B3F->$9B33`,
 direction `0->1`, then `$24->$28` with timer `$10->$0F`. Native regression
-checks reproduce the 27 scheduled interpreter updates and the `$A6C3` loose-ball
-contact branch. Both states are therefore V.
+checks reproduce the 27 scheduled interpreter updates. A natural user shot and
+an opt-in contact probe additionally prove `$22->$23->$24`, `$A6C3`'s shifted
+4-by-4 contact, `$8B27` taking an owned airborne ball, and `$8B44->$9208`
+delaying the possession/team reset until landing. Both states are therefore V.
 
 State `$31` now follows `$8FE0`'s complete release countdown. Natural original
 frames 3545-3563 record timer `$08->$FF`, ball `$00->$02` and carrier `$07->$00`
@@ -106,9 +108,11 @@ branches, promoting both states to V.
 
 State `$20` now follows `$8A16->$9102/$9139` rather than remaining a generic
 off-ball target seeker. `$9102` uses two-unit half extents against the paired
-player's projected coordinates. Controlled probes prove contact `$20->$22`
+player’s projected coordinates. Controlled probes prove contact `$20->$22`
 with latch `$10` while preserving vectors, separation `$22->$20` while clearing
-both vectors, and paired action `$03` causing `$20->$23`. Together with the
+both vectors, and paired action `$03` causing `$20->$23`. The same `$9139`
+branch now runs from already-latched state `$22`, matching the natural contest.
+Together with the
 already translated common tail, states `$20/$22` are V and the player action
 dispatcher is fully Verified.
 
@@ -183,9 +187,12 @@ Thirteen tracked match-level capabilities produce this score.
 
 Score: `(6 + 7 × 0.5) / 13 = 73.1%`.
 
-The defensive entry is Partial: the original sustained-contact steal path and
-immediate loose-ball possession arbitration are now native, but shot blocks and
-the remaining defensive eligibility branches are not yet complete.
+The defensive entry is Partial: the original sustained-contact steal path,
+paired CPU shot contest, owned-ball block arbitration, landing-delayed
+possession reset, and loose-ball possession arbitration are native. The user
+defender’s `$A3E2->$A607` contest trigger and remaining defensive eligibility
+branches are not yet complete, and block SFX request `$10` is traced but not yet
+connected to a native dynamic-SFX playback path.
 
 Missed-shot outcomes are Verified from `$AE25->$B377->$AF72/$AFDD`: controlled
 FCEUX probes independently produce classifier results `$01-$04`, the `$04F0`
@@ -236,6 +243,6 @@ When updating this ledger:
 
 1. Translate the free-throw formation states `$42-$4A`, starting with `$8594/$85BE/$860A/$8682`.
 2. Translate the remaining CPU decision branches and pass-lane rejection.
-3. Translate the higher-level block, contested-rebound, and general rim-contact eligibility branches around `$B473`.
+3. Translate the user-defender `$A3E2->$A607` contest trigger, contested-rebound, and remaining rim-contact eligibility branches.
 4. Match the clock's presentation-state call gaps.
 5. Add non-scripted sideline and baseline out-of-bounds handling.
