@@ -210,18 +210,34 @@ frames after `$0D` begins. Natural frame 5673 proves the opposite-direction
 reason `$16` formation. Controlled original probes prove `$A1CC` reasons
 `$13/$14` and `$9583` reason `$15`, including their common `$9651` tail.
 
-### Inbound-only portable coverage — 96.8%
+### Inbound-only portable coverage — 100%
 
 This bounded denominator contains every portable branch/helper reached from
 the recovered inbound paths; it excludes only mapper, PPU, and OAM machinery.
 
 | Status | Count | Capabilities |
 | --- | ---: | --- |
-| V | 29 | sequence/dispatch (10): `$2D` chase, `$2E` claim, `$2F` return, standard `$30`, alternate `$30`, `$002C` `$30`, `$31` release, user `$0D`, ball `$02` flight/contact, reception/control; placement/helpers (10): direction flip, `$9395`, `$D6BD`, `$9097`, `$9763`, ninth packed bit, opposite role-zero offset, lane clamp, receiving role-one offset, `$ABCD/$D978/$D98D` refresh/walk/arrival; causes/rules (6): `$12`, `$13`, `$14`, `$15`, `$16`, rebound-state preservation; role/ownership (3): `$AD6D` actions, `$99D9` role swap, `$9A31` reciprocal pair swap |
-| P | 2 | exact dynamic whistle/SFX `$2C` playback; exceptional reasons `$17/$1A` that intentionally bypass the normal formation tail |
+| V | 31 | sequence/dispatch (10): `$2D` chase, `$2E` claim, `$2F` return, standard `$30`, alternate `$30`, `$002C` `$30`, `$31` release, user `$0D`, ball `$02` flight/contact, reception/control; placement/helpers (10): direction flip, `$9395`, `$D6BD`, `$9097`, `$9763`, ninth packed bit, opposite role-zero offset, lane clamp, receiving role-one offset, `$ABCD/$D978/$D98D` refresh/walk/arrival; causes/rules (8): `$12`, `$13`, `$14`, `$15`, `$16`, rebound-state preservation, exact SFX `$2C`, exceptional `$17/$1A`; role/ownership (3): `$AD6D` actions, `$99D9` role swap, `$9A31` reciprocal pair swap |
+| P | 0 | none |
 | M | 0 | none |
 
-Score: `(29 + 2 × 0.5) / 31 = 96.8%`.
+Score: `31 / 31 = 100%`.
+
+SFX `$2C` is no longer a marker-only request. Fixed `$C141` banks through
+`$CC99`; the bank-1 driver resolves streams `$86F7/$8702/$870D`. Controlled
+FCEUX APU frames 2601-2612 prove two silent request frames, eight alternating
+pulse pairs (`37/52`, `43/40`), noise period `6` at volume `3`, then explicit
+stops. DDAP v13 stores those 23 normalized events in `whistle.audio`, and the
+Win32 event serial interrupts the dribble loop to play the bounded 12-frame WAV.
+
+Reasons `$17/$1A` now share the literal exceptional `$965A->$98A3` native
+helper: dead-ball latch `$0065=$FF`, ball `$0B`, cleared carrier `$0048`, and
+gate `$0056=$FF`, without `$D6BD` ordinary inbound formation. `$A347` supplies
+`$1A`; `$A1CC->$A37D` supplies `$17` when an opposing state-`$22` object shares
+the packed target and its facing maps through `$A375` (`+4 mod 8`). Controlled
+original frame 2602 proves reason `$17` and all four `$98A3` writes; frame 2822
+then awards the foul shot to that defender. Native tests cover both reasons and
+their shooter/offender ownership.
 
 The defensive entry is Partial: the original sustained-contact steal path,
 paired CPU shot contest, owned-ball block arbitration, landing-delayed

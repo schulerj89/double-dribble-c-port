@@ -27,6 +27,7 @@ static void dd_usage(void) {
     puts("  --dump-end-wav <input.assetpack> <output.wav>");
     puts("  --dump-tipoff-wav <input.assetpack> <output.wav>");
     puts("  --dump-gameplay-wav <input.assetpack> <output.wav>");
+    puts("  --dump-whistle-wav <input.assetpack> <output.wav>");
 }
 
 int main(int argc, char **argv) {
@@ -144,7 +145,8 @@ int main(int argc, char **argv) {
     }
     if (argc == 4 && (strcmp(argv[1], "--dump-end-wav") == 0 ||
                       strcmp(argv[1], "--dump-tipoff-wav") == 0 ||
-                      strcmp(argv[1], "--dump-gameplay-wav") == 0)) {
+                      strcmp(argv[1], "--dump-gameplay-wav") == 0 ||
+                      strcmp(argv[1], "--dump-whistle-wav") == 0)) {
         uint8_t *wav;
         size_t size;
         FILE *file;
@@ -154,6 +156,8 @@ int main(int argc, char **argv) {
             ok = dd_build_end_music_wav(&pack, &wav, &size);
         } else if (strcmp(argv[1], "--dump-tipoff-wav") == 0) {
             ok = dd_build_tipoff_dmc_wav(&pack, &wav, &size);
+        } else if (strcmp(argv[1], "--dump-whistle-wav") == 0) {
+            ok = dd_build_whistle_audio_wav(&pack, &wav, &size);
         } else {
             ok = dd_build_gameplay_audio_wav(&pack, &wav, &size);
         }

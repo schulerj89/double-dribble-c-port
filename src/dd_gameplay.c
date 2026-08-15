@@ -108,6 +108,34 @@ static void dd_reset_possession_rules(DDGameplayState *state) {
     state->backcourt_latched = 0u;
 }
 
+/* Fixed $C141 switches to bank 1 and submits the original sound request.
+   Native playback observes the monotonically increasing serial so repeated
+   requests for the same effect are not coalesced. */
+static void dd_request_audio_event(DDGameplayState *state, uint8_t event) {
+    state->audio_event = event;
+    ++state->audio_event_serial;
+    if (state->audio_event_serial == 0u) ++state->audio_event_serial;
+}
+
+/* $965A treats reasons $17/$1A as exceptional: $98A3 sets $0065/$0056 to
+   $FF, kills the ball, clears the carrier, and returns without calling
+   $D6BD or mutating the ten player formation targets. */
+static void dd_begin_exceptional_dead_ball(DDGameplayState *state, uint8_t reason) {
+    state->inbound_reason = reason;
+    state->inbound_age = 0u;
+    state->dead_ball_latch = 0xFFu;
+    state->inbound_variant = 0xFFu;
+    state->carrier = DD_NO_OWNER;
+    state->ball.action = DD_BALL_DEAD;
+    state->ball.receiver = DD_NO_OWNER;
+    state->ball.action_age = 0u;
+    state->ball.height = 0;
+    state->ball.velocity_x = 0;
+    state->ball.velocity_depth = 0;
+    state->ball.velocity_height = 0;
+    dd_reset_possession_rules(state);
+}
+
 /* Bank 0 $9B42 compares two axis-aligned boxes.  Its carry is clear only
    when both axes overlap; the subtraction makes the upper edge exclusive. */
 static int dd_axis_boxes_overlap(int32_t moving, int32_t fixed,
@@ -163,8 +191,11 @@ static int dd_possession_ball_contact(const DDGameplayState *state, uint32_t pla
    It preserves the fouled owner in $006A, installs animation $29, requests
    whistle SFX $30/mode $1A, and jumps to $9645's dead-ball setup. */
 static void dd_begin_free_throw(DDGameplayState *state, uint32_t shooter,
-                                uint32_t offender) {
+                                uint32_t offender, uint8_t reason) {
     uint32_t player;
+    dd_request_audio_event(state, 0x30u);
+    dd_begin_exceptional_dead_ball(state, reason);
+    state->possession_direction = shooter < 5u ? 1u : 0u;
     state->phase = DD_GAMEPLAY_FREE_THROW;
     state->free_throw_age = 0u;
     state->game_set_age = 0u;
@@ -185,6 +216,33 @@ static void dd_begin_free_throw(DDGameplayState *state, uint32_t shooter,
         state->players[player].action_age = 0u;
         state->players[player].contact_age = 0u;
     }
+}
+
+/* User-carrier $A1CC calls $A37D before its timer violations.  That helper
+   scans the opposing five slots for state $22 at the exact same packed
+   target and accepts only the opposite facing selected by $A375 (+4 mod 8).
+   Its reason-$17 path shares $98A3 with the $1A foul path. */
+static int dd_step_user_exceptional_contact(DDGameplayState *state,
+                                            uint32_t input_mask) {
+    uint32_t carrier = state->controlled_player;
+    uint32_t first;
+    uint32_t player;
+    if (carrier >= DD_GAMEPLAY_PLAYER_COUNT || state->carrier != carrier ||
+        state->ball.owner != carrier || state->ball.action != DD_BALL_DRIBBLE ||
+        state->players[carrier].action != DD_PLAYER_LIVE_USER_CARRIER ||
+        input_mask == 0u || state->match_clock_pulse == 0u) return 0;
+    first = carrier < 5u ? 5u : 0u;
+    for (player = first; player < first + 5u; ++player) {
+        DDPlayerState *defender = &state->players[player];
+        if (defender->action == DD_PLAYER_LIVE_PAIRED_DEFENDER &&
+            defender->target_zone == state->players[carrier].target_zone &&
+            state->players[carrier].facing == (uint8_t)((defender->facing + 4u) & 7u)) {
+            defender->animation = 0x29u;
+            dd_begin_free_throw(state, player, carrier, 0x17u);
+            return 1;
+        }
+    }
+    return 0;
 }
 
 /* $9FA3 calls $A347 first.  If that special branch returns, its tail jumps
@@ -239,7 +297,7 @@ static int dd_step_possession_contact(DDGameplayState *state, uint32_t player_in
     if (player->contact_age < DD_POSSESSION_CONTACT_LIMIT) return 0;
     if (state->match_clock_pulse != 0u &&
         state->players[owner].facing == player->facing) {
-        dd_begin_free_throw(state, owner, player_index);
+        dd_begin_free_throw(state, owner, player_index, 0x1Au);
         return 1;
     }
     dd_transfer_contact_possession(state, player_index);
@@ -1348,6 +1406,7 @@ static void dd_begin_live(DDGameplayState *state, uint32_t winner) {
     state->possession_count = 0u;
     state->inbound_age = 0u;
     state->inbound_reason = 0u;
+    state->dead_ball_latch = 0u;
     dd_reset_possession_rules(state);
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         if (winner == 5u) {
@@ -1872,8 +1931,10 @@ static void dd_begin_common_inbound(DDGameplayState *state, uint8_t reason) {
     int high_side;
 
     state->phase = DD_GAMEPLAY_INBOUND;
+    dd_request_audio_event(state, 0x2Cu);
     state->inbound_age = 0u;
     state->inbound_reason = reason;
+    state->dead_ball_latch = 0u;
     state->possession_direction ^= 1u;
     state->inbound_variant = receiving_first == 0u ? 3u : 0u;
     state->carrier = DD_NO_OWNER;
@@ -2062,6 +2123,8 @@ static void dd_step_free_throw(const DDTipoffAssetsHeader *assets,
         return;
     }
     if (state->free_throw_age != UINT16_MAX) ++state->free_throw_age;
+    if (state->free_throw_age == 2u) state->dead_ball_latch = 0u;
+    if (state->free_throw_age == 160u) state->inbound_reason = 0u;
     if (state->free_throw_age == 2u) {
         state->players[shooter].action = DD_PLAYER_FREE_THROW_WALK;
     } else if (state->free_throw_age == 192u) {
@@ -2202,6 +2265,12 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                controlled->action != DD_PLAYER_REBOUND_RETURN) {
         controlled->velocity_x = 0;
         controlled->velocity_depth = 0;
+    }
+    if (dd_step_user_exceptional_contact(state, input_mask)) {
+        dd_update_camera(state);
+        state->live_frame = live_frame;
+        state->previous_input = input_mask;
+        return;
     }
     if (controlled->action == DD_PLAYER_USER_PASS_RECOVER &&
         (state->cpu_global_frame & 1u) == 0u && controlled->action_age != UINT16_MAX) {

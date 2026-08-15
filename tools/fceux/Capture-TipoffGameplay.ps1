@@ -24,6 +24,7 @@ param(
     [int]$InboundRuleFrame = -1,
     [ValidateRange(0, 3)]
     [int]$InboundRuleCase = 0,
+    [int]$ExceptionalReasonFrame = -1,
     [switch]$DisablePcCounts,
     [ValidateSet('A', 'B')]
     [string]$JumpButton = 'A'
@@ -57,6 +58,7 @@ $env:DD_INJECT_BASKET_COUNTER = $BasketCounter.ToString([Globalization.CultureIn
 $env:DD_INJECT_BLOCK_FRAME = $BlockFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_INBOUND_RULE_FRAME = $InboundRuleFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_INBOUND_RULE_CASE = $InboundRuleCase.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_EXCEPTIONAL_REASON_FRAME = $ExceptionalReasonFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 
 $process = Start-Process -FilePath $FceuxPath `
     -ArgumentList @('-nothrottle', '1', '-turbo', '1', '-srendline', '0', '-erendline', '239', '-lua', ('"{0}"' -f $scriptPath), ('"{0}"' -f $RomPath)) `

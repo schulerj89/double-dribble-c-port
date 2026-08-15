@@ -163,6 +163,9 @@ typedef struct DDGameplayState {
     uint8_t possession_count;
     uint8_t inbound_variant;
     uint8_t inbound_reason;
+    uint8_t dead_ball_latch;
+    uint8_t audio_event;
+    uint32_t audio_event_serial;
     uint8_t backcourt_latched;
     uint8_t camera_chr_side;
     uint8_t hud_split_y;

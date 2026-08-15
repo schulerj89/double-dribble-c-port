@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
     DDGameplayState inbound_pass_state;
     DDGameplayState dispatch_base;
     DDGameplayState dispatch_state;
+    DDGameplayState free_throw_state;
     DDGameplayState period_state;
     const DDTipoffAssetsHeader *assets;
     int32_t live_start_x[DD_GAMEPLAY_PLAYER_COUNT];
@@ -73,6 +74,11 @@ int main(int argc, char **argv) {
           "asset pack exposes distinct camera-triggered left and right court CHR streams");
     check(pack.tipoff_meta.gameplay_audio_frames == 18u && pack.gameplay_audio_count == 20u,
           "asset pack exposes the observed 18-frame live dribble APU sequence");
+    check(pack.tipoff_meta.whistle_audio_frames == 12u && pack.whistle_audio_count == 23u &&
+          pack.whistle_audio[3].frame == 2u && pack.whistle_audio[3].period == 37u &&
+          pack.whistle_audio[4].period == 52u && pack.whistle_audio[5].channel == 3u &&
+          pack.whistle_audio[5].period == 6u && pack.whistle_audio[5].volume == 3u,
+          "asset pack exposes exact $2C pulse/noise whistle playback data");
     check((uint8_t)assets->height_scripts[10] == 0x80u &&
           assets->height_scripts[11] == 5 &&
           (uint8_t)assets->height_scripts[24] == 0x81u,
@@ -830,10 +836,48 @@ int main(int argc, char **argv) {
     run_cpu_dispatch(&pack, &dispatch_state, 1u);
     check(dispatch_state.phase == DD_GAMEPLAY_FREE_THROW &&
           dispatch_state.foul_shooter == 5u && dispatch_state.foul_offender == 1u &&
+          dispatch_state.inbound_reason == 0x1Au && dispatch_state.dead_ball_latch == 0xFFu &&
+          dispatch_state.audio_event == 0x30u && dispatch_state.audio_event_serial != 0u &&
           dispatch_state.ball.action == DD_BALL_DEAD &&
           dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_SHOOTER &&
           dispatch_state.players[1].action == DD_PLAYER_FREE_THROW_FORMATION,
           "$A347 zero-clock same-facing contact enters the foul/free-throw dead ball");
+    free_throw_state = dispatch_state;
+
+    dispatch_state = dispatch_base;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].target_zone = 0x80u;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_PAIRED_DEFENDER;
+    dispatch_state.players[5].target_zone = 0x80u;
+    dispatch_state.players[5].facing = 0u;
+    dispatch_state.scene_frame = dispatch_state.next_clock_frame - 1u;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_LEFT),
+          "step controlled $A37D exceptional contact");
+    check(dispatch_state.phase == DD_GAMEPLAY_FREE_THROW &&
+          dispatch_state.foul_shooter == 5u && dispatch_state.foul_offender == 0u &&
+          dispatch_state.inbound_reason == 0x17u && dispatch_state.dead_ball_latch == 0xFFu &&
+          dispatch_state.ball.action == DD_BALL_DEAD && dispatch_state.carrier == 0xFFu &&
+          dispatch_state.players[5].animation == 0x29u &&
+          dispatch_state.possession_direction == 0u,
+          "$A1CC->$A37D reason $17 takes $98A3 and awards the opposing defender");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.possession_rule_age = 24u * 64u - 1u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step controlled $2C possession-rule whistle request");
+    check(dispatch_state.inbound_reason == 0x14u && dispatch_state.audio_event == 0x2Cu &&
+          dispatch_state.audio_event_serial != 0u,
+          "$A1D9->$C141 queues exact whistle event $2C before common inbound setup");
+    dispatch_state = free_throw_state;
     for (player = 0u; player < 194u; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
               "advance traced free-throw dead-ball formation");

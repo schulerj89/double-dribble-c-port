@@ -59,7 +59,7 @@ Preserve the completed title/voice, 1P-confirm sound, full native 1P introductio
 - the END acceptance score, original black/blue transition timing, tip-off DPCM cue, split-scroll court renderer, sprite-overflow behavior, and exact pre-jump formation comparison.
 - the recovered opening-ball parabola, jumper height script, deterministic CPU possession handoff, held-ball attachment, and first dribble cycle;
 - a palette-flashing user-controlled 1UP player with native arrow-key movement after the handoff;
-- a DDAP v11 gameplay entry containing only bounded metasprites, recovered physics/CPU target tables, two camera-selected court CHR streams, and normalized live APU events, with no runtime ROM dependency;
+- a DDAP v13 gameplay entry containing only bounded metasprites, recovered physics/CPU target tables, two camera-selected court CHR streams, normalized live APU events, and the exact `$2C` whistle stream, with no runtime ROM dependency;
 - alternating 30 Hz team AI updates, role-based formation targets, the opening carrier route, cutter and spacing decisions;
 - B-controlled tip jumping with the proven user-win timing, CPU pass/shot decisions, shot/rebound states, dead-ball formation, inbound pass/reception, the moving-goal CHR fix, and deterministic native gameplay regression checks.
 - post-inbound action-table restoration, working `$36->$37` formation movement, `$22` paired-defender behavior, the disappearing `1ST PERIOD START` raster band, and state-driven live dribble audio.

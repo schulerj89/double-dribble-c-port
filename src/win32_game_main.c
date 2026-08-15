@@ -34,6 +34,8 @@ static uint8_t *g_tipoff_wav;
 static size_t g_tipoff_wav_size;
 static uint8_t *g_gameplay_wav;
 static size_t g_gameplay_wav_size;
+static uint8_t *g_whistle_wav;
+static size_t g_whistle_wav_size;
 static BITMAPINFO g_bitmap_info;
 static uint32_t g_selection;
 static uint32_t g_config_selection;
@@ -50,6 +52,8 @@ static int g_started;
 static int g_intro_music_started;
 static int g_config_music_started;
 static int g_gameplay_audio_active;
+static uint32_t g_gameplay_audio_event_serial;
+static ULONGLONG g_gameplay_sfx_end_tick;
 
 static void dd_reset_to_title(void) {
     PlaySoundW(NULL, NULL, 0);
@@ -67,6 +71,8 @@ static void dd_reset_to_title(void) {
     g_intro_music_started = 0;
     g_config_music_started = 0;
     g_gameplay_audio_active = 0;
+    g_gameplay_audio_event_serial = 0u;
+    g_gameplay_sfx_end_tick = 0u;
 }
 
 static uint32_t dd_gameplay_key(WPARAM key) {
@@ -177,8 +183,23 @@ static int dd_render_current_frame(void) {
 }
 
 static void dd_update_gameplay_audio(void) {
+    ULONGLONG now = GetTickCount64();
     int desired = g_config_boundary_reached && g_gameplay.initialized &&
         g_gameplay.phase == DD_GAMEPLAY_LIVE && g_gameplay.ball.action == DD_BALL_DRIBBLE;
+    if (g_gameplay.initialized &&
+        g_gameplay.audio_event_serial != g_gameplay_audio_event_serial) {
+        g_gameplay_audio_event_serial = g_gameplay.audio_event_serial;
+        if (g_gameplay.audio_event == 0x2Cu && g_whistle_wav != NULL) {
+            PlaySoundA((LPCSTR)g_whistle_wav, NULL,
+                       SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
+            g_gameplay_audio_active = 0;
+            g_gameplay_sfx_end_tick = now +
+                ((ULONGLONG)g_pack.tipoff_meta.whistle_audio_frames * 1000u + 59u) / 60u;
+            return;
+        }
+    }
+    if (g_gameplay_sfx_end_tick != 0u && now < g_gameplay_sfx_end_tick) return;
+    g_gameplay_sfx_end_tick = 0u;
     if (desired && !g_gameplay_audio_active && g_gameplay_wav != NULL) {
         PlaySoundA((LPCSTR)g_gameplay_wav, NULL,
                    SND_MEMORY | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
@@ -324,6 +345,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         !dd_build_config_music_wav(&g_pack, &g_config_wav, &g_config_wav_size) ||
         !dd_build_end_music_wav(&g_pack, &g_end_wav, &g_end_wav_size) ||
         !dd_build_gameplay_audio_wav(&g_pack, &g_gameplay_wav, &g_gameplay_wav_size) ||
+        !dd_build_whistle_audio_wav(&g_pack, &g_whistle_wav, &g_whistle_wav_size) ||
         !dd_build_tipoff_dmc_wav(&g_pack, &g_tipoff_wav, &g_tipoff_wav_size)) {
         dd_asset_pack_unload(&g_pack);
         free(g_pixels);
@@ -334,6 +356,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         free(g_end_wav);
         free(g_tipoff_wav);
         free(g_gameplay_wav);
+        free(g_whistle_wav);
         return 1;
     }
     ZeroMemory(&g_bitmap_info, sizeof(g_bitmap_info));
@@ -371,6 +394,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     free(g_end_wav);
     free(g_tipoff_wav);
     free(g_gameplay_wav);
+    free(g_whistle_wav);
     dd_asset_pack_unload(&g_pack);
     return 0;
 }

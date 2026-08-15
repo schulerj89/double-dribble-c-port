@@ -27,6 +27,7 @@ $game = Join-Path $buildDir 'double_dribble_game.exe'
 $cpuTests = Join-Path $buildDir 'double_dribble_cpu_tests.exe'
 $resource = Join-Path $objDir 'double_dribble.res'
 $assetPack = Join-Path $buildDir 'double-dribble.assetpack'
+$whistleWav = Join-Path $buildDir 'whistle-2c.wav'
 $include = Join-Path $root 'include'
 $commonSources = @(
     (Join-Path $root 'src\dd_asset_pack.c'),
@@ -66,6 +67,10 @@ if ($LASTEXITCODE -ne 0) {
 if ($LASTEXITCODE -ne 0) {
     throw 'CPU gameplay regression failed.'
 }
+& $cli --dump-whistle-wav $assetPack $whistleWav
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $whistleWav -PathType Leaf)) {
+    throw 'Whistle WAV synthesis failed.'
+}
 
 & (Join-Path $root 'tools\Measure-GameplayCoverage.ps1')
 if ($LASTEXITCODE -ne 0) {
@@ -77,3 +82,4 @@ Write-Host "  CLI:       $cli"
 Write-Host "  Game:      $game"
 Write-Host "  CPU tests: $cpuTests"
 Write-Host "  Assetpack: $assetPack"
+Write-Host "  Whistle:   $whistleWav"

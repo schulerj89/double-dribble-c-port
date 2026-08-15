@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 12u
+#define DD_PACK_VERSION 13u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -20,7 +20,7 @@
 #define DD_ENTRY_CONFIG_ASSETS 9u
 #define DD_ENTRY_TIPOFF_META 10u
 #define DD_ENTRY_TIPOFF_ASSETS 11u
-#define DD_ENTRY_COUNT 22u
+#define DD_ENTRY_COUNT 23u
 #define DD_ROM_SIZE 131088u
 #define DD_INTRO_SPRITE_ASSET_SIZE 141u
 
@@ -244,6 +244,24 @@ static const DDMusicNote DD_GAMEPLAY_AUDIO[] = {
     {8u, 432u, 0u, 3u, 3u, 0u}, {9u, 546u, 0u, 3u, 3u, 0u},
     {10u, 690u, 0u, 3u, 3u, 0u}, {11u, 776u, 0u, 3u, 3u, 0u},
     {12u, 982u, 0u, 3u, 3u, 0u}, {13u, 0u, 0u, 0u, 0u, 0u}
+};
+
+/* SFX request $2C resolves through fixed $C141/$CC99 into bank-1 streams
+   $86F7/$8702/$870D.  Controlled APU frames 2601-2612 preserve the driver's
+   two-frame request latency, eight alternating pulse frames, noise bed, and
+   explicit channel stops. */
+static const DDMusicNote DD_WHISTLE_AUDIO[] = {
+    {0u, 0u, 0u, 0u, 0u, 0u}, {0u, 0u, 1u, 0u, 0u, 0u}, {0u, 0u, 3u, 0u, 0u, 0u},
+    {2u, 37u, 0u, 1u, 15u, 0u}, {2u, 52u, 1u, 1u, 15u, 0u}, {2u, 6u, 3u, 0u, 3u, 0u},
+    {3u, 43u, 0u, 1u, 15u, 0u}, {3u, 40u, 1u, 1u, 15u, 0u},
+    {4u, 37u, 0u, 1u, 15u, 0u}, {4u, 52u, 1u, 1u, 15u, 0u},
+    {5u, 43u, 0u, 1u, 15u, 0u}, {5u, 40u, 1u, 1u, 15u, 0u},
+    {6u, 37u, 0u, 1u, 15u, 0u}, {6u, 52u, 1u, 1u, 15u, 0u},
+    {7u, 43u, 0u, 1u, 15u, 0u}, {7u, 40u, 1u, 1u, 15u, 0u},
+    {8u, 37u, 0u, 1u, 15u, 0u}, {8u, 52u, 1u, 1u, 15u, 0u},
+    {9u, 43u, 0u, 1u, 15u, 0u}, {9u, 40u, 1u, 1u, 15u, 0u},
+    {9u, 0u, 3u, 0u, 0u, 0u},
+    {10u, 0u, 0u, 0u, 0u, 0u}, {10u, 0u, 1u, 0u, 0u, 0u}
 };
 
 static uint32_t dd_crc32(const uint8_t *data, size_t size) {
@@ -812,7 +830,7 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
                                 2097u, 2093u, 896u};
     DDTipoffMeta tipoff_meta = {256u, 240u, 0x1000u, 0x2000u, 0xB0u, 64u,
                                 127u, 135u, 140u, 144u, 15u, 0u, 0xF780u, 2113u,
-                                45u, 18u, 0x7Fu};
+                                45u, 18u, 12u, 0x7Fu};
     DDPackHeader header;
     DDPackEntry entries[DD_ENTRY_COUNT];
     uint64_t payload_offset = sizeof(header) + sizeof(entries);
@@ -978,6 +996,11 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
                  dd_crc32((const uint8_t *)DD_GAMEPLAY_AUDIO, sizeof(DD_GAMEPLAY_AUDIO)),
                  1u, (uint32_t)dd_bank_file_offset(1u, 0x8653u), 0x40u, 5u);
     payload_offset += sizeof(DD_GAMEPLAY_AUDIO);
+    dd_set_entry(&entries[22], "whistle.audio", DD_ENTRY_MUSIC, payload_offset,
+                 sizeof(DD_WHISTLE_AUDIO),
+                 dd_crc32((const uint8_t *)DD_WHISTLE_AUDIO, sizeof(DD_WHISTLE_AUDIO)),
+                 1u, (uint32_t)dd_bank_file_offset(1u, 0x86F7u), 0x20u, 5u);
+    payload_offset += sizeof(DD_WHISTLE_AUDIO);
     header.directory_crc32 = dd_crc32((const uint8_t *)entries, sizeof(entries));
     header.total_size = payload_offset;
 
@@ -1005,7 +1028,8 @@ int dd_build_asset_pack(const char *rom_path, const char *output_path) {
         fwrite(tipoff_assets, 1, tipoff_assets_size, output) != tipoff_assets_size ||
         fwrite(DD_END_MUSIC, 1, sizeof(DD_END_MUSIC), output) != sizeof(DD_END_MUSIC) ||
         fwrite(rom + tipoff_dmc_file_offset, 1, tipoff_dmc_size, output) != tipoff_dmc_size ||
-        fwrite(DD_GAMEPLAY_AUDIO, 1, sizeof(DD_GAMEPLAY_AUDIO), output) != sizeof(DD_GAMEPLAY_AUDIO)) {
+        fwrite(DD_GAMEPLAY_AUDIO, 1, sizeof(DD_GAMEPLAY_AUDIO), output) != sizeof(DD_GAMEPLAY_AUDIO) ||
+        fwrite(DD_WHISTLE_AUDIO, 1, sizeof(DD_WHISTLE_AUDIO), output) != sizeof(DD_WHISTLE_AUDIO)) {
         if (output != NULL) {
             fclose(output);
         }
@@ -1071,6 +1095,7 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     const DDPackEntry *end_music_entry;
     const DDPackEntry *tipoff_dmc_entry;
     const DDPackEntry *gameplay_audio_entry;
+    const DDPackEntry *whistle_audio_entry;
     memset(pack, 0, sizeof(*pack));
     if (!dd_read_file(path, &file_data, &file_size) || file_size < sizeof(DDPackHeader) + sizeof(DDPackEntry) * DD_ENTRY_COUNT) {
         free(file_data);
@@ -1107,13 +1132,14 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     end_music_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_MUSIC, "end.music");
     tipoff_dmc_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_DMC, "tipoff.dmc");
     gameplay_audio_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_MUSIC, "gameplay.audio");
+    whistle_audio_entry = dd_find_entry(entries, header->entry_count, DD_ENTRY_MUSIC, "whistle.audio");
     if (meta_entry == NULL || ppu_entry == NULL || dmc_entry == NULL || oam_entry == NULL ||
         intro_meta_entry == NULL || intro_ppu_entry == NULL || intro_oam_entry == NULL ||
         intro_updates_entry == NULL || intro_music_entry == NULL || config_meta_entry == NULL ||
         config_ppu_entry == NULL || config_oam_entry == NULL || select_music_entry == NULL ||
         config_assets_entry == NULL || config_music_entry == NULL || tipoff_meta_entry == NULL || tipoff_ppu_entry == NULL ||
         tipoff_oam_entry == NULL || tipoff_assets_entry == NULL || end_music_entry == NULL ||
-        tipoff_dmc_entry == NULL || gameplay_audio_entry == NULL ||
+        tipoff_dmc_entry == NULL || gameplay_audio_entry == NULL || whistle_audio_entry == NULL ||
         meta_entry->size != sizeof(DDTitleMeta) || ppu_entry->size != DD_TITLE_PPU_SIZE ||
         dmc_entry->size != 3073u || oam_entry->size != 256u ||
         intro_meta_entry->size != sizeof(DDIntroMeta) || intro_ppu_entry->size != DD_PPU_SIZE ||
@@ -1129,6 +1155,7 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         end_music_entry->size == 0u ||
         end_music_entry->size % sizeof(DDMusicNote) != 0u || tipoff_dmc_entry->size != 2113u ||
         gameplay_audio_entry->size == 0u || gameplay_audio_entry->size % sizeof(DDMusicNote) != 0u ||
+        whistle_audio_entry->size == 0u || whistle_audio_entry->size % sizeof(DDMusicNote) != 0u ||
         !dd_entry_in_bounds(meta_entry, file_size) || !dd_entry_in_bounds(ppu_entry, file_size) ||
         !dd_entry_in_bounds(dmc_entry, file_size) || !dd_entry_in_bounds(oam_entry, file_size) ||
         !dd_entry_in_bounds(intro_meta_entry, file_size) || !dd_entry_in_bounds(intro_ppu_entry, file_size) ||
@@ -1142,6 +1169,7 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         !dd_entry_in_bounds(end_music_entry, file_size) ||
         !dd_entry_in_bounds(tipoff_dmc_entry, file_size) ||
         !dd_entry_in_bounds(gameplay_audio_entry, file_size) ||
+        !dd_entry_in_bounds(whistle_audio_entry, file_size) ||
         meta_entry->crc32 != dd_crc32(file_data + meta_entry->offset, (size_t)meta_entry->size) ||
         ppu_entry->crc32 != dd_crc32(file_data + ppu_entry->offset, (size_t)ppu_entry->size) ||
         dmc_entry->crc32 != dd_crc32(file_data + dmc_entry->offset, (size_t)dmc_entry->size) ||
@@ -1164,7 +1192,9 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         end_music_entry->crc32 != dd_crc32(file_data + end_music_entry->offset, (size_t)end_music_entry->size) ||
         tipoff_dmc_entry->crc32 != dd_crc32(file_data + tipoff_dmc_entry->offset, (size_t)tipoff_dmc_entry->size) ||
         gameplay_audio_entry->crc32 != dd_crc32(file_data + gameplay_audio_entry->offset,
-                                                (size_t)gameplay_audio_entry->size)) {
+                                                (size_t)gameplay_audio_entry->size) ||
+        whistle_audio_entry->crc32 != dd_crc32(file_data + whistle_audio_entry->offset,
+                                               (size_t)whistle_audio_entry->size)) {
         free(file_data);
         return 0;
     }
@@ -1190,6 +1220,7 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         pack->tipoff_meta.visible_frame != 144u || pack->tipoff_meta.dmc_rate_index >= 16u ||
         pack->tipoff_meta.dmc_length != tipoff_dmc_entry->size || pack->tipoff_meta.end_music_frames != 45u ||
         pack->tipoff_meta.gameplay_audio_frames != 18u ||
+        pack->tipoff_meta.whistle_audio_frames != 12u ||
         pack->tipoff_meta.scroll_x != 0x7Fu ||
         dd_read_blob_u32(file_data + intro_updates_entry->offset) != pack->intro_meta.update_count) {
         free(file_data);
@@ -1214,6 +1245,7 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     pack->end_music = (DDMusicNote *)malloc((size_t)end_music_entry->size);
     pack->tipoff_dmc = (uint8_t *)malloc((size_t)tipoff_dmc_entry->size);
     pack->gameplay_audio = (DDMusicNote *)malloc((size_t)gameplay_audio_entry->size);
+    pack->whistle_audio = (DDMusicNote *)malloc((size_t)whistle_audio_entry->size);
     if (pack->ppu == NULL || pack->dmc == NULL || pack->oam == NULL ||
         pack->intro_ppu == NULL || pack->intro_oam == NULL ||
         pack->intro_updates == NULL || pack->intro_music == NULL || pack->select_music == NULL ||
@@ -1221,7 +1253,7 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
         pack->config_ppu == NULL || pack->config_oam == NULL || pack->config_assets == NULL ||
         pack->tipoff_ppu == NULL || pack->tipoff_oam == NULL || pack->tipoff_assets == NULL ||
         pack->end_music == NULL ||
-        pack->tipoff_dmc == NULL || pack->gameplay_audio == NULL) {
+        pack->tipoff_dmc == NULL || pack->gameplay_audio == NULL || pack->whistle_audio == NULL) {
         dd_asset_pack_unload(pack);
         free(file_data);
         return 0;
@@ -1245,6 +1277,8 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     memcpy(pack->tipoff_dmc, file_data + tipoff_dmc_entry->offset, (size_t)tipoff_dmc_entry->size);
     memcpy(pack->gameplay_audio, file_data + gameplay_audio_entry->offset,
            (size_t)gameplay_audio_entry->size);
+    memcpy(pack->whistle_audio, file_data + whistle_audio_entry->offset,
+           (size_t)whistle_audio_entry->size);
     pack->ppu_size = (size_t)ppu_entry->size;
     pack->dmc_size = (size_t)dmc_entry->size;
     pack->oam_size = (size_t)oam_entry->size;
@@ -1263,6 +1297,7 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
     pack->end_music_count = (size_t)end_music_entry->size / sizeof(DDMusicNote);
     pack->tipoff_dmc_size = (size_t)tipoff_dmc_entry->size;
     pack->gameplay_audio_count = (size_t)gameplay_audio_entry->size / sizeof(DDMusicNote);
+    pack->whistle_audio_count = (size_t)whistle_audio_entry->size / sizeof(DDMusicNote);
     {
         size_t note_index;
         uint32_t previous_frame = 0u;
@@ -1271,6 +1306,22 @@ int dd_asset_pack_load(const char *path, DDAssetPack *pack) {
             if ((note_index != 0u && note->frame < previous_frame) ||
                 note->frame >= pack->intro_meta.music_frames || note->period > 0x07FFu ||
                 note->channel >= 3u || note->duty > 3u || note->volume > 15u || note->reserved != 0u) {
+                dd_asset_pack_unload(pack);
+                free(file_data);
+                return 0;
+            }
+            previous_frame = note->frame;
+        }
+    }
+    {
+        size_t note_index;
+        uint32_t previous_frame = 0u;
+        for (note_index = 0u; note_index < pack->whistle_audio_count; ++note_index) {
+            const DDMusicNote *note = &pack->whistle_audio[note_index];
+            if ((note_index != 0u && note->frame < previous_frame) ||
+                note->frame >= pack->tipoff_meta.whistle_audio_frames || note->period > 0x07FFu ||
+                note->channel >= 4u || (note->channel == 3u && note->period >= 16u) ||
+                note->duty > 3u || note->volume > 15u || note->reserved != 0u) {
                 dd_asset_pack_unload(pack);
                 free(file_data);
                 return 0;
@@ -1421,6 +1472,7 @@ void dd_asset_pack_unload(DDAssetPack *pack) {
     free(pack->end_music);
     free(pack->tipoff_dmc);
     free(pack->gameplay_audio);
+    free(pack->whistle_audio);
     memset(pack, 0, sizeof(*pack));
 }
 
@@ -1430,12 +1482,12 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v12: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, and %zu DMC bytes.\n",
+    printf("Valid DDAP v13: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, %zu whistle events, and %zu DMC bytes.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
            pack.select_music_count, pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count,
            pack.config_music_count,
            pack.tipoff_meta.sprite_count, DD_GAMEPLAY_METASPRITE_COUNT,
-           pack.end_music_count, pack.gameplay_audio_count, pack.tipoff_dmc_size);
+           pack.end_music_count, pack.gameplay_audio_count, pack.whistle_audio_count, pack.tipoff_dmc_size);
     dd_asset_pack_unload(&pack);
     return 1;
 }

@@ -571,12 +571,28 @@ result at release, and verify reciprocal pairs after frame-3572 reception.
 User-side reception follows `$AD58`; CPU-side reception alone runs `$AD6D`'s
 role-3/role-4 route setup.
 
-The bounded inbound inventory is **96.8%**: 29 portable branches/helpers are
-Verified and two remain Partial (exact whistle SFX `$2C`, plus exceptional
-reasons `$17/$1A` which bypass ordinary formation). Mapper switching and
-PPU/OAM presentation are excluded. Rebuilt original/native inbound screenshot
+The bounded inbound inventory is **100%**: all 31 portable branches/helpers are
+Verified. Mapper switching and PPU/OAM presentation are excluded. Rebuilt original/native inbound screenshot
 differences are **4.8671%**, **4.7189%**, **5.1252%**, **5.2734%**, and
 **5.6536%** at setup, hold, release-ready, pass, and reception respectively.
+
+DDAP v13 adds the exact rule-whistle request `$2C` as `whistle.audio`. Fixed
+`$C141->$CC99` selects bank-1 streams `$86F7/$8702/$870D`; controlled FCEUX
+APU frames 2601-2612 show the two-frame request latency, pulse pairs alternating
+`37/52` and `43/40` for eight audible frames, noise period `6` at volume `3`,
+and explicit stops. The native gameplay event serial plays that bounded pack
+sequence once for reasons `$0F/$12-$16` and resumes state-driven audio afterward.
+
+The two exceptional reasons follow `$9651` only through its reset/direction
+prefix. `$965A` compares `$0059` with `$17/$1A` and jumps to `$98A3`, which
+writes `$0065=$FF`, ball state `$0B`, carrier `$0048=0`, and `$0056=$FF`
+without calling `$D6BD`. `$A347` queues `$1A`; `$A1CC->$A37D` queues `$17`
+when a state-`$22` opponent has the same packed target and the opposite facing
+from table `$A375 = 04 05 06 07 00 01 02 03`. Controlled original frame 2602
+records reason `$17` plus every `$98A3` write, and frame 2822 awards the foul
+shot to object `$07`. Native C shares one exceptional-dead-ball helper for both
+callers, preserves shooter/offender ownership, and deliberately avoids the
+ordinary inbound formation tail.
 
 Following the timeout exposed an older rebound-return approximation.  Ghidra
 shows `$8E71` and `$8EBF` both using `$D978` packed equality followed by
@@ -959,7 +975,7 @@ repeatable diff makes that remaining visual gap explicit rather than hiding it.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **92% portable Ghidra-to-C gameplay-loop coverage** (91.8% unrounded), **76.9% match-rules completeness**, and **96.8% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **92% portable Ghidra-to-C gameplay-loop coverage** (91.8% unrounded), **76.9% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

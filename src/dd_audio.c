@@ -90,7 +90,7 @@ int dd_write_title_wav(const DDAssetPack *pack, const char *path) {
 
 static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
                               uint32_t music_frames, uint32_t pulse_envelope_frames,
-                              uint32_t triangle_gate_frames,
+                              uint32_t triangle_gate_frames, uint32_t noise_envelope_frames,
                               uint8_t **wav_data, size_t *wav_size) {
     static const uint16_t noise_periods[16] = {
         4u, 8u, 16u, 32u, 64u, 96u, 128u, 160u,
@@ -107,7 +107,7 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
     double phase[4] = {0.0, 0.0, 0.0, 0.0};
     uint16_t noise_shift = 1u;
     uint8_t *wav;
-    if (notes == NULL || note_count == 0u || music_frames == 0u || pulse_envelope_frames == 0u ||
+    if (notes == NULL || note_count == 0u || music_frames == 0u ||
         wav_data == NULL || wav_size == NULL) return 0;
     sample_count = (uint32_t)(((uint64_t)music_frames * sample_rate) / 60u);
     if (sample_count > (UINT32_MAX - 44u) / 2u) return 0;
@@ -152,7 +152,9 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
             phase[channel] += frequency / sample_rate;
             if (channel == 3u) {
                 double age = (double)(frame - note_start[channel]);
-                double envelope = age >= 4.0 ? 0.0 : (4.0 - age) / 4.0;
+                double envelope = noise_envelope_frames == 0u ? 1.0 :
+                    (age >= noise_envelope_frames ? 0.0 :
+                     ((double)noise_envelope_frames - age) / noise_envelope_frames);
                 while (phase[channel] >= 1.0) {
                     uint16_t feedback = (uint16_t)((noise_shift ^ (noise_shift >> 1)) & 1u);
                     noise_shift = (uint16_t)((noise_shift >> 1) | (feedback << 14));
@@ -167,8 +169,9 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
                 amplitude = triangle_gate_frames != 0u && age >= triangle_gate_frames ? 0.0 : 0.24;
             } else {
                 double age = (double)(frame - note_start[channel]);
-                double envelope = age >= pulse_envelope_frames
-                    ? 0.0 : ((double)pulse_envelope_frames - age) / pulse_envelope_frames;
+                double envelope = pulse_envelope_frames == 0u ? 1.0 :
+                    (age >= pulse_envelope_frames
+                     ? 0.0 : ((double)pulse_envelope_frames - age) / pulse_envelope_frames);
                 if (phase[channel] >= 1.0) phase[channel] -= (uint32_t)phase[channel];
                 wave = phase[channel] < duty_cycles[note->duty] ? 1.0 : -1.0;
                 amplitude = ((double)note->volume / 15.0) * envelope * 0.20;
@@ -187,31 +190,38 @@ static int dd_build_music_wav(const DDMusicNote *notes, size_t note_count,
 int dd_build_intro_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->intro_music, pack->intro_music_count,
-                              pack->intro_meta.music_frames, 20u, 0u, wav_data, wav_size);
+                              pack->intro_meta.music_frames, 20u, 0u, 4u, wav_data, wav_size);
 }
 
 int dd_build_select_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->select_music, pack->select_music_count,
-                              pack->meta.select_music_frames, 20u, 0u, wav_data, wav_size);
+                              pack->meta.select_music_frames, 20u, 0u, 4u, wav_data, wav_size);
 }
 
 int dd_build_config_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->config_music, pack->config_music_count,
-                              pack->config_meta.music_loop_frames, 40u, 9u, wav_data, wav_size);
+                              pack->config_meta.music_loop_frames, 40u, 9u, 4u, wav_data, wav_size);
 }
 
 int dd_build_end_music_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->end_music, pack->end_music_count,
-                              pack->tipoff_meta.end_music_frames, 20u, 0u, wav_data, wav_size);
+                              pack->tipoff_meta.end_music_frames, 20u, 0u, 4u, wav_data, wav_size);
 }
 
 int dd_build_gameplay_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->gameplay_audio, pack->gameplay_audio_count,
-                              pack->tipoff_meta.gameplay_audio_frames, 2u, 0u,
+                              pack->tipoff_meta.gameplay_audio_frames, 2u, 0u, 4u,
+                              wav_data, wav_size);
+}
+
+int dd_build_whistle_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->whistle_audio, pack->whistle_audio_count,
+                              pack->tipoff_meta.whistle_audio_frames, 0u, 0u, 0u,
                               wav_data, wav_size);
 }
 

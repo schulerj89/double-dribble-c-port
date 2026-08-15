@@ -35,6 +35,7 @@ local inject_player_pair_case = tonumber(os.getenv("DD_INJECT_PLAYER_PAIR_CASE")
 local inject_player_hold_case = tonumber(os.getenv("DD_INJECT_PLAYER_HOLD_CASE") or "0")
 local inject_inbound_rule_frame = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_FRAME") or "-1")
 local inject_inbound_rule_case = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_CASE") or "0")
+local inject_exceptional_reason_frame = tonumber(os.getenv("DD_INJECT_EXCEPTIONAL_REASON_FRAME") or "-1")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -103,6 +104,8 @@ local control_calls = assert(io.open(join_path(capture_root, "gameplay-control-c
 control_calls:write("frame,pc,current_object,receiver,switch_candidate,ball_state,owner,carrier,direction,mode,input,pressed,p2,p3,p4,p5,p6\n")
 local block_calls = assert(io.open(join_path(capture_root, "gameplay-block-calls.csv"), "w"))
 block_calls:write("frame,pc,current_object,player_state,ball_state,owner,carrier,input,pressed,player_x,player_depth,player_height,ball_x,ball_depth,ball_height,paired,p2,p3,p4,p5,p6,p7,p8,p9,p10,p11\n")
+local exceptional_calls = assert(io.open(join_path(capture_root, "gameplay-exceptional-calls.csv"), "w"))
+exceptional_calls:write("frame,current,clock_gate,ball_state,input,current_target,current_facing,defender,defender_state,defender_target,defender_facing\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 local previous_ball_state = -1
 local previous_player_state = {}
@@ -251,6 +254,33 @@ for _, address in ipairs({0xA3E2, 0xA504, 0xA607, 0x9102, 0x9139,
         end
     end)
 end
+memory.registerexecute(0xA37D, 1, function(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+        local current = memory.readbyte(0x004B)
+        local defender = current < 0x07 and 0x07 or 0x02
+        if frame == inject_exceptional_reason_frame then
+            memory.writebyte(0x0025, 0x00)
+            memory.writebyte(0x0340, 0x01)
+            memory.writebyte(0x005B, current)
+            memory.writebyte(0x0048, current)
+            memory.writebyte(0x0670 + current, 0x01)
+            memory.writebyte(0x05B0 + current, 0x80)
+            memory.writebyte(0x05C0 + current, 0x00)
+            memory.writebyte(0x05B0 + defender, 0x80)
+            memory.writebyte(0x05C0 + defender, 0x00)
+            memory.writebyte(0x0340 + defender, 0x22)
+            memory.writebyte(0x0350 + current, 0x04)
+            memory.writebyte(0x0350 + defender, 0x00)
+        end
+        exceptional_calls:write(string.format("%d,%02X,%02X,%02X,%02X,%02X%02X,%02X,%02X,%02X,%02X%02X,%02X\n",
+            frame, current, memory.readbyte(0x0025), memory.readbyte(0x0340),
+            memory.readbyte(0x0670 + current), memory.readbyte(0x05C0 + current),
+            memory.readbyte(0x05B0 + current), memory.readbyte(0x0350 + current),
+            defender, memory.readbyte(0x0340 + defender), memory.readbyte(0x05C0 + defender),
+            memory.readbyte(0x05B0 + defender), memory.readbyte(0x0350 + defender)))
+    end
+end)
 
 local capture_frames = {
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
@@ -334,6 +364,15 @@ while emu.framecount() < final_frame do
             inject_inbound_rule_case == 1 and 0x0A or
             (inject_inbound_rule_case == 2 and 0x18 or 0x00))
         memory.writebyte(0x06B3, inject_inbound_rule_case == 3 and 0x01 or 0x00)
+    end
+    if next_frame + 1 == inject_exceptional_reason_frame then
+        -- Put the user carrier into the dispatcher one frame before the
+        -- $A37D execution hook installs its branch-specific comparison data.
+        memory.writebyte(0x0340, 0x01)
+        memory.writebyte(0x0340 + 0x02, 0x02)
+        memory.writebyte(0x005B, 0x02)
+        memory.writebyte(0x0048, 0x02)
+        memory.writebyte(0x0050, 0x40)
     end
     if next_frame == inject_block_frame then
         -- Controlled branch proof for bank-0 $8B12->$A6C3.  The natural
@@ -589,6 +628,7 @@ score_calls:close()
 cpu_decisions:close()
 control_calls:close()
 block_calls:close()
+exceptional_calls:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")
 for phase, phase_counts in pairs(counts) do
