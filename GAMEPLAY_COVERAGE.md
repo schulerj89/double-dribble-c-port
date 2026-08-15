@@ -216,7 +216,7 @@ pointer table at `$A8E6` and selects one of
 `$8D1F->$AAEE->$AA98->$B503` faces the active hoop, stops court motion, and
 uses the same pose table in state `$27`. `$A504->$B189` releases to ball state
 `$05`; `$AE25->$B377` produces result `$01` for a make or results `$02-$04`
-for `$08->$09` miss/rebound handling. DDAP v17 stores the eight recovered pose
+for `$08->$09` miss/rebound handling. DDAP v18 stores the eight recovered pose
 indices, six four-tile net frames, and `$8503/$8507` post-basket formation
 data. Controlled original moving/make/miss traces and shipping-loop native
 tests prove momentum, both shooter pose paths, and both outcomes. Metasprite
@@ -251,7 +251,10 @@ the original two-candidate screen-distance search and transfers action `$0F`
 to the selected teammate while restoring `$20` to the former user. Focused
 FCEUX traces cover four pass directions, both reception branches, and the
 defensive switch; deterministic native checks cover handoff and post-catch
-movement.
+movement. The `$A29D` transfer now also follows `$99D9/$9A31`: role zero,
+mutable `$0580` opponent links, and their reciprocal links move with the
+selected defender. A B-switch regression immediately enters `$A607` with A,
+proving the newly selected player can attempt the paired block.
 
 User defense now also follows `$A3E2->$A607->$A638`. Ball states `$01/$04/$05`
 require the A-button edge while `$07/$09` enter without input; the mutable
@@ -290,7 +293,11 @@ region shots, and 463 obstacle lookaheads. Native checks cover both phase-based
 receiver roles, different-region acceptance, same-region rejection, the
 two-decision cooldown, eight-tick queued release, mirrored route tables,
 region-five and last-five-seconds shots, the 24-tick possession limit, decision
-timer underflow, lane targeting, and paired-defender avoidance.
+timer underflow, lane targeting, and paired-defender avoidance. The pass
+initializer regression additionally requires `$9018->$B0B8` to attach ball
+object zero and install a nonzero five-unit signed vector before `$8FE0`
+releases state `$02`; this closes the stationary orphan-ball failure in both
+ordinary CPU passing and CPU inbound.
 
 The inbound entry is Verified. Ghidra `$A780/$A129/$A21F/$A482` and natural
 FCEUX frames 3004-3051 prove directional receiver selection, held-ball
@@ -353,12 +360,13 @@ release stores shot kind 0/1 for two/three points and preserves kind 2 for a
 one-point free throw. The score trace enters state `$06` with counter `$0C`,
 writes both score copies only on `$09->$08`, lowers height for `$05-$00`, and
 enters rebound `$07` on underflow. The same counter selects net phase 2 on the
-make, phase 1 at `$08`, and phase 0 on underflow; DDAP v17's exact 24-byte
+make, phase 1 at `$08`, and phase 0 on underflow; DDAP v18's exact 24-byte
 table supplies three four-tile frames for each basket side. Controlled
 inside/outside and net-phase traces cover the boundary in both directions, and
 native checks prove deferred one-, two-, and three-point awards plus the
-`2->1->0` net sequence. DDAP v17 also retains the recovered `$09` line-call
-and `$25` three-point scoring cues. The renderer derives the same blank-leading
+`2->1->0` net sequence. DDAP v18 also retains the recovered `$09` line-call
+and `$25` three-point scoring cues, plus the complete clean-make `$18` and
+underflow `$1F/$22` cue from bank-1 `$87B6/$87CA/$886D/$8922`. The renderer derives the same blank-leading
 two decimal HUD tiles and pack-backed net phases from native score state.
 Buffered PPU queue mechanics remain excluded as NES-only presentation
 machinery.

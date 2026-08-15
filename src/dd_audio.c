@@ -248,6 +248,47 @@ int dd_build_three_score_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, 
                               wav_data, wav_size);
 }
 
+int dd_build_score_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->score_audio, pack->score_audio_count,
+                              pack->tipoff_meta.score_audio_frames, 0u, 0u, 0u,
+                              wav_data, wav_size);
+}
+
+int dd_build_three_basket_score_audio_wav(const DDAssetPack *pack, uint8_t **wav_data,
+                                          size_t *wav_size) {
+    DDMusicNote *notes;
+    size_t score_index = 0u;
+    size_t three_index = 0u;
+    size_t output_index = 0u;
+    int ok;
+    if (pack == NULL || wav_data == NULL || wav_size == NULL) return 0;
+    notes = (DDMusicNote *)malloc((pack->score_audio_count +
+                                   pack->three_score_audio_count) * sizeof(*notes));
+    if (notes == NULL) return 0;
+    /* `$25` is requested six frames after `$18`.  On equal frames retain the
+       basket channel write first, then let `$25` replace the pulse voice just
+       as the original bank-1 driver does. */
+    while (score_index < pack->score_audio_count ||
+           three_index < pack->three_score_audio_count) {
+        uint32_t score_frame = score_index < pack->score_audio_count
+            ? pack->score_audio[score_index].frame : UINT32_MAX;
+        uint32_t three_frame = three_index < pack->three_score_audio_count
+            ? pack->three_score_audio[three_index].frame + 6u : UINT32_MAX;
+        if (score_frame <= three_frame) {
+            notes[output_index++] = pack->score_audio[score_index++];
+        } else {
+            notes[output_index] = pack->three_score_audio[three_index++];
+            notes[output_index++].frame = three_frame;
+        }
+    }
+    ok = dd_build_music_wav(notes, output_index,
+                            pack->tipoff_meta.score_audio_frames, 0u, 0u, 0u,
+                            wav_data, wav_size);
+    free(notes);
+    return ok;
+}
+
 int dd_build_tipoff_dmc_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     static const uint16_t periods[16] = {428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 85, 72, 54};
     const uint32_t sample_rate = 44100u;

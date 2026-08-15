@@ -1061,7 +1061,8 @@ static void dd_begin_pass(const DDTipoffAssetsHeader *assets, DDGameplayState *s
 /* Fixed $D8FA->$D92F and bank-0 $9018 do not launch a CPU pass immediately.
    The carrier enters $31 with the $04E0 release timer at eight, the selected
    receiver waits in $37, and ball $00 remains attached until timer four. */
-static void dd_queue_cpu_pass(DDGameplayState *state, uint32_t carrier,
+static void dd_queue_cpu_pass(const DDTipoffAssetsHeader *assets,
+                              DDGameplayState *state, uint32_t carrier,
                               uint32_t receiver) {
     DDPlayerState *passer;
     if (carrier >= DD_GAMEPLAY_PLAYER_COUNT || receiver >= DD_GAMEPLAY_PLAYER_COUNT ||
@@ -1077,8 +1078,12 @@ static void dd_queue_cpu_pass(DDGameplayState *state, uint32_t carrier,
     state->ball.receiver = (uint8_t)receiver;
     state->ball.action_age = 0u;
     state->ball.held_height_offset = 0x08u;
-    state->ball.velocity_x = 0;
-    state->ball.velocity_depth = 0;
+    /* `$9018` calls `$B503` before `$B0B8`: ball slot zero is attached to
+       the passer and its signed five-unit vector is installed while the
+       release countdown still reads eight.  Skipping this initializer left
+       state `$02` stationary after `$8FE0` cleared `$0048`. */
+    dd_attach_ball(assets, state, 0u);
+    dd_prepare_pass_motion(state, carrier, receiver);
     state->ball.velocity_height = 0;
     state->carrier = (uint8_t)carrier;
     state->cpu_pass_cooldown = 2u;
@@ -1180,7 +1185,8 @@ static void dd_swap_inbound_role_links(DDGameplayState *state,
     }
 }
 
-static void dd_start_inbound_release(DDGameplayState *state, uint32_t inbounder,
+static void dd_start_inbound_release(const DDTipoffAssetsHeader *assets,
+                                     DDGameplayState *state, uint32_t inbounder,
                                      uint32_t receiver) {
     DDPlayerState *player = &state->players[inbounder];
     uint32_t other_first = inbounder < 5u ? 5u : 0u;
@@ -1199,6 +1205,7 @@ static void dd_start_inbound_release(DDGameplayState *state, uint32_t inbounder,
     state->ball.held_height_offset = 0x08u;
     state->ball.receiver = (uint8_t)receiver;
     state->ball.action_age = 0u;
+    dd_attach_ball(assets, state, 0u);
     dd_prepare_pass_motion(state, inbounder, receiver);
 }
 
@@ -1386,7 +1393,8 @@ static void dd_cpu_set_lane_target(DDGameplayState *state, uint32_t carrier) {
    four while it is set.  $D94E contains six-entry region rows: a pass is
    legal only when both players occupy different nonzero regions.  $005C is
    the two-decision cooldown installed by $9018. */
-static int dd_cpu_try_region_pass(DDGameplayState *state, uint32_t carrier,
+static int dd_cpu_try_region_pass(const DDTipoffAssetsHeader *assets,
+                                  DDGameplayState *state, uint32_t carrier,
                                   uint8_t carrier_region) {
     uint32_t first;
     uint32_t receiver;
@@ -1404,7 +1412,7 @@ static int dd_cpu_try_region_pass(DDGameplayState *state, uint32_t carrier,
     receiver_region = dd_cpu_possession_region(
         state, dd_pack_cpu_position(&state->players[receiver]));
     if (receiver_region == 0u || receiver_region == carrier_region) return 0;
-    dd_queue_cpu_pass(state, carrier, receiver);
+    dd_queue_cpu_pass(assets, state, carrier, receiver);
     return 1;
 }
 
@@ -1417,7 +1425,8 @@ static int dd_cpu_decision_timer_expired(DDPlayerState *player) {
    the last-five-seconds and 24-tick forced shots, mirrored seven-region
    routes, phase-gated passes, same-region pass rejection, avoidance response,
    and the $04F0 decision countdown. */
-static DDCPUDecision dd_cpu_decide_possession(DDGameplayState *state,
+static DDCPUDecision dd_cpu_decide_possession(const DDTipoffAssetsHeader *assets,
+                                               DDGameplayState *state,
                                                uint32_t carrier) {
     DDPlayerState *player;
     uint8_t packed;
@@ -1441,7 +1450,7 @@ static DDCPUDecision dd_cpu_decide_possession(DDGameplayState *state,
                 if (dd_cpu_decision_timer_expired(player)) {
                     return DD_CPU_DECISION_SHOOT;
                 }
-                if (dd_cpu_try_region_pass(state, carrier, region)) {
+                if (dd_cpu_try_region_pass(assets, state, carrier, region)) {
                     return DD_CPU_DECISION_PASS;
                 }
             } else if (dd_cpu_decision_timer_expired(player)) {
@@ -1451,7 +1460,7 @@ static DDCPUDecision dd_cpu_decide_possession(DDGameplayState *state,
         }
         if ((state->cpu_global_frame & 0x80u) != 0u) {
             if ((state->cpu_global_frame & 0x3Eu) == 0u &&
-                dd_cpu_try_region_pass(state, carrier, region)) {
+                dd_cpu_try_region_pass(assets, state, carrier, region)) {
                 return DD_CPU_DECISION_PASS;
             }
             if (region == 5u || region == 4u) return DD_CPU_DECISION_SHOOT;
@@ -1477,11 +1486,11 @@ static DDCPUDecision dd_cpu_decide_possession(DDGameplayState *state,
         if (avoided) {
             dd_set_cpu_target(player, dd_cpu_policy_target(state, region));
             if (dd_cpu_decision_timer_expired(player)) return DD_CPU_DECISION_SHOOT;
-            return dd_cpu_try_region_pass(state, carrier, region)
+            return dd_cpu_try_region_pass(assets, state, carrier, region)
                 ? DD_CPU_DECISION_PASS : DD_CPU_DECISION_MOVE;
         }
         if ((state->cpu_global_frame & 0x38u) == 0u &&
-            dd_cpu_try_region_pass(state, carrier, region)) {
+            dd_cpu_try_region_pass(assets, state, carrier, region)) {
             return DD_CPU_DECISION_PASS;
         }
         dd_cpu_set_lane_target(state, carrier);
@@ -1494,7 +1503,7 @@ static DDCPUDecision dd_cpu_decide_possession(DDGameplayState *state,
 
     dd_set_cpu_target(player, dd_cpu_policy_target(state, region));
     if (dd_cpu_decision_timer_expired(player)) return DD_CPU_DECISION_SHOOT;
-    return dd_cpu_try_region_pass(state, carrier, region)
+    return dd_cpu_try_region_pass(assets, state, carrier, region)
         ? DD_CPU_DECISION_PASS : DD_CPU_DECISION_MOVE;
 }
 
@@ -1581,7 +1590,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 if (player->action_age >= 14u && state->ball.action == DD_BALL_DRIBBLE &&
                     state->carrier == player_index) {
                     player->decision_timer = 10u;
-                    decision = dd_cpu_decide_possession(state, player_index);
+                    decision = dd_cpu_decide_possession(assets, state, player_index);
                     if (decision == DD_CPU_DECISION_SHOOT) {
                         /* The captured post-inbound region-five arrival enters
                            $27/ball $04 on this same scheduled turn. */
@@ -1625,7 +1634,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 }
                 break;
             }
-            decision = dd_cpu_decide_possession(state, player_index);
+            decision = dd_cpu_decide_possession(assets, state, player_index);
             if (decision == DD_CPU_DECISION_SHOOT) {
                 player->action = DD_PLAYER_LIVE_CARRIER_ROUTE;
                 player->action_age = 0u;
@@ -1943,7 +1952,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                     state->inbound_variant == 2u) {
                     dd_start_inbound_alternate(state, player_index);
                 } else if (receiver < DD_GAMEPLAY_PLAYER_COUNT) {
-                    dd_start_inbound_release(state, player_index, receiver);
+                    dd_start_inbound_release(assets, state, player_index, receiver);
                 }
             }
             break;
@@ -2505,6 +2514,11 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                        possession direction flips for the inbound. */
                     state->net_animation_phase = 2u;
                     state->net_basket_side = state->possession_direction;
+                    /* Clean contact reaches `$AE8E`: request `$18` before
+                       direction/formation mutation.  DDAP's normalized cue
+                       also contains the `$AF2F/$AF34` `$1F/$22` tail at the
+                       original score-counter offset. */
+                    dd_request_audio_event(state, 0x18u);
                     state->possession_direction ^= 1u;
                     dd_begin_rebound_formation(state);
                 }
@@ -2979,7 +2993,12 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         state->carrier != state->controlled_player &&
         (pressed & DD_INPUT_B) != 0u) {
         uint32_t selected = dd_user_switch_candidate(state);
-        if (selected != state->controlled_player) {
+        /* `$A29D` only switches from role zero.  `$99D9/$9A31` then swap
+           role and reciprocal opponent links before states `$20/$0F` are
+           installed, so the new user remains paired with the ball-side CPU
+           and can enter `$A607`'s block dispatcher. */
+        if (controlled->role == 0u && selected != state->controlled_player) {
+            dd_swap_inbound_role_links(state, state->controlled_player, selected);
             controlled->action = DD_PLAYER_LIVE_TEAMMATE;
             controlled->action_age = 0u;
             controlled->attributes = 0u;

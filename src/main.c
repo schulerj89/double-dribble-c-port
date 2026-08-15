@@ -20,6 +20,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay <input.assetpack> <transition-frame> <output.bmp>");
     puts("  --render-gameplay-input <input.assetpack> <transition-frame> <input-mask> <output.bmp>");
     puts("  --render-gameplay-user-contest <input.assetpack> <output.bmp>");
+    puts("  --render-gameplay-switch-block <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-block <input.assetpack> <contact|landing> <output.bmp>");
     puts("  --render-gameplay-shot <input.assetpack> <make|miss> <gather|release|result|pickup|inbound> <output.bmp>");
     puts("  --render-gameplay-moving-shot <input.assetpack> <takeoff|airborne> <output.bmp>");
@@ -153,7 +154,8 @@ int main(int argc, char **argv) {
                       strcmp(argv[1], "--dump-gameplay-wav") == 0 ||
                       strcmp(argv[1], "--dump-whistle-wav") == 0 ||
                       strcmp(argv[1], "--dump-three-call-wav") == 0 ||
-                      strcmp(argv[1], "--dump-three-score-wav") == 0)) {
+                      strcmp(argv[1], "--dump-three-score-wav") == 0 ||
+                      strcmp(argv[1], "--dump-score-wav") == 0)) {
         uint8_t *wav;
         size_t size;
         FILE *file;
@@ -169,6 +171,8 @@ int main(int argc, char **argv) {
             ok = dd_build_three_call_audio_wav(&pack, &wav, &size);
         } else if (strcmp(argv[1], "--dump-three-score-wav") == 0) {
             ok = dd_build_three_score_audio_wav(&pack, &wav, &size);
+        } else if (strcmp(argv[1], "--dump-score-wav") == 0) {
+            ok = dd_build_score_audio_wav(&pack, &wav, &size);
         } else {
             ok = dd_build_gameplay_audio_wav(&pack, &wav, &size);
         }
@@ -235,6 +239,59 @@ int main(int argc, char **argv) {
              state.players[0].action == DD_PLAYER_USER_CONTEST &&
              state.ball.action == DD_BALL_AIRBORNE &&
              state.ball.flight_angle == 0x62u;
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[3], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 4 && strcmp(argv[1], "--render-gameplay-switch-block") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t player;
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+        if (ok) {
+            state.phase = DD_GAMEPLAY_LIVE;
+            state.controlled_player = 0u;
+            state.carrier = 5u;
+            state.ball.action = DD_BALL_DRIBBLE;
+            state.ball.owner = 5u;
+            state.ball.court_x = 0x010000;
+            state.ball.court_depth = 0x005800;
+            state.ball.height = 0x1800;
+            for (player = 0u; player < 5u; ++player) {
+                state.players[player].action = DD_PLAYER_LIVE_TEAMMATE;
+                state.players[player].court_depth = 0x005800;
+            }
+            state.players[0].action = DD_PLAYER_LIVE_USER;
+            state.players[0].court_x = 0x004000;
+            state.players[1].court_x = 0x018000;
+            state.players[2].court_x = 0x012000;
+            state.players[3].court_x = 0x01C000;
+            state.players[4].court_x = 0x000000;
+            ok = dd_gameplay_step(&pack, &state, DD_INPUT_B) &&
+                 state.controlled_player == 2u &&
+                 state.players[2].role == 0u &&
+                 state.players[2].paired_player == 5u;
+            state.ball.action = DD_BALL_SHOT_GATHER;
+            state.ball.owner = 5u;
+            state.players[5].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+            state.players[5].court_x = state.players[2].court_x + 0x0600;
+            state.players[5].court_depth = state.players[2].court_depth;
+            ok = ok && dd_gameplay_step(&pack, &state, DD_INPUT_A) &&
+                 state.players[2].action == DD_PLAYER_USER_CONTEST;
+            for (player = 0u; ok && player < 8u; ++player) {
+                ok = dd_gameplay_step(&pack, &state, 0u);
+            }
+        }
         pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
                                     pack.tipoff_meta.height * sizeof(uint32_t));
         ok = ok && pixels != NULL &&

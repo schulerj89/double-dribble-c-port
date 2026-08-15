@@ -604,7 +604,7 @@ shows `$8E71` and `$8EBF` both using `$D978` packed equality followed by
 target/action pairs at `$8507` select one `$2D` rebound chaser and nine `$36`
 formation routes. Natural and controlled traces show the low-entropy object
 phase changing individual targets by `$FE/$FF/$01/$02`; native preserves the
-observed per-slot phases while still batching the NES object cadence. DDAP v17
+observed per-slot phases while still batching the NES object cadence. DDAP v18
 contains both ROM tables. `$2D` keeps the `$FF01` longitudinal and signed
 `$000C` depth terms before `$2E->$2F->$30`. The subsequent `$8EE2` branch uses
 `$A0DA` to select an on-screen non-role-zero teammate for automatic state `$31`
@@ -1238,7 +1238,7 @@ outside/three. The three-point score probe keeps kind `$01` through counters
 cover these four boundary cases, the far-page cases, release ordering, and all
 one-/two-/three-point score branches.
 
-DDAP v17 retains the audible results, not only event numbers. Matched FCEUX
+DDAP v18 retains the audible results, not only event numbers. Matched FCEUX
 APU runs isolate `$09` as a 189-frame pulse-2 cue at duty 50%/volume 6 whose
 timer moves `256->162->255` before stopping. `$25` is a 42-frame two-pulse
 arpeggio; comparing shot kind 1 against kind 0 proves the simultaneous
@@ -1275,7 +1275,7 @@ entry rather than injecting a result after release.
 | Ghidra/ASM | Recovered behavior | Native C |
 | --- | --- | --- |
 | `$AA75` | clear `$04F0+X`, install height stream `$9B34` from `$9B26`, set player `$03`, release gate `$04E0=1`, and ball `$04` | `dd_begin_shot` |
-| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v17 `shot_animation[8]` and `player.animation` |
+| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v18 `shot_animation[8]` and `player.animation` |
 | `$A504->$A84C` | integrate the takeoff depth vector twice and longitudinal vector twice, then update pose, projection, and `$9ABD` height; fresh input does not retarget the airborne state | user-shot gather dispatcher preserves takeoff momentum |
 | `$8D1F->$AAEE->$AA98->$B503` and `$8D57` | face the CPU shooter toward the active hoop, clear its three motion vectors, use shared pose selection, and advance the shot height stream | CPU shot initializer and state `$27` dispatcher |
 | `$B035` table 2 | add the first facing offset to longitudinal `$0370` and the second to depth `$03C0` | exact shot attachment path |
@@ -1316,7 +1316,7 @@ continues, but state `$03` does not accept a new steering vector mid-jump.
 The make trace also proves the net sequence independently of ball motion.
 Original frame 2792 has phase 2 applied, frame 2798 has phase 1, and frame
 2807 has restored phase 0. Table `$9922` is 24 bytes: two basket sides by
-three four-tile frames. DDAP v17 extracts those bytes, and the native renderer
+three four-tile frames. DDAP v18 extracts those bytes, and the native renderer
 patches the equivalent two adjacent tiles on two rows before drawing the
 court. Native regression checks assert the exact table and phase transitions
 `2->1->0`.
@@ -1352,7 +1352,7 @@ confirmed in FCEUX are:
 | State / helper | Original effect | Native translation |
 | --- | --- | --- |
 | `$AE25` result `$01` | flip `$0050`, set/decrement gate `$0056`, enter ball score `$06` | change possession direction and arm `rebound_formation_pending` |
-| `$8491->$8503/$8507` | combine gate, role `$0690`, team side, and object phase; install one `$2D` plus nine `$36` targets | DDAP v17 tables plus the traced per-slot cadence adapter |
+| `$8491->$8503/$8507` | combine gate, role `$0690`, team side, and object phase; install one `$2D` plus nine `$36` targets | DDAP v18 tables plus the traced per-slot cadence adapter |
 | player `$2D->$2E->$2F->$30` | chase/claim the scored ball, return to the boundary, then wait for all `$36->$37` routes | native rebound-chase dispatcher chain and formation readiness gate |
 | `$8EBF/$8C6B->$AD0E->$B035` | claim the scored or loose ball, reset its local phase, set held height `$10`, and add the table-0 longitudinal/depth hand offsets | exact owner/carrier assignment and pickup attachment |
 | `$8EE2->$A0DA->$9018->$B0B8` | find an on-screen non-role-zero teammate, enter release `$31`, and immediately install pass angle, facing, and velocity before the countdown | `dd_automatic_inbound_receiver`, `dd_start_inbound_release`, and `dd_prepare_pass_motion` |
@@ -1386,6 +1386,68 @@ formation; frame 2929 and native `make-inbound.png` show the made-basket
 automatic inbound. The regression drives both shots from B input through the
 shipping ball/player dispatchers, asserts the make's CPU receiver, and asserts
 the miss's reason `$16`, state `$41`, and exact `$001D` coordinates.
+
+### CPU pass ownership, switched defense, and made-basket audio repair
+
+Status: **implemented and verified within the existing coverage entries**.
+This repair follows original state transitions that were already classified
+Verified but had incomplete native side effects.
+
+The orphaned ball came from ordinary CPU pass setup, not pass collision. Fixed
+bank `$D8FA-$D92F` (ROM `$1D90A-$1D93F`) selects role three/four, stores the
+receiver in `$0052/$0009`, writes receiver state `$37`, then calls bank-0
+`$9018` (ROM `$1028`). `$9018` writes passer state `$31`, animation `$0A`, and
+release timer `$08`, but it also calls `$B503->$B0B8` (ROM `$30C8`) immediately.
+That tail aims ball object zero at the receiver through `$9D2D/$AA98/$9BB0`,
+stores facing, and multiplies the signed unit vector by five. `$8FE0` later
+reaches timer `$04`, changes ball `$00->$02`, and clears camera carrier `$0048`;
+it does not calculate motion. The native ordinary CPU path had installed zero
+velocity and therefore left `$02` permanently stationary after release. Both
+ordinary CPU passing and CPU inbound now attach the held ball and run the same
+`dd_prepare_pass_motion` side effect before the countdown. Regressions require
+a nonzero vector at queue time, visible position change after release, and the
+existing natural CPU inbound reception at native frame 1371.
+
+Defensive switching follows bank-0 `$A29D` (ROM `$22AD`) beyond candidate
+selection. The switch is legal only while the current `$0F` player owns role
+zero. `$99D9` (ROM `$19E9`) swaps `$0690` roles and `$0580` opponent links;
+`$9A31` (ROM `$1A41`) repairs the reciprocal links before the old/new actions
+become `$20/$0F`. Native switching previously moved only the action and control
+index, so the selected defender still referenced the wrong CPU opponent and
+could not satisfy `$A3E2`'s paired-shooter gate. The C path now performs both
+swaps. A deterministic B-switch selects native player 2, produces links
+`2<->5` and `0<->8`, then A reaches `$A607` (ROM `$2617`) and the `$A638`
+(ROM `$2648`) apex/contact block state.
+
+The score sound follow begins in ball flight `$AE25`. A clean `$B377` result
+one reaches `$AE8E` (ROM `$2E9E`) and requests `$18`; score-state `$06`
+underflow reaches `$AF2F/$AF34` (ROM `$2F3F/$2F44`) and requests `$1F/$22`.
+Headless Ghidra maps the bank-1 streams to `$87B6/$87CA` (ROM
+`$47C6/$47DA`), `$886D` (`$487D`), and `$8922` (`$4932`). A controlled FCEUX
+run at frame 2600 injects only a clean rim result and freezes gameplay after
+frame 2615: `gameplay-sfx-calls.csv` contains exactly `18`, then `1F,22`, and
+the isolated pulse/triangle/noise output ends at normalized frame 436. DDAP
+v18 stores 104 normalized note events as `basket.score`; native code requests
+event `$18` at the make and plays the complete 437-frame cue without a 6502 or
+APU emulator.
+
+Reproduce the ignored evidence and screenshots with:
+
+```powershell
+.\tools\ghidra\Run-GameplayAudioAnalysis.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2595 -FinalFrame 3800 -CaptureName original-score-audio-isolated -BasketFrame 2600 -BasketResult 1 -BasketCounter 0 -BasketShotKind 0 -ScoreAudioFreezeFrame 2616 -DisablePcCounts
+.\tools\Capture-NativeGameplay.ps1 -TransitionFrames 1344,1352,1371
+.\tools\Capture-NativeSwitchBlock.ps1
+.\tools\Capture-NativeShooting.ps1
+.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+```
+
+The principal native frames are `native-gameplay/frame-1352.png` (CPU inbound
+pass in flight), `native-gameplay/frame-1371.png` (CPU reception),
+`native-switch-block/switch-block.png`, and `native-shooting/make-result.png`.
+Original score checkpoint `original-score-audio-isolated/frame-2600.png` and
+the earlier `original-user-switch` / `original-user-contest-natural` captures
+remain alongside their CSV proof under ignored `captures/` directories.
 
 Coverage remains **92.6% unrounded (93% displayed)** and match rules remain
 **80.8%**. The portable shot, result, score, and miss states were already

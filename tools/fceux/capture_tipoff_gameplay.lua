@@ -43,6 +43,7 @@ local inject_exceptional_reason_frame = tonumber(os.getenv("DD_INJECT_EXCEPTIONA
 local inject_shot_kind_case = tonumber(os.getenv("DD_INJECT_SHOT_KIND_CASE") or "0")
 local user_shot_depth = tonumber(os.getenv("DD_USER_SHOT_DEPTH") or "-1")
 local user_shot_x = tonumber(os.getenv("DD_USER_SHOT_X") or "-1")
+local score_audio_freeze_frame = tonumber(os.getenv("DD_SCORE_AUDIO_FREEZE_FRAME") or "-1")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -486,6 +487,22 @@ end
 emu.poweron()
 while emu.framecount() < final_frame do
     local next_frame = emu.framecount() + 1
+    if score_audio_freeze_frame >= 0 and next_frame >= score_audio_freeze_frame then
+        -- Audio-only score probe: retain the driver's already queued $18 and
+        -- $1F/$22 streams while preventing a rebound, dribble, or later shot
+        -- from requesting another effect. This instrumentation never feeds
+        -- runtime assets directly; it only isolates the original APU output.
+        memory.writebyte(0x0340, 0x0C)
+        memory.writebyte(0x005B, 0xFF)
+        memory.writebyte(0x0048, 0xFF)
+        for slot = 0x02, 0x0B do
+            memory.writebyte(0x0340 + slot, 0x37)
+            memory.writebyte(0x0390 + slot, 0x00)
+            memory.writebyte(0x03A0 + slot, 0x00)
+            memory.writebyte(0x03E0 + slot, 0x00)
+            memory.writebyte(0x03F0 + slot, 0x00)
+        end
+    end
     local input = {}
     input.start = next_frame == 75 or next_frame == 76
     input.down = next_frame == 2105 or next_frame == 2107 or next_frame == 2109

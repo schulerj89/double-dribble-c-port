@@ -40,6 +40,10 @@ static uint8_t *g_three_call_wav;
 static size_t g_three_call_wav_size;
 static uint8_t *g_three_score_wav;
 static size_t g_three_score_wav_size;
+static uint8_t *g_score_wav;
+static size_t g_score_wav_size;
+static uint8_t *g_three_basket_score_wav;
+static size_t g_three_basket_score_wav_size;
 static BITMAPINFO g_bitmap_info;
 static uint32_t g_selection;
 static uint32_t g_config_selection;
@@ -58,6 +62,7 @@ static int g_config_music_started;
 static int g_gameplay_audio_active;
 static uint32_t g_gameplay_audio_event_serial;
 static ULONGLONG g_gameplay_sfx_end_tick;
+static int g_basket_score_audio_active;
 
 static void dd_reset_to_title(void) {
     PlaySoundW(NULL, NULL, 0);
@@ -77,6 +82,7 @@ static void dd_reset_to_title(void) {
     g_gameplay_audio_active = 0;
     g_gameplay_audio_event_serial = 0u;
     g_gameplay_sfx_end_tick = 0u;
+    g_basket_score_audio_active = 0;
 }
 
 static uint32_t dd_gameplay_key(WPARAM key) {
@@ -201,9 +207,19 @@ static void dd_update_gameplay_audio(void) {
         } else if (g_gameplay.audio_event == 0x09u && g_three_call_wav != NULL) {
             sfx_wav = g_three_call_wav;
             sfx_frames = g_pack.tipoff_meta.three_call_audio_frames;
+        } else if (g_gameplay.audio_event == 0x25u &&
+                   g_basket_score_audio_active && now < g_gameplay_sfx_end_tick) {
+            /* The combined three-point make WAV already overlays `$25` six
+               frames after `$18`; do not restart or truncate `$1F/$22`. */
+            return;
         } else if (g_gameplay.audio_event == 0x25u && g_three_score_wav != NULL) {
             sfx_wav = g_three_score_wav;
             sfx_frames = g_pack.tipoff_meta.three_score_audio_frames;
+        } else if (g_gameplay.audio_event == 0x18u && g_score_wav != NULL) {
+            sfx_wav = g_gameplay.shot_value == 3u && g_three_basket_score_wav != NULL
+                ? g_three_basket_score_wav : g_score_wav;
+            sfx_frames = g_pack.tipoff_meta.score_audio_frames;
+            g_basket_score_audio_active = 1;
         }
         if (sfx_wav != NULL) {
             PlaySoundA((LPCSTR)sfx_wav, NULL, SND_MEMORY | SND_ASYNC | SND_NODEFAULT);
@@ -214,6 +230,7 @@ static void dd_update_gameplay_audio(void) {
     }
     if (g_gameplay_sfx_end_tick != 0u && now < g_gameplay_sfx_end_tick) return;
     g_gameplay_sfx_end_tick = 0u;
+    g_basket_score_audio_active = 0;
     if (desired && !g_gameplay_audio_active && g_gameplay_wav != NULL) {
         PlaySoundA((LPCSTR)g_gameplay_wav, NULL,
                    SND_MEMORY | SND_ASYNC | SND_LOOP | SND_NODEFAULT);
@@ -362,6 +379,9 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         !dd_build_whistle_audio_wav(&g_pack, &g_whistle_wav, &g_whistle_wav_size) ||
         !dd_build_three_call_audio_wav(&g_pack, &g_three_call_wav, &g_three_call_wav_size) ||
         !dd_build_three_score_audio_wav(&g_pack, &g_three_score_wav, &g_three_score_wav_size) ||
+        !dd_build_score_audio_wav(&g_pack, &g_score_wav, &g_score_wav_size) ||
+        !dd_build_three_basket_score_audio_wav(&g_pack, &g_three_basket_score_wav,
+                                               &g_three_basket_score_wav_size) ||
         !dd_build_tipoff_dmc_wav(&g_pack, &g_tipoff_wav, &g_tipoff_wav_size)) {
         dd_asset_pack_unload(&g_pack);
         free(g_pixels);
@@ -375,6 +395,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         free(g_whistle_wav);
         free(g_three_call_wav);
         free(g_three_score_wav);
+        free(g_score_wav);
+        free(g_three_basket_score_wav);
         return 1;
     }
     ZeroMemory(&g_bitmap_info, sizeof(g_bitmap_info));
@@ -415,6 +437,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     free(g_whistle_wav);
     free(g_three_call_wav);
     free(g_three_score_wav);
+    free(g_score_wav);
+    free(g_three_basket_score_wav);
     dd_asset_pack_unload(&g_pack);
     return 0;
 }

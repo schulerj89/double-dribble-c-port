@@ -88,6 +88,8 @@ int main(int argc, char **argv) {
     const DDTipoffAssetsHeader *assets;
     int32_t live_start_x[DD_GAMEPLAY_PLAYER_COUNT];
     int32_t live_start_depth[DD_GAMEPLAY_PLAYER_COUNT];
+    int32_t pass_release_x;
+    int32_t pass_release_depth;
     uint32_t player;
     if (argc != 2 || !dd_asset_pack_load(argv[1], &pack)) {
         fputs("usage: dd_gameplay_cpu_test <assetpack>\n", stderr);
@@ -122,6 +124,12 @@ int main(int argc, char **argv) {
           pack.three_score_audio[2].frame == 1u && pack.three_score_audio[2].period == 592u &&
           pack.three_score_audio[2].channel == 1u && pack.three_score_audio[2].volume == 15u,
           "asset pack exposes the controlled $25 two-pulse scoring cue");
+    check(pack.tipoff_meta.score_audio_frames == 437u && pack.score_audio_count == 104u &&
+          pack.score_audio[0].frame == 0u && pack.score_audio[0].period == 144u &&
+          pack.score_audio[0].channel == 0u && pack.score_audio[16].frame == 15u &&
+          pack.score_audio[16].period == 213u && pack.score_audio[16].channel == 2u &&
+          pack.score_audio[103].frame == 436u && pack.score_audio[103].volume == 0u,
+          "DDAP v18 exposes the isolated $18 then $1F/$22 made-basket score cue");
     check((uint8_t)assets->height_scripts[10] == 0x80u &&
           assets->height_scripts[11] == 5 &&
           (uint8_t)assets->height_scripts[24] == 0x81u,
@@ -306,8 +314,9 @@ int main(int argc, char **argv) {
     check(state.live_frame == 988u &&
           state.players[5].action == DD_PLAYER_INBOUND_READY &&
           state.players[5].release_timer == 8u &&
-          state.ball.action == DD_BALL_AWARDED,
-          "live 988 follows formation readiness through $9018 into state $31");
+          state.ball.action == DD_BALL_AWARDED &&
+          (state.ball.velocity_x != 0 || state.ball.velocity_depth != 0),
+          "live 988 follows $9018->$B0B8 into state $31 with the CPU inbound vector installed");
     check(dd_gameplay_advance_to(&pack, &state, 1352u, 0u), "advance to inbound pass");
     check(state.live_frame == 996u && state.ball.action == DD_BALL_PASS &&
           state.ball.receiver == 6u,
@@ -371,14 +380,24 @@ int main(int argc, char **argv) {
           "run natural $001A=$80 CPU pass branch");
     check(pass_state.ball.action == DD_BALL_AWARDED &&
           pass_state.ball.owner == 5u && pass_state.ball.receiver == 9u &&
+          (pass_state.ball.velocity_x != 0 || pass_state.ball.velocity_depth != 0) &&
           pass_state.players[5].action == DD_PLAYER_INBOUND_READY &&
           pass_state.players[5].release_timer == 8u &&
           pass_state.players[9].action == DD_PLAYER_LIVE_SET &&
           pass_state.cpu_pass_cooldown == 2u,
-          "$D8FA/$D94E selects role four in a different region and $9018 queues the pass");
+          "$D8FA/$D94E selects role four and $9018->$B0B8 installs its pass vector");
     for (player = 0u; player < 4u; ++player) run_cpu_dispatch(&pack, &pass_state, 5u);
-    check(pass_state.ball.action == DD_BALL_PASS && pass_state.ball.receiver == 9u,
+    check(pass_state.ball.action == DD_BALL_PASS && pass_state.ball.receiver == 9u &&
+          (pass_state.ball.velocity_x != 0 || pass_state.ball.velocity_depth != 0),
           "$8FE0 releases the queued CPU pass on timer four instead of launching immediately");
+    pass_release_x = pass_state.ball.court_x;
+    pass_release_depth = pass_state.ball.court_depth;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "advance the released CPU pass with its preinstalled vector");
+    check(pass_state.ball.court_x != pass_release_x ||
+          pass_state.ball.court_depth != pass_release_depth ||
+          pass_state.ball.action == DD_BALL_DRIBBLE,
+          "$B0B8 prevents a released CPU pass from becoming an orphaned stationary ball");
 
     prepare_cpu_policy(&pack, &pass_state, 0x22u, 0x4Cu);
     pass_state.players[8].role = 3u;
@@ -1255,8 +1274,10 @@ int main(int argc, char **argv) {
     dispatch_state.score[1] = 0u;
     check(dd_gameplay_step(&pack, &dispatch_state, 0u),
           "score controlled free-throw result one");
-    check(dispatch_state.ball.action == DD_BALL_SCORE && dispatch_state.score[1] == 0u,
-          "$B377 result one enters score state before the deferred point award");
+    check(dispatch_state.ball.action == DD_BALL_SCORE && dispatch_state.score[1] == 0u &&
+          dispatch_state.audio_event == 0x18u &&
+          dispatch_state.audio_event_serial != 0u,
+          "$B377 result one reaches $AE8E's $18 cue before the deferred point award");
     for (player = 0u; player < 4u; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
               "advance free-throw score counter to $08");
@@ -1829,8 +1850,21 @@ int main(int argc, char **argv) {
           "switch the controlled defender with B");
     check(dispatch_state.controlled_player == 2u &&
           dispatch_state.players[0].action == DD_PLAYER_LIVE_TEAMMATE &&
-          dispatch_state.players[2].action == DD_PLAYER_LIVE_USER,
-          "$A29D-$A342 transfers state $0F to the closest teammate and returns the old user to state $20");
+          dispatch_state.players[2].action == DD_PLAYER_LIVE_USER &&
+          dispatch_state.players[2].role == 0u &&
+          dispatch_state.players[2].paired_player == 5u &&
+          dispatch_state.players[5].paired_player == 2u &&
+          dispatch_state.players[0].paired_player == 8u &&
+          dispatch_state.players[8].paired_player == 0u,
+          "$A29D->$99D9/$9A31 switches control plus role and reciprocal opponent links");
+    dispatch_state.ball.action = DD_BALL_SHOT_GATHER;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_A),
+          "start a block attempt with the newly selected defender");
+    check(dispatch_state.players[2].action == DD_PLAYER_USER_CONTEST &&
+          dispatch_state.players[2].height_script_index == 11u,
+          "$A607 follows the switched $0580 link into the user block height stream");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_PASS;
