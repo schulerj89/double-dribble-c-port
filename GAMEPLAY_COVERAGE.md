@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 78%**
+**Portable Ghidra-to-C gameplay-loop coverage: 80%**
 
 **End-to-end match completeness: approximately 50%**
 
@@ -23,19 +23,19 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 78.0%`, rounded to **78%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 79.8%`, rounded to **80%**.
 
-## Player action dispatcher — 77.9%
+## Player action dispatcher — 83.8%
 
 Ghidra anchor `$89B2` subtracts `$20` from player action `$0340+slot` and dispatches through the 34-entry table at `$89C0`. `ExportGameplayLoopEvidence.java` prints all entries so this denominator is reproducible.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 19 | `$22,$25,$26,$27,$28,$29,$2D,$2E,$2F,$32,$36,$37,$38,$3B,$3C,$3D,$3E,$3F,$40` |
-| P | 15 | `$20,$21,$23,$24,$2A,$2B,$2C,$30,$31,$33,$34,$35,$39,$3A,$41` |
+| V | 23 | `$21,$22,$25,$26,$27,$28,$29,$2D,$2E,$2F,$32,$36,$37,$38,$39,$3A,$3B,$3C,$3D,$3E,$3F,$40,$41` |
+| P | 11 | `$20,$23,$24,$2A,$2B,$2C,$30,$31,$33,$34,$35` |
 | M | 0 | none |
 
-Score: `(19 + 15 × 0.5) / 34 = 77.9%`.
+Score: `(23 + 11 × 0.5) / 34 = 83.8%`.
 
 Every table entry now has an explicit native handler. States `$28/$29` reproduce
 the traced `$20` countdown, rotating-priority ball target, immediate `$B435`
@@ -51,8 +51,18 @@ region, region zero uses `($001A + 1) & 3`, and `$AC58` reads the seven-byte
 target table at `$AC78`. Natural frames 9110-9112 prove two objects in region
 one selecting target `$EC` before `$38->$39`. Controlled probes also distinguish
 the bare `$8297` state `$3B` handler (seeded vectors remain unchanged) from
-`$8460->$B503` state `$3F` (all three vectors clear). Those three states are V;
-the downstream `$39/$3A` regional branches remain P.
+`$8460->$B503` state `$3F` (all three vectors clear). State `$39` now includes
+the `$9097` role-zero region comparison, signed `$8262` two-candidate search,
+`$8CF3` rejection, `$AC78[2]` fallback, and `$842F` arrival target. A controlled
+probe proves `$39->$3A` and `$8C->$AB`; natural frames 9114/9126 prove arrival
+to `$3E` with phase targets `$8C/$E6`. `$3A` implements its shorter packed
+arrival loop. States `$39/$3A` are therefore V.
+
+State `$21` now uses exact `$D978` packed equality and clears `$0600`; a
+controlled `$EC==$EC` probe records `$21->$20` and `$55->$00`. State `$41`
+uses the same arrival rule before copying the inbounder's position to the ball:
+natural frame 3501 records position/target/ball `$0121`, owner/carrier `$07`,
+and `$41->$30`. Both states are V.
 
 ## Ball action dispatcher — 100%
 
@@ -139,7 +149,7 @@ When updating this ledger:
 
 ## Highest-value next coverage work
 
-1. Deepen the partial dispatcher handlers with dynamic FCEUX branch captures, especially `$21/$23/$24` and `$39/$3A`.
+1. Deepen the partial dispatcher handlers with dynamic FCEUX branch captures, especially `$20/$23/$24` and `$30/$31`.
 2. Translate the remaining `$D99A` CPU decision/search branches and pass-lane rejection.
 3. Translate the higher-level block, contested-rebound, and general rim-contact eligibility branches around `$B473`.
 4. Match the clock's presentation-state call gaps and implement fourth-period/final match end conditions.

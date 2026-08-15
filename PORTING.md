@@ -577,12 +577,33 @@ Two controlled frame-2601 probes seed motion vectors `$0123/$FEDC/$0345`.
 State `$3B` reaches the literal `$8297 RTS` and preserves all three through
 frame 2604. State `$3F` reaches `$8460->$B503` and clears all three on frame
 2601. The native dispatcher now makes the same distinction and tests it;
-`$38/$3B/$3F` move to Verified while `$39/$3A` remain Partial pending their
-remaining regional/occupancy branches.
+`$38/$3B/$3F` move to Verified.
+
+State `$39` at `$81A2` first handles role zero and packed target arrival. Its
+moving branch uses `$9097(A=0,Y=8)` to find the possession-side role-zero
+object, compares `$AC2A` regions, then tries signed `$8262` offsets `-65/+95`
+through `$8CF3`; both failures fall back to `$AC78[2]`. A controlled probe sets
+current/reference packed positions `$EC/$EB` in the same region and target
+`$8C`. On frame 2601 the original rejects overflowing `+$5F`, accepts `-$41`,
+and records `$39->$3A` with target `$AB`. The native isolated test produces the
+same result. Natural frames 9114 and 9126 exercise the separate arrival branch:
+`$842F` uses bit two of `$001A` to select `$8C` and `$E6` before state `$3E`.
+State `$3A` at `$8266` shares the role-zero and packed-arrival decisions without
+the search. Both handlers now include their significant Ghidra branches and
+move to Verified.
+
+State `$21` at `$8A3A` compares packed position/target through `$D978`; equality
+writes `$20` and clears per-object `$0600`. A controlled `$EC==$EC` trace seeds
+`$0607=$55` and observes `$21->$20`, `$55->$00` on frame 2601. Inbounder `$41`
+at `$8C6B` uses the same packed equality, installs owner/carrier, copies its
+packed and court coordinates to the ball, and enters `$30`. Natural frames
+3498-3501 show slot `$07` approach `$0122->$0121`, followed by player/target/ball
+all `$0121`, owner/carrier `$07`, and `$41->$30`. Native tests cover both flows,
+promoting `$21/$41` to Verified.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **78% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **80% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

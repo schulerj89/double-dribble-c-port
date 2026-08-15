@@ -19,6 +19,7 @@ local inject_loose_outcome = tonumber(os.getenv("DD_INJECT_LOOSE_OUTCOME") or "2
 local inject_player_state_frame = tonumber(os.getenv("DD_INJECT_PLAYER_STATE_FRAME") or "-1")
 local inject_player_state = tonumber(os.getenv("DD_INJECT_PLAYER_STATE") or "59")
 local inject_player_slot = tonumber(os.getenv("DD_INJECT_PLAYER_SLOT") or "7")
+local inject_player_route_case = tonumber(os.getenv("DD_INJECT_PLAYER_ROUTE_CASE") or "0")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -315,6 +316,37 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x03F0 + player, 0xDC)
         memory.writebyte(0x0430 + player, 0x03)
         memory.writebyte(0x0440 + player, 0x45)
+        if inject_player_route_case ~= 0 then
+            -- Force $81A2's same-region, not-at-target branch. Slot $0B is
+            -- the role-zero reference selected by $9097 on this possession side.
+            memory.writebyte(0x0340 + player, 0x39)
+            memory.writebyte(0x0690 + player, 0x04)
+            memory.writebyte(0x05B0 + player, 0xEC)
+            memory.writebyte(0x05C0 + player, 0x00)
+            memory.writebyte(0x05D0 + player, 0x8C)
+            memory.writebyte(0x05E0 + player, 0x00)
+            memory.writebyte(0x0360 + player, 0x00)
+            memory.writebyte(0x0370 + player, 0xC6)
+            memory.writebyte(0x03C0 + player, 0x79)
+            memory.writebyte(0x0690 + 0x0B, 0x00)
+            memory.writebyte(0x05B0 + 0x0B, 0xEB)
+            memory.writebyte(0x05C0 + 0x0B, 0x00)
+            memory.writebyte(0x0360 + 0x0B, 0x00)
+            memory.writebyte(0x0370 + 0x0B, 0xB9)
+            memory.writebyte(0x03C0 + 0x0B, 0x79)
+            memory.writebyte(0x001A, 0x01)
+            memory.writebyte(0x0050, 0x08)
+            if inject_player_route_case == 2 then
+                -- $8A3A/$D978 arrival: current and target packed bytes match;
+                -- $0600 must clear as the state returns $21->$20.
+                memory.writebyte(0x0340 + player, 0x21)
+                memory.writebyte(0x05D0 + player, 0xEC)
+                memory.writebyte(0x0600 + player, 0x55)
+                memory.writebyte(0x0340, 0x0B)
+                memory.writebyte(0x005B, 0xFF)
+                memory.writebyte(0x0048, 0xFF)
+            end
+        end
     end
     joypad.set(1, input)
     emu.frameadvance()

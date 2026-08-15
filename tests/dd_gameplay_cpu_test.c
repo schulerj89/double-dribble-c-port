@@ -221,9 +221,14 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].action = DD_PLAYER_LIVE_FOLLOW_TARGET;
     dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
     dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.players[5].target_zone = (uint8_t)(
+        (((uint32_t)(dispatch_state.players[5].court_depth >> 8) << 1u) & 0xE0u) |
+        (((uint32_t)dispatch_state.players[5].court_x >> 12u) & 0x1Fu));
+    dispatch_state.players[5].route_step = 5u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
-    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE,
-          "player state $21 returns to $20 on target arrival");
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[5].route_step == 0u,
+          "player state $21 follows $D978 packed arrival and clears $0600 before $20");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER;
@@ -398,10 +403,42 @@ int main(int argc, char **argv) {
           "player state $39 routes role zero to state $32");
 
     dispatch_state = dispatch_base;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.cpu_global_frame = 1u;
+    dispatch_state.players[5].action = DD_PLAYER_ROUTE_APPROACH;
+    dispatch_state.players[5].role = 4u;
+    dispatch_state.players[5].court_x = 0x00C000;
+    dispatch_state.players[5].court_depth = 0x7000;
+    dispatch_state.players[5].target_zone = 0x8Cu;
+    dispatch_state.players[9].role = 0u;
+    dispatch_state.players[9].court_x = 0x00B000;
+    dispatch_state.players[9].court_depth = 0x7000;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_ROUTE_ADJUST &&
+          dispatch_state.players[5].target_zone == 0xABu,
+          "$81A2 same-region search rejects overflowing +95 then accepts -65 target $AB");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.cpu_global_frame = 0x73u;
+    dispatch_state.players[5].action = DD_PLAYER_ROUTE_APPROACH;
+    dispatch_state.players[5].role = 3u;
+    dispatch_state.players[5].court_x = 0x00C000;
+    dispatch_state.players[5].court_depth = 0x7000;
+    dispatch_state.players[5].target_zone = 0xECu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_CPU_ROUTE &&
+          dispatch_state.players[5].target_zone == 0x8Cu,
+          "$81A2 arrival uses $842F bit-two phase to enter $3E with target $8C");
+
+    dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_ROUTE_ADJUST;
     dispatch_state.players[5].role = 1u;
     dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
     dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.players[5].target_zone = (uint8_t)(
+        (((uint32_t)(dispatch_state.players[5].court_depth >> 8) << 1u) & 0xE0u) |
+        (((uint32_t)dispatch_state.players[5].court_x >> 12u) & 0x1Fu));
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action != DD_PLAYER_ROUTE_ADJUST,
           "player state $3A advances into the regional route family");
@@ -440,12 +477,15 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].action = DD_PLAYER_INBOUNDER;
     dispatch_state.players[5].target_x = dispatch_state.players[5].court_x;
     dispatch_state.players[5].target_depth = dispatch_state.players[5].court_depth;
+    dispatch_state.players[5].target_zone = (uint8_t)(
+        (((uint32_t)(dispatch_state.players[5].court_depth >> 8) << 1u) & 0xE0u) |
+        (((uint32_t)dispatch_state.players[5].court_x >> 12u) & 0x1Fu));
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.carrier = 0xFFu;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD &&
           dispatch_state.ball.owner == 5u,
-          "player state $41 claims the inbound ball and advances to $30");
+          "player state $41 claims and aligns the inbound ball before state $30");
 
     dispatch_state = dispatch_base;
     dispatch_state.carrier = 5u;

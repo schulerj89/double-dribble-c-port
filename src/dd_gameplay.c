@@ -267,6 +267,11 @@ static uint8_t dd_pack_cpu_position(const DDPlayerState *player) {
     return dd_pack_cpu_coordinates(player->court_x, player->court_depth);
 }
 
+/* $AC64 mirrors the five-bit packed court column when direction bit $40 is set. */
+static uint8_t dd_mirror_packed_target(uint8_t packed) {
+    return (uint8_t)((packed & 0xE0u) | (0x1Fu - (packed & 0x1Fu)));
+}
+
 /* Bank 0 $AC2A divides the packed court into seven decision regions. */
 static uint8_t dd_cpu_region(uint8_t packed) {
     uint8_t column = (uint8_t)(packed & 0x1Fu);
@@ -276,6 +281,11 @@ static uint8_t dd_cpu_region(uint8_t packed) {
     if (packed >= 0x60u) --region;
     if (packed >= 0xA0u) --region;
     return region;
+}
+
+static uint8_t dd_cpu_possession_region(const DDGameplayState *state, uint8_t packed) {
+    if (state->possession_direction != 0u) packed = dd_mirror_packed_target(packed);
+    return dd_cpu_region(packed);
 }
 
 static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed) {
@@ -390,13 +400,34 @@ static void dd_move_cpu_player(DDPlayerState *player, uint32_t player_index,
 static void dd_choose_spacing_target(const DDTipoffAssetsHeader *assets,
                                      DDGameplayState *state, uint32_t player_index) {
     DDPlayerState *player = &state->players[player_index];
-    uint8_t region = dd_cpu_region(dd_pack_cpu_position(player));
+    uint8_t region = dd_cpu_possession_region(state, dd_pack_cpu_position(player));
     /* $8468 passes the current $AC2A region to $AC58. Region zero instead
        uses ($001A + 1) & 3; $AC58 reads the seven-byte table at $AC78. */
     uint8_t target_index = region != 0u
         ? region : (uint8_t)((state->cpu_global_frame + 1u) & 3u);
     uint8_t target = assets->cpu_region_targets[target_index];
+    if (state->possession_direction != 0u) target = dd_mirror_packed_target(target);
     dd_set_cpu_target(player, target);
+}
+
+/* $842F indexes the 14 bytes at $8452 by region and bit two of $001A. */
+static void dd_choose_regional_route_target(const DDTipoffAssetsHeader *assets,
+                                            DDGameplayState *state,
+                                            uint32_t player_index, uint8_t region) {
+    uint8_t phase = (uint8_t)((state->cpu_global_frame >> 2u) & 1u);
+    uint8_t target = assets->cpu_spacing_targets[(uint32_t)region * 2u + phase];
+    if (state->possession_direction != 0u) target = dd_mirror_packed_target(target);
+    dd_set_cpu_target(&state->players[player_index], target);
+}
+
+/* $9097(A=0,Y=8) finds the role-zero object on the possession-side team. */
+static uint32_t dd_possession_role_zero(const DDGameplayState *state) {
+    uint32_t first = state->possession_direction == 0u ? 5u : 0u;
+    uint32_t player;
+    for (player = first; player < first + 5u; ++player) {
+        if (state->players[player].role == 0u) return player;
+    }
+    return first;
 }
 
 static void dd_claim_loose_ball(DDGameplayState *state, uint32_t player_index) {
@@ -611,11 +642,13 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         }
         case DD_PLAYER_LIVE_FOLLOW_TARGET:
-            /* $8A3A: fixed-target mover $D978, then return to state $20. */
+            /* $8A3A uses packed equality through $D978, then clears $0600
+               and returns to state $20. */
             speed = 0x0200;
-            if (dd_cpu_at_target(player, speed)) {
+            if (dd_pack_cpu_position(player) == player->target_zone) {
                 player->action = DD_PLAYER_LIVE_TEAMMATE;
                 player->action_age = 0u;
+                player->route_step = 0u;
             }
             break;
         case DD_PLAYER_LIVE_PAIRED_DEFENDER: {
@@ -683,11 +716,18 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         case DD_PLAYER_LIVE_CPU_ROUTE:
             speed = 0x0220;
             if (dd_cpu_at_target(player, speed)) {
-                uint8_t region = dd_cpu_region(dd_pack_cpu_position(player));
-                uint8_t phase = (uint8_t)((state->cpu_global_frame >> 1u) & 1u);
+                uint8_t region = dd_cpu_possession_region(
+                    state, dd_pack_cpu_position(player));
+                uint8_t phase = (uint8_t)((state->cpu_global_frame >> 2u) & 1u);
                 uint8_t target = assets->cpu_spacing_targets[(uint32_t)region * 2u + phase];
+                if (state->possession_direction != 0u) {
+                    target = dd_mirror_packed_target(target);
+                }
                 if (dd_cpu_target_occupied(state, player_index, target)) {
                     target = assets->cpu_spacing_targets[(uint32_t)region * 2u + (phase ^ 1u)];
+                    if (state->possession_direction != 0u) {
+                        target = dd_mirror_packed_target(target);
+                    }
                 }
                 dd_set_cpu_target(player, target);
             }
@@ -765,28 +805,68 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             speed = 0x0220;
             break;
         case DD_PLAYER_ROUTE_APPROACH:
-            /* $81A2 routes role zero to $32; arrivals feed the $3C/$3E/$38
-               spacing family according to the current court region. */
+            /* $81A2: role zero returns to $32. At a packed target, enter
+               $3C/$3E/$38 by region and role. While moving, compare against
+               the role-zero object's region; a match enters $3A and tries the
+               signed $8262 offsets before falling back to $AC78[2]. */
             speed = 0x0220;
             if (player->role == 0u) {
                 player->action = DD_PLAYER_LIVE_CPU_SETUP;
                 player->action_age = 0u;
-            } else if (dd_cpu_at_target(player, speed)) {
-                uint8_t region = dd_cpu_region(dd_pack_cpu_position(player));
-                player->action = region == 0u ? DD_PLAYER_ROUTE_INIT
-                    : (player->role == 1u ? DD_PLAYER_LIVE_CPU_CUT : DD_PLAYER_LIVE_CPU_ROUTE);
-                player->action_age = 0u;
+            } else {
+                uint8_t packed = dd_pack_cpu_position(player);
+                if (packed == player->target_zone) {
+                    uint8_t region = dd_cpu_possession_region(state, packed);
+                    player->action = DD_PLAYER_LIVE_CPU_CUT;
+                    if (region == 0u) {
+                        player->action = DD_PLAYER_ROUTE_INIT;
+                    } else if (player->role != 1u) {
+                        player->action = DD_PLAYER_LIVE_CPU_ROUTE;
+                        dd_choose_regional_route_target(assets, state, player_index, region);
+                    }
+                    player->action_age = 0u;
+                } else {
+                    uint32_t reference = dd_possession_role_zero(state);
+                    uint8_t region = dd_cpu_possession_region(state, packed);
+                    uint8_t reference_region = dd_cpu_possession_region(
+                        state, dd_pack_cpu_position(&state->players[reference]));
+                    if (region == reference_region) {
+                        static const int16_t offset[2] = {-65, 95};
+                        uint32_t first = (state->cpu_global_frame & 2u) != 0u ? 1u : 0u;
+                        uint32_t attempt;
+                        int installed = 0;
+                        player->action = DD_PLAYER_ROUTE_ADJUST;
+                        player->action_age = 0u;
+                        for (attempt = 0u; attempt < 2u; ++attempt) {
+                            uint16_t candidate = (uint16_t)((uint16_t)packed +
+                                offset[first ^ attempt]);
+                            if (dd_cpu_packed_position_valid(candidate)) {
+                                dd_set_cpu_target(player, (uint8_t)candidate);
+                                installed = 1;
+                                break;
+                            }
+                        }
+                        if (!installed) {
+                            uint8_t target = assets->cpu_region_targets[2u];
+                            if (state->possession_direction != 0u) {
+                                target = dd_mirror_packed_target(target);
+                            }
+                            dd_set_cpu_target(player, target);
+                        }
+                    }
+                }
             }
             break;
         case DD_PLAYER_ROUTE_ADJUST:
-            /* $8266 is the shorter companion route: role zero returns to
-               $32, otherwise target arrival enters $3C (or $38 in region 0). */
+            /* $8266 is the shorter companion: role zero returns to $32;
+               packed-target arrival enters $3C or loops through $38 in region zero. */
             speed = 0x0220;
             if (player->role == 0u) {
                 player->action = DD_PLAYER_LIVE_CPU_SETUP;
                 player->action_age = 0u;
-            } else if (dd_cpu_at_target(player, speed)) {
-                player->action = dd_cpu_region(dd_pack_cpu_position(player)) == 0u
+            } else if (dd_pack_cpu_position(player) == player->target_zone) {
+                player->action = dd_cpu_possession_region(
+                    state, dd_pack_cpu_position(player)) == 0u
                     ? DD_PLAYER_ROUTE_INIT : DD_PLAYER_LIVE_CPU_CUT;
                 player->action_age = 0u;
             }
@@ -800,12 +880,13 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             player->velocity_height = 0;
             break;
         case DD_PLAYER_INBOUNDER:
-            /* $8C6B moves to the inbound point, becomes ball owner, then
-               advances to hold state $30. The scripted inbound path calls the
-               same transition at its traced frame. */
+            /* $8C6B tests packed arrival through $D978, writes owner/carrier,
+               copies the player's court coordinates to the ball, and enters $30. */
             speed = 0x0200;
-            if (dd_cpu_at_target(player, speed)) {
+            if (dd_pack_cpu_position(player) == player->target_zone) {
                 dd_claim_loose_ball(state, player_index);
+                state->ball.court_x = player->court_x;
+                state->ball.court_depth = player->court_depth;
                 player->action = DD_PLAYER_INBOUND_HOLD;
                 player->action_age = 0u;
             }
