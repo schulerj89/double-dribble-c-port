@@ -755,6 +755,15 @@ checkpoints. The four recursively inventoried entries `$8594/$85BE/$860A/$8682`
 are now Verified; remaining foul eligibility and final rebound variants remain
 part of the broader match-rules audit.
 
+The rim result is not an analog trajectory approximation. `$B377` first checks
+the ordinary `$34-$37` rim-height window, then detects shooter state `$42+`.
+Aim byte `$033C==$60` leaves result one; every other value increments it to
+result two and bypasses the expanding hoop boxes. Controlled original launch
+at aim `$56` reaches ball `$09` (miss), while launch at `$60` reaches ball
+`$06` (make). Native `dd_basket_contact_result` now follows that exact branch:
+`$B189` retains its normal hoop vector, and the aim byte alone selects the
+free-throw make/miss result. Regression checks cover both values.
+
 Controlled `$AE25->$B377` probes now isolate all four basket results: result
 `$01` enters score state `$06`, while `$02/$03/$04` enter loose initializer `$08`
 and then airborne `$09`. A separate `$04F0=$FF` probe shows `$AE25` wrapping the

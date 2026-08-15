@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 67.8,
+    "comprehensive_percent": 77.8,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 77,
-    "partial_count": 139,
+    "verified_count": 120,
+    "partial_count": 96,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -1211,12 +1211,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8F9A"
+        "Ghidra recursive node bank0:8F9A",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1226,12 +1239,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8FB6"
+        "Ghidra recursive node bank0:8FB6",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1245,12 +1271,25 @@
         "8F9A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8FB9"
+        "Ghidra recursive node bank0:8FB9",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1287,12 +1326,25 @@
         "B0B8"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9018"
+        "Ghidra recursive node bank0:9018",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1349,12 +1401,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9097"
+        "Ghidra recursive node bank0:9097",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1513,12 +1578,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9395"
+        "Ghidra recursive node bank0:9395",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1530,12 +1608,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9635"
+        "Ghidra recursive node bank0:9635",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1572,12 +1663,25 @@
         "98A3"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9651"
+        "Ghidra recursive node bank0:9651",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1587,12 +1691,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:98A3"
+        "Ghidra recursive node bank0:98A3",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1604,12 +1721,21 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:98B5"
+        "Ghidra recursive node bank0:98B5",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "bank0",
@@ -1619,12 +1745,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:990A"
+        "Ghidra recursive node bank0:990A",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "bank0",
@@ -1634,12 +1769,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:99CA"
+        "Ghidra recursive node bank0:99CA",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1651,12 +1799,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:99D9"
+        "Ghidra recursive node bank0:99D9",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -1668,12 +1829,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:9A31"
+        "Ghidra recursive node bank0:9A31",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3356,12 +3530,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AD12"
+        "Ghidra recursive node bank0:AD12",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3410,12 +3595,23 @@
         "ADC7"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:ADBB"
+        "Ghidra recursive node bank0:ADBB",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3427,12 +3623,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:ADC7"
+        "Ghidra recursive node bank0:ADC7",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3528,12 +3735,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AEAE"
+        "Ghidra recursive node bank0:AEAE",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3545,12 +3763,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AEDA"
+        "Ghidra recursive node bank0:AEDA",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3615,12 +3844,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AF6E"
+        "Ghidra recursive node bank0:AF6E",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3707,12 +3947,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B035"
+        "Ghidra recursive node bank0:B035",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3780,12 +4031,23 @@
         "9B42"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B138"
+        "Ghidra recursive node bank0:B138",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3795,12 +4057,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B167"
+        "Ghidra recursive node bank0:B167",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3871,12 +4144,23 @@
         "B3DF"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B377"
+        "Ghidra recursive node bank0:B377",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3886,12 +4170,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B3DF"
+        "Ghidra recursive node bank0:B3DF",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3919,12 +4214,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B400"
+        "Ghidra recursive node bank0:B400",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3934,12 +4240,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B412"
+        "Ghidra recursive node bank0:B412",
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_attach_ball",
+        "dd_pass_receiver_contact",
+        "dd_step_bounce_height",
+        "dd_basket_contact_result",
+        "dd_restart_height_bounce",
+        "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4117,12 +4434,21 @@
       ],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C477"
+        "Ghidra recursive node fixed7:C477",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4132,12 +4458,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C4B7"
+        "Ghidra recursive node fixed7:C4B7",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4147,12 +4482,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C68B"
+        "Ghidra recursive node fixed7:C68B",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4162,12 +4506,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C694"
+        "Ghidra recursive node fixed7:C694",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4177,12 +4530,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C6A5"
+        "Ghidra recursive node fixed7:C6A5",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4199,12 +4561,21 @@
         "C6EE"
       ],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C6AD"
+        "Ghidra recursive node fixed7:C6AD",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4219,12 +4590,21 @@
         "C6EE"
       ],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C6CD"
+        "Ghidra recursive node fixed7:C6CD",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4236,12 +4616,21 @@
         "C68B"
       ],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C6EE"
+        "Ghidra recursive node fixed7:C6EE",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4254,12 +4643,21 @@
       ],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C724"
+        "Ghidra recursive node fixed7:C724",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4269,12 +4667,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C783"
+        "Ghidra recursive node fixed7:C783",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4284,12 +4691,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C785"
+        "Ghidra recursive node fixed7:C785",
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_apply_made_basket_score",
+        "dd_step_ball",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4413,12 +4829,25 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D6BD"
+        "Ghidra recursive node fixed7:D6BD",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4428,12 +4857,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D6CD"
+        "Ghidra recursive node fixed7:D6CD",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4659,12 +5101,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D978"
+        "Ghidra recursive node fixed7:D978",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4674,12 +5129,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D98A"
+        "Ghidra recursive node fixed7:D98A",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4689,12 +5157,25 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D98D"
+        "Ghidra recursive node fixed7:D98D",
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_begin_common_inbound",
+        "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation",
+        "dd_swap_inbound_role_links",
+        "dd_start_inbound_release",
+        "dd_step_inbound_release",
+        "dd_cpu_at_target",
+        "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
     },
     {
       "bank": "fixed7",

@@ -533,6 +533,14 @@ static uint8_t dd_basket_contact_result(const DDGameplayState *state) {
     /* $AE25 increments byte counter $04F0 before calling $B377.  If that
        increment wraps to zero, $B377 rearms it and returns without contact. */
     if ((uint8_t)state->ball.action_age == 0u) return 0u;
+    /* `$B38D-$B39F` bypasses the expanding hoop boxes for player states
+       `$42+`: cursor `$033C==$60` retains result one, while every other
+       free-throw aim increments the result byte to two. */
+    if (state->shot_value == 1u &&
+        state->last_shooter < DD_GAMEPLAY_PLAYER_COUNT &&
+        state->players[state->last_shooter].action >= DD_PLAYER_FREE_THROW_SHOOTER) {
+        return state->free_throw_aim == 0x60u ? 1u : 2u;
+    }
     for (result = 1u; result <= 4u; ++result) {
         int32_t ball_half = (int32_t)result << 8;
         if (dd_axis_boxes_overlap(state->ball.court_depth, 0x005800,
@@ -3239,17 +3247,13 @@ static void dd_begin_free_throw_shot(const DDTipoffAssetsHeader *assets,
 }
 
 static void dd_release_free_throw(DDGameplayState *state) {
-    int32_t aim_error = (int32_t)state->free_throw_aim - 0x58;
     state->ball.action = DD_BALL_AIRBORNE;
     state->ball.action_age = 0u;
     state->ball.owner = DD_NO_OWNER;
     state->carrier = DD_NO_OWNER;
     dd_initialize_shot_flight(state);
-    /* `$87C0-$87EB` moves the free-throw cursor through `$50-$60`; the
-       launch routine consumes its current horizontal placement.  Preserve
-       that signed error as a small lateral term after `$B189` has aimed the
-       base vector, so center timing can make while early/late timing rims. */
-    state->ball.velocity_depth += aim_error * 0x28;
+    /* `$B377` consumes the `$50-$60` aim byte at rim height; `$B189` itself
+       keeps the ordinary hoop vector and must not be perturbed here. */
     dd_reset_possession_rules(state);
 }
 

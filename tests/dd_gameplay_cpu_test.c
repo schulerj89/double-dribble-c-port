@@ -1604,6 +1604,7 @@ int main(int argc, char **argv) {
           free_throw_rearm_state.free_throw_attempts == 1u,
           "$894C/$897A-$899E` reattaches the ball at `$20` and starts attempt two");
     dispatch_state.players[5].action = DD_PLAYER_FREE_THROW_FOLLOW;
+    dispatch_state.free_throw_aim = 0x60u;
     dispatch_state.ball.action = DD_BALL_AIRBORNE;
     dispatch_state.ball.action_age = 0u;
     dispatch_state.ball.court_x = 0x004900;
@@ -1625,6 +1626,27 @@ int main(int argc, char **argv) {
     }
     check(dispatch_state.score[1] == 1u,
           "$AEDE counter $08 awards one point while the foul shot is active");
+
+    dispatch_state = free_throw_state;
+    dispatch_state.free_throw_initialized = 1u;
+    dispatch_state.free_throw_attempts = 0u;
+    dispatch_state.free_throw_aim = 0x58u;
+    dispatch_state.shot_value = 1u;
+    dispatch_state.last_shooter = 5u;
+    dispatch_state.players[5].action = DD_PLAYER_FREE_THROW_FOLLOW;
+    dispatch_state.ball.action = DD_BALL_AIRBORNE;
+    dispatch_state.ball.action_age = 1u;
+    dispatch_state.ball.court_x = 0x004800;
+    dispatch_state.ball.court_depth = 0x005800;
+    dispatch_state.ball.height = 0x003500;
+    dispatch_state.ball.velocity_x = 0;
+    dispatch_state.ball.velocity_depth = 0;
+    dispatch_state.ball.velocity_height = 0;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "classify off-timing free throw at rim height");
+    check(dispatch_state.ball.action == DD_BALL_LOOSE_LAUNCH &&
+          dispatch_state.ball.outcome == 2u,
+          "$B38D-$B39F` makes only aim `$60`; every other free-throw aim returns result two");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_FREE_THROW;

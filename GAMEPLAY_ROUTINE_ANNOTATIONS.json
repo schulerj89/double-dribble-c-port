@@ -137,6 +137,70 @@
       "regression_tests": [
         "tests/dd_gameplay_cpu_test.c eight-direction user movement and state-$3F/shot motion clear checks"
       ]
+    },
+    {
+      "name": "inbound_formation_role_and_arrival_helpers",
+      "status": "verified",
+      "routines": [
+        "bank0:8F9A", "bank0:8FB6", "bank0:8FB9", "bank0:9018",
+        "bank0:9097", "bank0:9395", "bank0:9635", "bank0:9651",
+        "bank0:98A3", "bank0:99CA", "bank0:99D9", "bank0:9A31",
+        "fixed7:D6BD", "fixed7:D6CD", "fixed7:D978",
+        "fixed7:D98A", "fixed7:D98D"
+      ],
+      "evidence": [
+        "Headless Ghidra common inbound `$9635/$9651`, role `$9097`, swap `$99D9/$9A31`, formation `$D6BD`, and arrival `$D978/$D98A/$D98D` flow",
+        "FCEUX natural make/miss/OOB/backpass inbound traces in both directions through pickup, hold, release, pass, reception, and continuation"
+      ],
+      "native_symbols": [
+        "dd_begin_common_inbound", "dd_begin_missed_shot_inbound",
+        "dd_set_inbound_formation", "dd_swap_inbound_role_links",
+        "dd_start_inbound_release", "dd_step_inbound_release",
+        "dd_cpu_at_target", "dd_team_role"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c complete inbound formation/cause/ownership/role/pass/reception suite"
+      ]
+    },
+    {
+      "name": "score_hud_and_net_portable_effects",
+      "status": "verified",
+      "routines": [
+        "bank0:98B5", "bank0:990A", "fixed7:C477", "fixed7:C4B7",
+        "fixed7:C68B", "fixed7:C694", "fixed7:C6A5", "fixed7:C6AD",
+        "fixed7:C6CD", "fixed7:C6EE", "fixed7:C724", "fixed7:C783",
+        "fixed7:C785"
+      ],
+      "evidence": [
+        "Ghidra `$AEDE->$C477/$C6AD->$98B5/$990A` scoring, decimal, HUD queue, and net-phase chain",
+        "FCEUX score-counter trace proves deferred fourth-dispatch 1/2/3-point updates and net phases 2/1/0"
+      ],
+      "native_symbols": ["dd_apply_made_basket_score", "dd_step_ball", "dd_render_gameplay"],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c deferred 1/2/3-point score and exact net-tile phase checks",
+        "tools/Capture-NativeShooting.ps1"
+      ]
+    },
+    {
+      "name": "ball_dispatch_internal_physics_and_contact_blocks",
+      "status": "verified",
+      "routines": [
+        "bank0:AD12", "bank0:ADBB", "bank0:ADC7", "bank0:AEAE",
+        "bank0:AEDA", "bank0:AF6E", "bank0:B035", "bank0:B138",
+        "bank0:B167", "bank0:B377", "bank0:B3DF", "bank0:B400",
+        "bank0:B412"
+      ],
+      "evidence": [
+        "Ghidra ball-handler internal control blocks and `$B035/$B138/$B167/$B377/$B400/$B412` helper disassembly",
+        "FCEUX natural and controlled traces cover attach, immediate receiver contact, pass bounds/bounce, make, four ordinary rim results, free-throw aim `$56` miss, aim `$60` make, rebound, and bounce restart"
+      ],
+      "native_symbols": [
+        "dd_attach_ball", "dd_pass_receiver_contact", "dd_step_bounce_height",
+        "dd_basket_contact_result", "dd_restart_height_bounce", "dd_step_ball"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c ball internal branch, hand-offset, immediate contact, four basket results, perfect/off-timing free throw, and bounce suite"
+      ]
     }
   ]
 }

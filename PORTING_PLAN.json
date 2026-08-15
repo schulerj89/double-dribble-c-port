@@ -167,6 +167,18 @@
       ],
       "coverage_change_percent": 6.5,
       "reason": "Twenty-eight portable primitive nodes advance from Partial to Verified using the existing headless Ghidra flow, natural physics/route traces, four new controlled FCEUX boundary rejections, named native helpers, and exact regression assertions."
+    },
+    {
+      "milestone": "phase-2b-inbound-score-and-ball-helper-closure",
+      "status": "verified",
+      "completed": [
+        "17 common inbound formation, role swap, arrival, and pass-release helpers",
+        "13 portable score, decimal/HUD, and net presentation-effect helpers",
+        "13 internal ball dispatcher physics/contact helpers including exact free-throw aim result classification",
+        "43 comprehensive routine nodes promoted to Verified"
+      ],
+      "coverage_change_percent": 10.0,
+      "reason": "Previously component-verified inbound, scoring, and ball paths now have routine-level Ghidra/FCEUX/native/test mappings; free-throw `$B377` was corrected so aim `$60` makes and every other value returns result two."
     }
   ],
   "phases": [
