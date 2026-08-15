@@ -183,6 +183,9 @@ int main(int argc, char **argv) {
     check(state.live_frame == 944u && state.carrier == 5u &&
           state.players[5].action == DD_PLAYER_INBOUND_HOLD,
           "live 944 gives the inbounder the held ball in state $30");
+    check(state.players[5].court_depth == 0x009800 &&
+          state.players[5].target_depth == 0x009800,
+          "inbounder preserves extended target $0121 as baseline depth $98");
     check(dd_gameplay_advance_to(&pack, &state, 1344u, 0u), "advance to inbound release setup");
     check(state.live_frame == 988u &&
           state.players[5].action == DD_PLAYER_INBOUND_READY &&

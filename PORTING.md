@@ -394,7 +394,9 @@ The live Ghidra MCP bridge was not listening during this pass, so the evidence w
 
 The longer no-input capture through original frame 4200 disproved the previous native post-inbound route. At original frame 3572, immediately after pass state `$02` completes, player object slots `$02-$0B` contain actions `$0F,$20,$20,$22,$20,$40,$25,$37,$3C,$3E` and packed targets `$E8,$48,$CC,$B5,$79,$21,$A6,$D7,$A9,$8C`. At frame 3600 the receiver (original slot `$08`, native player 6) has advanced to action `$27` with ball action `$04`. It holds near court coordinate `$006A/$58` during those 28 frames; it does not replay the opening `$70->$6C->$85` carrier route and pass again.
 
-The freeze had a concrete native cause: inbound setup assigned all ten players action `$36`, but pass completion replaced only the receiver and switched back to LIVE. The native dispatcher had no `$36` case, so the other nine retained zero-use movement states. The repaired handoff restores the complete captured action/target table. State `$25` uses a distinct post-inbound route marker, holds for fourteen 30 Hz CPU evaluations, and then calls the native possession decision at the captured shooting coordinate. Off-ball states update on their original alternating-team cadence.
+The remaining formation corruption had three concrete native causes. First, the made-basket return skipped the original `$2D` rebound chase plus the other nine `$36->$37` walkers, so the later inbound began from unrelated live-play coordinates. Second, three ordinary-inbound targets were transcribed incorrectly, and the inbounder's 16-bit `$05D7/$05E7=$21/$01` target was truncated to `$0021`; that put it at depth `$18` instead of the baseline depth `$98`. Third, `dd_step_inbound` moved all ten objects every rendered frame behind fixed ages 177/229 and then teleported every object to a captured frame-3572 table on reception.
+
+The repaired path removes those age gates and the reception teleport. Made-basket return now runs `$2D->$2E->$2F->$30->$0D` alongside the first `$36->$37` formation. The ordinary inbound runs the real alternating scheduler through `$36/$41->$37/$30->$31/$40`, lets ball `$AD41->$B138` contact complete the 19-frame pass, and translates `$AD6D` by assigning carrier `$25`, role-three `$3C`, role-four `$3E`, and the `$842F` route target without changing any player coordinates. State `$25` then holds for fourteen 30 Hz CPU evaluations before the captured shooting decision, while off-ball states continue on their normal cadence.
 
 | ASM/Ghidra evidence | Recovered behavior | Native C |
 | --- | --- | --- |
@@ -411,7 +413,7 @@ The extended APU trace also establishes that ordinary gameplay has no continuous
 
 DDAP v11 introduced `gameplay.audio`: twenty normalized events over eighteen frames, with provenance bank 1 `$8653` (ROM file offset `$4663`, bounded source span `$40`). Win32 loops the synthesized gesture only while gameplay is LIVE and ball action is dribble `$01`; pass, shot, rebound, and dead-ball states stop it. `--dump-gameplay-wav` exports the generated pack-only WAV. This is the audio actually observed in FCEUX, rather than an invented gameplay BGM. DDAP v12 retains it and adds the seven route targets extracted from `$AC78`.
 
-The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the gameplay audio event count. The rebuilt original-frame-3572/native-1371 screenshot comparison differs by 2,560 pixels out of 57,344 (4.4643%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
+The regression executable verifies all ten frame-3572 actions/targets, the `$0121` extended inbounder destination, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the gameplay audio event count. Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively. The rebuilt original/native inbound checkpoints differ by 4.9613% at formation start (3324/1123), 4.7886% at hold (3501/1300), 5.2211% at release setup (3545/1344), 5.3432% at pass launch (3553/1352), and 5.7338% at reception (3572/1371).
 
 ### Complete dispatcher inventory slice
 
@@ -479,6 +481,16 @@ state `$30` retains the observed `$20` hold countdown/readiness gate, and state
 `$31` performs the eight-tick release rather than relying on a fixed pass event.
 The native checkpoints remain release setup at frame 1344/live 988, pass launch
 at frame 1352/live 996, and reception at frame 1371/live 1015.
+
+The preceding made-basket handoff is now part of the same dispatcher flow.
+Original frame 2783 supplies packed targets
+`$A4,$CA,$4E,$35,$D6,$8B,$56,$B3,$CB,$47`: object `$02` enters `$2D` while
+the other nine enter `$36`, then `$2E/$2F/$30` naturally returns the recovered
+ball through the alternate `$0D` branch. At frame 3324 `$9583/$9645` installs
+the ordinary targets `$E8,$48,$CC,$B5,$79,$0121,$A6,$D7,$A9,$44`. The high
+byte on `$0121` is retained as native depth `$98`; it is not mapper state.
+Reception follows `$AD41->$B138->$AD6D` and mutates actions/ownership/targets
+only, so there is no native coordinate restoration table.
 
 Controlled state `$30` probes also cover `$8EE2`'s two nonstandard branches.
 With mode bit `$40`, frame 2601 writes ball `$00`, selects the same-side role-zero
