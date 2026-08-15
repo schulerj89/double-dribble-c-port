@@ -1744,6 +1744,23 @@ Reproduce the native contact/landing pair with
 
 ## Open research questions
 
+### Exhaustive routine inventory gate
+
+`tools/ghidra/Run-PortableGameplayInventory.ps1` now seeds all 34 player,
+18 user, and 13 ball dispatch targets plus match/rule/CPU roots, recursively
+walks direct calls and tail calls in Ghidra, and generates
+`GAMEPLAY_ROUTINES.json`. The first graph contains **181 bank-0 routines and
+42 fixed-bank routines (223 total)**. The build validates unique bank/address
+keys and the manifest's summary counts.
+
+All 223 records deliberately begin as `unclassified` / `inventory_pending`.
+The older 92.6% number remains visible only as the bounded, hand-catalogued
+baseline; comprehensive coverage is `null`, not 0% or 100%, until every graph
+node is classified as portable behavior, portable presentation/data support,
+or an excluded NES mechanism and portable nodes receive Ghidra/FCEUX,
+native-symbol, and regression annotations. This prevents dispatcher counts
+from concealing uncatalogued helper routines.
+
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.

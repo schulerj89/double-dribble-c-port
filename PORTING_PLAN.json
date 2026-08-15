@@ -6,8 +6,10 @@
     "catalogued_weighted_coverage_percent": 92.6,
     "catalogued_match_rules_percent": 80.8,
     "comprehensive_portable_coverage_percent": null,
-    "status": "inventory_required",
-    "note": "The existing percentage measures the current catalog. It cannot be called comprehensive until phase 0 proves that the reachable portable routine inventory is exhaustive."
+    "status": "classification_required",
+    "recursive_routine_graph_count": 223,
+    "recursive_routine_graph_unclassified": 223,
+    "note": "The existing percentage measures the current catalog. The recursive graph now establishes candidate routines, but comprehensive coverage remains unset until phase 0 classifies every node."
   },
   "scope": {
     "included": [
@@ -62,6 +64,17 @@
     ]
   },
   "progress": [
+    {
+      "milestone": "phase-0a-recursive-ghidra-routine-graph",
+      "status": "verified",
+      "completed": [
+        "181 recursively reachable bank-0 gameplay routines",
+        "42 recursively reachable fixed-bank gameplay routines",
+        "machine validation for duplicate nodes and manifest summary counts"
+      ],
+      "coverage_change_percent": 0.0,
+      "reason": "The comprehensive denominator now has 223 candidate nodes, but coverage remains intentionally unset until all nodes are classified as portable or NES-only and annotated with evidence/status."
+    },
     {
       "milestone": "phase-1a-visible-continuity",
       "status": "verified",

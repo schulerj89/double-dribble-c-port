@@ -3,6 +3,26 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
+$projectRoot = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$routineManifestPath = Join-Path $projectRoot 'GAMEPLAY_ROUTINES.json'
+if (Test-Path -LiteralPath $routineManifestPath -PathType Leaf) {
+    $routineManifest = Get-Content -Raw -LiteralPath $routineManifestPath | ConvertFrom-Json
+    if ($routineManifest.schema -ne 1) { throw 'Unsupported GAMEPLAY_ROUTINES.json schema.' }
+    $routineKeys = @($routineManifest.routines | ForEach-Object { "$($_.bank):$($_.address)" })
+    if (($routineKeys | Sort-Object -Unique).Count -ne $routineKeys.Count) {
+        throw 'GAMEPLAY_ROUTINES.json contains duplicate bank/address routines.'
+    }
+    $unclassified = @($routineManifest.routines | Where-Object {
+        $_.classification -eq 'unclassified' -or $_.status -eq 'inventory_pending'
+    }).Count
+    if ($routineManifest.coverage.routine_count -ne $routineKeys.Count -or
+        $routineManifest.coverage.unclassified_count -ne $unclassified) {
+        throw 'GAMEPLAY_ROUTINES.json coverage counts do not match its routine records.'
+    }
+    Write-Host ('  Routine graph    {0} nodes ({1} awaiting classification)' -f
+        $routineKeys.Count, $unclassified)
+}
+
 $components = @(
     [pscustomobject]@{
         Name = 'Player actions'; Weight = 0.30; Expected = 34

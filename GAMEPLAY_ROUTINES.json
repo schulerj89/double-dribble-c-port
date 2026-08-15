@@ -1,0 +1,3674 @@
+{
+  "schema": 1,
+  "scope": "All recursively reachable bank-0 and fixed-bank gameplay routines from the player, user, ball, match, audio-request, rule, and CPU dispatcher roots. Classification is required before comprehensive coverage can be calculated.",
+  "source": {
+    "rom": "Double Dribble (USA) (Rev 1)",
+    "sha256": "BF397EAE9486044FCA90A99215330203D6F85CAB63A8072F28CACCC139B5388CF",
+    "generator": "tools/ghidra/ExportPortableGameplayInventory.java"
+  },
+  "banks": [
+    {
+      "bank": "bank0",
+      "roots": [
+        "8195",
+        "81A2",
+        "8266",
+        "8297",
+        "829E",
+        "8371",
+        "83C5",
+        "8460",
+        "8491",
+        "8594",
+        "85BE",
+        "860A",
+        "8682",
+        "89B2",
+        "8A16",
+        "8A3A",
+        "8A98",
+        "8AF4",
+        "8B12",
+        "8B5A",
+        "8BC5",
+        "8C6B",
+        "8D1F",
+        "8D57",
+        "8D9C",
+        "8DAB",
+        "8DD2",
+        "8DF7",
+        "8E71",
+        "8E88",
+        "8EBF",
+        "8EE2",
+        "8FE0",
+        "904D",
+        "9094",
+        "9635",
+        "9645",
+        "9651",
+        "98A3",
+        "A014",
+        "A0B2",
+        "A0C3",
+        "A0D9",
+        "A1CC",
+        "A3E2",
+        "A504",
+        "A556",
+        "A557",
+        "A5D0",
+        "A638",
+        "A712",
+        "A765",
+        "A780",
+        "AC83",
+        "ACAB",
+        "ACB6",
+        "ACD6",
+        "AD41",
+        "ADF2",
+        "AE0C",
+        "AE25",
+        "AEDE",
+        "AF46",
+        "AF72",
+        "AFDD",
+        "B017"
+      ],
+      "routine_count": 181
+    },
+    {
+      "bank": "fixed7",
+      "roots": [
+        "C02B",
+        "C141",
+        "C477",
+        "C694",
+        "C6AD",
+        "D368",
+        "D3C4",
+        "D3D5",
+        "D6BD",
+        "D6FD",
+        "D759"
+      ],
+      "routine_count": 42
+    }
+  ],
+  "coverage": {
+    "comprehensive_percent": null,
+    "reason": "Inventory classification and implementation/evidence annotations are incomplete.",
+    "routine_count": 223,
+    "unclassified_count": 223
+  },
+  "routines": [
+    {
+      "bank": "bank0",
+      "address": "8195",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [
+        "8468"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "81A2",
+      "instruction_count": 83,
+      "truncated": false,
+      "calls": [
+        "8CF3",
+        "9097",
+        "ABCD",
+        "AC2A",
+        "AC58"
+      ],
+      "tail_calls": [
+        "825F",
+        "841B"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "825F",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8266",
+      "instruction_count": 20,
+      "truncated": false,
+      "calls": [
+        "ABCD",
+        "AC2A"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8297",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "829E",
+      "instruction_count": 81,
+      "truncated": false,
+      "calls": [
+        "9097",
+        "9AFB",
+        "9AFD",
+        "ABCD",
+        "AC2A",
+        "AC58",
+        "AC5C"
+      ],
+      "tail_calls": [
+        "834D",
+        "8368",
+        "836B",
+        "8491"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "834D",
+      "instruction_count": 14,
+      "truncated": false,
+      "calls": [
+        "A84C",
+        "ABCD",
+        "AC2A",
+        "AC58"
+      ],
+      "tail_calls": [
+        "8491"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8368",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [
+        "A84C"
+      ],
+      "tail_calls": [
+        "8491"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "836B",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "8491"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8371",
+      "instruction_count": 34,
+      "truncated": false,
+      "calls": [
+        "9AFB",
+        "ABCD",
+        "AC5C"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "83C5",
+      "instruction_count": 44,
+      "truncated": false,
+      "calls": [
+        "842F",
+        "9097",
+        "ABCD",
+        "AC2A",
+        "B503"
+      ],
+      "tail_calls": [
+        "8429"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "841B",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [
+        "842F"
+      ],
+      "tail_calls": [
+        "8429"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8429",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "842F",
+      "instruction_count": 18,
+      "truncated": false,
+      "calls": [
+        "AC2A",
+        "AC5C"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8460",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [
+        "B503"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8468",
+      "instruction_count": 19,
+      "truncated": false,
+      "calls": [
+        "ABCD",
+        "AC2A",
+        "AC58"
+      ],
+      "tail_calls": [
+        "8472"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8472",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [
+        "ABCD",
+        "AC58"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8491",
+      "instruction_count": 55,
+      "truncated": false,
+      "calls": [
+        "9097"
+      ],
+      "tail_calls": [
+        "ABCD"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8594",
+      "instruction_count": 59,
+      "truncated": false,
+      "calls": [
+        "9097",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "85BE",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "860A",
+      "instruction_count": 14,
+      "truncated": false,
+      "calls": [
+        "ABCD",
+        "AD0E"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8682",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "89B2",
+      "instruction_count": 7,
+      "truncated": false,
+      "calls": [
+        "91A6"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8A16",
+      "instruction_count": 15,
+      "truncated": false,
+      "calls": [
+        "8BF8",
+        "90B3",
+        "9102",
+        "9139"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8A3A",
+      "instruction_count": 12,
+      "truncated": false,
+      "calls": [
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8A57",
+      "instruction_count": 27,
+      "truncated": false,
+      "calls": [
+        "9097",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8A98",
+      "instruction_count": 40,
+      "truncated": false,
+      "calls": [
+        "8A57",
+        "9102",
+        "9139",
+        "A85A",
+        "A896",
+        "AA98"
+      ],
+      "tail_calls": [
+        "8491"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8AF4",
+      "instruction_count": 12,
+      "truncated": false,
+      "calls": [
+        "B503"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8B12",
+      "instruction_count": 30,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "9ABD",
+        "A6C3"
+      ],
+      "tail_calls": [
+        "9208"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8B5A",
+      "instruction_count": 44,
+      "truncated": false,
+      "calls": [
+        "8BF8",
+        "ABCD",
+        "AC2A"
+      ],
+      "tail_calls": [
+        "8BB9",
+        "8BBF"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8BB9",
+      "instruction_count": 6,
+      "truncated": false,
+      "calls": [
+        "8BF8",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8BBF",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [
+        "8BF8",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8BC5",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8BF8",
+      "instruction_count": 27,
+      "truncated": false,
+      "calls": [
+        "8C02"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8C02",
+      "instruction_count": 21,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8C6B",
+      "instruction_count": 57,
+      "truncated": false,
+      "calls": [
+        "9395",
+        "ABCD",
+        "AD0E"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8CF3",
+      "instruction_count": 20,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8D1F",
+      "instruction_count": 22,
+      "truncated": false,
+      "calls": [
+        "AA98",
+        "AAEE",
+        "B503"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8D57",
+      "instruction_count": 29,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "9ABD",
+        "A7EA",
+        "B189"
+      ],
+      "tail_calls": [
+        "8D99"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8D99",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8D9C",
+      "instruction_count": 6,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8DAB",
+      "instruction_count": 12,
+      "truncated": false,
+      "calls": [
+        "91FB",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8DD2",
+      "instruction_count": 15,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8DF7",
+      "instruction_count": 54,
+      "truncated": false,
+      "calls": [
+        "9ABD",
+        "A6C3",
+        "AD0E"
+      ],
+      "tail_calls": [
+        "92BD"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8E71",
+      "instruction_count": 10,
+      "truncated": false,
+      "calls": [
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8E88",
+      "instruction_count": 23,
+      "truncated": false,
+      "calls": [
+        "9395",
+        "ABCD",
+        "AD0E"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8EBF",
+      "instruction_count": 15,
+      "truncated": false,
+      "calls": [
+        "9395",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8EE2",
+      "instruction_count": 78,
+      "truncated": false,
+      "calls": [
+        "9018",
+        "9097",
+        "9395",
+        "99D9",
+        "9A31",
+        "A0DA",
+        "B503"
+      ],
+      "tail_calls": [
+        "8FB6",
+        "8FB9"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8F9A",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8FB6",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8FB9",
+      "instruction_count": 42,
+      "truncated": false,
+      "calls": [
+        "9097"
+      ],
+      "tail_calls": [
+        "8F9A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "8FE0",
+      "instruction_count": 24,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "8F9A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9018",
+      "instruction_count": 22,
+      "truncated": false,
+      "calls": [
+        "B503"
+      ],
+      "tail_calls": [
+        "B0B8"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "904D",
+      "instruction_count": 21,
+      "truncated": false,
+      "calls": [
+        "8BF8",
+        "9D2D",
+        "AA98",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9094",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9097",
+      "instruction_count": 15,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "90B3",
+      "instruction_count": 33,
+      "truncated": false,
+      "calls": [
+        "9BB0",
+        "9D2D",
+        "AA98"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9102",
+      "instruction_count": 25,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9B42"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9139",
+      "instruction_count": 10,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "91A6",
+      "instruction_count": 124,
+      "truncated": false,
+      "calls": [
+        "8468",
+        "9097",
+        "9395",
+        "99D9",
+        "9A31",
+        "A347",
+        "ABCD",
+        "AC2A",
+        "AD0E",
+        "B435",
+        "B503"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "91FB",
+      "instruction_count": 87,
+      "truncated": false,
+      "calls": [
+        "8468",
+        "9097",
+        "9395",
+        "99D9",
+        "9A31",
+        "A347",
+        "ABCD",
+        "AC2A",
+        "AD0E",
+        "B435",
+        "B503"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9208",
+      "instruction_count": 81,
+      "truncated": false,
+      "calls": [
+        "8468",
+        "9097",
+        "9395",
+        "99D9",
+        "9A31",
+        "ABCD",
+        "AC2A",
+        "AD0E",
+        "B503"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "92BD",
+      "instruction_count": 89,
+      "truncated": false,
+      "calls": [
+        "842F",
+        "9097",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9395",
+      "instruction_count": 12,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9635",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [
+        "9651"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9645",
+      "instruction_count": 132,
+      "truncated": false,
+      "calls": [
+        "9097",
+        "9395",
+        "ABCD"
+      ],
+      "tail_calls": [
+        "98A3"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9651",
+      "instruction_count": 126,
+      "truncated": false,
+      "calls": [
+        "9097",
+        "9395",
+        "ABCD"
+      ],
+      "tail_calls": [
+        "98A3"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "98A3",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "98B5",
+      "instruction_count": 44,
+      "truncated": false,
+      "calls": [
+        "990A"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "990A",
+      "instruction_count": 13,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "99CA",
+      "instruction_count": 7,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "99D9",
+      "instruction_count": 38,
+      "truncated": false,
+      "calls": [
+        "99CA"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9A31",
+      "instruction_count": 14,
+      "truncated": false,
+      "calls": [
+        "99CA"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9ABD",
+      "instruction_count": 49,
+      "truncated": false,
+      "calls": [
+        "9B0E"
+      ],
+      "tail_calls": [
+        "9ABD"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9AFB",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9AFD",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9B0E",
+      "instruction_count": 7,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9B42",
+      "instruction_count": 39,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9B84",
+      "instruction_count": 20,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9BB0",
+      "instruction_count": 30,
+      "truncated": false,
+      "calls": [
+        "9BF6",
+        "9C06",
+        "9C0B"
+      ],
+      "tail_calls": [
+        "9BB2",
+        "9BF6",
+        "9C06"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9BB2",
+      "instruction_count": 29,
+      "truncated": false,
+      "calls": [
+        "9BF6",
+        "9C06",
+        "9C0B"
+      ],
+      "tail_calls": [
+        "9BB2",
+        "9BF6",
+        "9C06"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9BF6",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9BF8",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9C06",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9BF8"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9C0B",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9CA0",
+      "instruction_count": 41,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9CF6",
+      "instruction_count": 27,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9D2D",
+      "instruction_count": 94,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9D35",
+        "9D55",
+        "9D9A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9D35",
+      "instruction_count": 90,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9D35",
+        "9D55",
+        "9D9A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9D55",
+      "instruction_count": 76,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9D55",
+        "9D9A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "9D9A",
+      "instruction_count": 43,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9D9A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A014",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A0B2",
+      "instruction_count": 11,
+      "truncated": false,
+      "calls": [
+        "A85A",
+        "A896"
+      ],
+      "tail_calls": [
+        "A0D0"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A0C3",
+      "instruction_count": 10,
+      "truncated": false,
+      "calls": [
+        "A85A",
+        "A896"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A0D0",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [
+        "A85A",
+        "A896"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A0D9",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A0DA",
+      "instruction_count": 40,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A129",
+      "instruction_count": 77,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A1CC",
+      "instruction_count": 82,
+      "truncated": false,
+      "calls": [
+        "A129",
+        "A29D",
+        "A37D",
+        "A84C",
+        "A85A",
+        "A896",
+        "AA98",
+        "B0AB"
+      ],
+      "tail_calls": [
+        "9651",
+        "A280",
+        "AA75"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A21F",
+      "instruction_count": 46,
+      "truncated": false,
+      "calls": [
+        "A29D",
+        "A84C",
+        "A85A",
+        "A896",
+        "AA98",
+        "B0AB"
+      ],
+      "tail_calls": [
+        "A280",
+        "AA75"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A280",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [
+        "A84C",
+        "A85A",
+        "A896"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A29D",
+      "instruction_count": 83,
+      "truncated": false,
+      "calls": [
+        "99D9",
+        "9A31"
+      ],
+      "tail_calls": [
+        "A33D",
+        "A342"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A33D",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A342",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A347",
+      "instruction_count": 22,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9645"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A37D",
+      "instruction_count": 45,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9645"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A3E2",
+      "instruction_count": 128,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "9097",
+        "9395",
+        "99D9",
+        "9A31",
+        "A347",
+        "A84C",
+        "A85A",
+        "A896",
+        "AD0E",
+        "B435"
+      ],
+      "tail_calls": [
+        "9645",
+        "A500",
+        "A607"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A44B",
+      "instruction_count": 80,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "9097",
+        "9395",
+        "99D9",
+        "9A31",
+        "AD0E"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A482",
+      "instruction_count": 56,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "9097"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A500",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [
+        "8491"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A504",
+      "instruction_count": 33,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "9ABD",
+        "A7EA",
+        "A84C",
+        "A85A",
+        "A896",
+        "B189"
+      ],
+      "tail_calls": [
+        "9651",
+        "A555"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A555",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A556",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A557",
+      "instruction_count": 48,
+      "truncated": false,
+      "calls": [
+        "842F",
+        "99D9",
+        "9A31",
+        "A85A",
+        "A896",
+        "ABCD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A5D0",
+      "instruction_count": 44,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "A896"
+      ],
+      "tail_calls": [
+        "A624",
+        "A85A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A607",
+      "instruction_count": 14,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "A896"
+      ],
+      "tail_calls": [
+        "A85A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A624",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "A896"
+      ],
+      "tail_calls": [
+        "A85A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A638",
+      "instruction_count": 63,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "92BD",
+        "9ABD",
+        "A6C3",
+        "A85A",
+        "A896"
+      ],
+      "tail_calls": [
+        "A44B"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A6C3",
+      "instruction_count": 37,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9B42",
+        "A6F4"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A6F4",
+      "instruction_count": 13,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9B42"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A712",
+      "instruction_count": 36,
+      "truncated": false,
+      "calls": [
+        "9B42",
+        "A84C",
+        "A896",
+        "AA98"
+      ],
+      "tail_calls": [
+        "A85A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A765",
+      "instruction_count": 10,
+      "truncated": false,
+      "calls": [
+        "8491",
+        "A85A",
+        "A896",
+        "AA98"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A780",
+      "instruction_count": 37,
+      "truncated": false,
+      "calls": [
+        "9395",
+        "A129",
+        "A21F",
+        "A482"
+      ],
+      "tail_calls": [
+        "9651",
+        "A7D4"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A7D4",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [
+        "A85A",
+        "A896",
+        "AA07"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A7EA",
+      "instruction_count": 37,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A84C",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [
+        "9CA0",
+        "9CF6"
+      ],
+      "tail_calls": [
+        "9CA0"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A85A",
+      "instruction_count": 27,
+      "truncated": false,
+      "calls": [
+        "AA20",
+        "AA4A"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "A896",
+      "instruction_count": 38,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AA07",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AA20",
+      "instruction_count": 21,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AA4A",
+      "instruction_count": 23,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AA75",
+      "instruction_count": 14,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AA98",
+      "instruction_count": 10,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AAEE",
+      "instruction_count": 27,
+      "truncated": false,
+      "calls": [
+        "9D2D"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AB53",
+      "instruction_count": 13,
+      "truncated": false,
+      "calls": [
+        "AB72"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AB72",
+      "instruction_count": 19,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AB96",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [
+        "ABAB"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ABAB",
+      "instruction_count": 21,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ABCD",
+      "instruction_count": 38,
+      "truncated": false,
+      "calls": [
+        "9BB0",
+        "9D2D",
+        "AA98",
+        "AB96"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AC2A",
+      "instruction_count": 24,
+      "truncated": false,
+      "calls": [
+        "AC64"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AC58",
+      "instruction_count": 17,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AC5C",
+      "instruction_count": 15,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AC64",
+      "instruction_count": 11,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AC83",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [
+        "AB53"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ACAB",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [
+        "B501"
+      ],
+      "tail_calls": [
+        "B400"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ACB6",
+      "instruction_count": 15,
+      "truncated": false,
+      "calls": [
+        "B035"
+      ],
+      "tail_calls": [
+        "B400"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ACD6",
+      "instruction_count": 26,
+      "truncated": false,
+      "calls": [
+        "9ABD",
+        "AD0E",
+        "B035",
+        "B400"
+      ],
+      "tail_calls": [
+        "ACD6"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AD0E",
+      "instruction_count": 21,
+      "truncated": false,
+      "calls": [
+        "B035",
+        "B400"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AD12",
+      "instruction_count": 19,
+      "truncated": false,
+      "calls": [
+        "B035",
+        "B400"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AD41",
+      "instruction_count": 53,
+      "truncated": false,
+      "calls": [
+        "842F",
+        "9097",
+        "99D9",
+        "9A31",
+        "ABCD",
+        "AD0E",
+        "B035",
+        "B138"
+      ],
+      "tail_calls": [
+        "AD12",
+        "ADBB"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ADBB",
+      "instruction_count": 21,
+      "truncated": false,
+      "calls": [
+        "9CA0",
+        "9CF6",
+        "B3E9"
+      ],
+      "tail_calls": [
+        "ADC7"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ADC7",
+      "instruction_count": 14,
+      "truncated": false,
+      "calls": [
+        "B3E9"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "ADF2",
+      "instruction_count": 13,
+      "truncated": false,
+      "calls": [
+        "9CA0",
+        "9CF6",
+        "B167",
+        "B3E9",
+        "B473"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AE0C",
+      "instruction_count": 11,
+      "truncated": false,
+      "calls": [
+        "B035",
+        "B400"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AE25",
+      "instruction_count": 59,
+      "truncated": false,
+      "calls": [
+        "98B5",
+        "B377",
+        "B501"
+      ],
+      "tail_calls": [
+        "AEAE",
+        "AEDA"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AEAE",
+      "instruction_count": 19,
+      "truncated": false,
+      "calls": [
+        "9B84",
+        "9CA0",
+        "9CF6",
+        "B3E9",
+        "B412",
+        "B473"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AEDA",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [
+        "B3E9"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AEDE",
+      "instruction_count": 49,
+      "truncated": false,
+      "calls": [
+        "98B5",
+        "B3E9"
+      ],
+      "tail_calls": [
+        "AF6E"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AF46",
+      "instruction_count": 18,
+      "truncated": false,
+      "calls": [
+        "9B84",
+        "9CA0",
+        "9CF6",
+        "B3E9",
+        "B412"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AF6E",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [
+        "B3E9"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AF72",
+      "instruction_count": 45,
+      "truncated": false,
+      "calls": [
+        "9395",
+        "9BB0",
+        "AEDA",
+        "B501"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "AFDD",
+      "instruction_count": 23,
+      "truncated": false,
+      "calls": [
+        "9B84",
+        "9CA0",
+        "9CF6",
+        "B3E9",
+        "B412",
+        "B473"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B017",
+      "instruction_count": 13,
+      "truncated": false,
+      "calls": [
+        "B501"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B035",
+      "instruction_count": 30,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B0AB",
+      "instruction_count": 47,
+      "truncated": false,
+      "calls": [
+        "9BB0",
+        "9D2D",
+        "AA98",
+        "B035"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B0B8",
+      "instruction_count": 41,
+      "truncated": false,
+      "calls": [
+        "9BB0",
+        "9D2D",
+        "AA98"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B11F",
+      "instruction_count": 11,
+      "truncated": false,
+      "calls": [
+        "AA20"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B138",
+      "instruction_count": 20,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "9B42"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B167",
+      "instruction_count": 17,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B189",
+      "instruction_count": 234,
+      "truncated": false,
+      "calls": [
+        "9BB0",
+        "9D2D",
+        "AB53"
+      ],
+      "tail_calls": [
+        "B280",
+        "B2A0"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B280",
+      "instruction_count": 120,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "B280",
+        "B2A0"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B2A0",
+      "instruction_count": 103,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "B2A0"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B377",
+      "instruction_count": 55,
+      "truncated": false,
+      "calls": [
+        "9B42"
+      ],
+      "tail_calls": [
+        "B3DF"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B3DF",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B3E9",
+      "instruction_count": 18,
+      "truncated": false,
+      "calls": [
+        "AA4A",
+        "B11F"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B400",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B412",
+      "instruction_count": 15,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B435",
+      "instruction_count": 28,
+      "truncated": false,
+      "calls": [
+        "9B42"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B473",
+      "instruction_count": 67,
+      "truncated": false,
+      "calls": [
+        "9395",
+        "9B42"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B501",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "bank0",
+      "address": "B503",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C02B",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "C02B"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C141",
+      "instruction_count": 12,
+      "truncated": false,
+      "calls": [
+        "C16A",
+        "C17B",
+        "CC99"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C15E",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C16A",
+      "instruction_count": 11,
+      "truncated": false,
+      "calls": [
+        "C15E"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C17B",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [
+        "C15E"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C477",
+      "instruction_count": 45,
+      "truncated": false,
+      "calls": [
+        "C4B7"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C4B7",
+      "instruction_count": 22,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C68B",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C694",
+      "instruction_count": 16,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C6A5",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C6AD",
+      "instruction_count": 58,
+      "truncated": false,
+      "calls": [
+        "C6A5",
+        "C724"
+      ],
+      "tail_calls": [
+        "C68B",
+        "C6CD",
+        "C6EE"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C6CD",
+      "instruction_count": 42,
+      "truncated": false,
+      "calls": [
+        "C6A5"
+      ],
+      "tail_calls": [
+        "C68B",
+        "C6EE"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C6EE",
+      "instruction_count": 27,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "C68B"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C724",
+      "instruction_count": 52,
+      "truncated": false,
+      "calls": [
+        "C783",
+        "C785"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C783",
+      "instruction_count": 5,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "C785",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "CC1A",
+      "instruction_count": 17,
+      "truncated": false,
+      "calls": [
+        "CCC1"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "CC99",
+      "instruction_count": 164,
+      "truncated": false,
+      "calls": [
+        "CC1A",
+        "CD9B"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "CCC1",
+      "instruction_count": 98,
+      "truncated": false,
+      "calls": [
+        "CD9B"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "CD9B",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D368",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D3C4",
+      "instruction_count": 9,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D3D5",
+      "instruction_count": 1,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D6BD",
+      "instruction_count": 8,
+      "truncated": false,
+      "calls": [
+        "D6CD"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D6CD",
+      "instruction_count": 24,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D6FD",
+      "instruction_count": 33,
+      "truncated": false,
+      "calls": [
+        "D978"
+      ],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D759",
+      "instruction_count": 116,
+      "truncated": false,
+      "calls": [
+        "D8F1",
+        "D8FA",
+        "D978",
+        "D99A"
+      ],
+      "tail_calls": [
+        "D857",
+        "D862",
+        "D867",
+        "D8B0",
+        "D98A",
+        "D98D"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D7CC",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "D98D"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D7DE",
+      "instruction_count": 36,
+      "truncated": false,
+      "calls": [
+        "D8F1"
+      ],
+      "tail_calls": [
+        "D8B0",
+        "D98A",
+        "D98D"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D857",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "D7DE"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D862",
+      "instruction_count": 38,
+      "truncated": false,
+      "calls": [
+        "D8FA",
+        "D99A"
+      ],
+      "tail_calls": [
+        "D7CC",
+        "D857",
+        "D98A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D867",
+      "instruction_count": 16,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "D7CC",
+        "D857",
+        "D98A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D8B0",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "D98A"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D8F1",
+      "instruction_count": 48,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "D92D"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D8FA",
+      "instruction_count": 44,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D92D",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D978",
+      "instruction_count": 7,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D98A",
+      "instruction_count": 4,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D98D",
+      "instruction_count": 3,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "D99A",
+      "instruction_count": 81,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "DA04",
+        "DA38"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "DA04",
+      "instruction_count": 26,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [
+        "DA04"
+      ],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    },
+    {
+      "bank": "fixed7",
+      "address": "DA38",
+      "instruction_count": 2,
+      "truncated": false,
+      "calls": [],
+      "tail_calls": [],
+      "classification": "unclassified",
+      "status": "inventory_pending",
+      "evidence": [],
+      "native_symbols": [],
+      "regression_tests": []
+    }
+  ]
+}
