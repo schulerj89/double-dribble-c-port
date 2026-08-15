@@ -994,6 +994,37 @@ int main(int argc, char **argv) {
           period_state.players[5].action == DD_PLAYER_TIP_CPU,
           "expired period resets the 2ND PERIOD formation and five-minute clock");
 
+    period_state = dispatch_base;
+    period_state.period = 4u;
+    period_state.clock_minutes = 0u;
+    period_state.clock_seconds = 0u;
+    period_state.clock_expired = 1;
+    period_state.clock_expired_frame = period_state.scene_frame;
+    period_state.ball.action = DD_BALL_PASS;
+    check(dd_gameplay_step(&pack, &period_state, 0u),
+          "step fourth-period expiration while ball remains in flight");
+    check(period_state.phase != DD_GAMEPLAY_GAME_SET,
+          "$93E1 waits for held/rebound ball state before GAME SET");
+    period_state.ball.action = DD_BALL_REBOUND;
+    period_state.clock_expired_frame = period_state.scene_frame;
+    check(dd_gameplay_step(&pack, &period_state, 0u),
+          "step fourth-period frame after 00:00");
+    check(period_state.phase == DD_GAMEPLAY_GAME_SET &&
+          period_state.game_set_age == 0u && !period_state.return_to_title,
+          "fourth-period expiration enters GAME SET instead of a fifth tip formation");
+    for (player = 0u; player < 258u; ++player) {
+        check(dd_gameplay_step(&pack, &period_state, 0u),
+              "advance GAME SET hold to original blue frame");
+    }
+    check(period_state.game_set_age == 258u && !period_state.return_to_title,
+          "GAME SET holds 258 frames before the original blue transition");
+    for (player = 258u; player < 282u; ++player) {
+        check(dd_gameplay_step(&pack, &period_state, 0u),
+              "advance blue transition to title return");
+    }
+    check(period_state.game_set_age == 282u && period_state.return_to_title,
+          "GAME SET returns to title 282 frames after its first visible frame");
+
     dd_asset_pack_unload(&pack);
     if (failures != 0) {
         fprintf(stderr, "%d CPU gameplay regression check(s) failed.\n", failures);

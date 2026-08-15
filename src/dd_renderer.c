@@ -702,8 +702,15 @@ static void dd_gameplay_patch_hud(uint8_t ppu[DD_PPU_SIZE], const DDGameplayStat
     uint8_t period = state->period == 0u ? 1u : state->period;
     uint8_t minutes = state->clock_minutes;
     uint8_t seconds = state->clock_seconds;
+    static const uint8_t game_set[8] = {
+        0xE9u, 0xE3u, 0xEFu, 0xE7u, 0x57u, 0xF5u, 0xE7u, 0xF6u
+    };
     if (period > 4u) period = 4u;
-    ppu[table + 2u * 32u + 19u] = (uint8_t)(0xD9u + period);
+    if (state->phase == DD_GAMEPLAY_GAME_SET) {
+        memcpy(ppu + table + 2u * 32u + 12u, game_set, sizeof(game_set));
+    } else {
+        ppu[table + 2u * 32u + 19u] = (uint8_t)(0xD9u + period);
+    }
     ppu[table + 4u * 32u + 16u] = (uint8_t)(0xD9u + ((minutes >> 4u) & 0x0Fu));
     ppu[table + 4u * 32u + 17u] = (uint8_t)(0xD9u + (minutes & 0x0Fu));
     ppu[table + 4u * 32u + 18u] = 0xFDu;
@@ -733,6 +740,12 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
         pack->tipoff_ppu_size != DD_PPU_SIZE || pack->tipoff_assets == NULL ||
         pack->tipoff_assets_size < sizeof(DDTipoffAssetsHeader) ||
         width != pack->tipoff_meta.width || height != pack->tipoff_meta.height) return 0;
+    if (state->phase == DD_GAMEPLAY_GAME_SET &&
+        state->game_set_age >= DD_GAME_SET_BLUE_AGE) {
+        uint32_t pixel;
+        for (pixel = 0u; pixel < width * height; ++pixel) pixels[pixel] = 0x000000A8u;
+        return 1;
+    }
     if (state->scene_frame < 270u) return dd_render_tipoff(pack, pixels, width, height);
     assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
     memcpy(ppu, pack->tipoff_ppu, sizeof(ppu));

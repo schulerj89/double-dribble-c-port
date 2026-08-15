@@ -732,9 +732,31 @@ packed and court coordinates to the ball, and enters `$30`. Natural frames
 all `$0121`, owner/carrier `$07`, and `$41->$30`. Native tests cover both flows,
 promoting `$21/$41` to Verified.
 
+The final-match rule is rooted at bank 0 `$93AE`. After its ordinary per-frame
+bookkeeping, `$93D1` rejects player-slot-two actions `$41` and above, and
+`$93D8-$93EA` requires a zero `$0057/$0058` clock plus ball action `$07` or
+`$01`. The accepted path calls `$CBE0`, requests sound `$28` through `$C141`,
+clears `$0025`, writes mode `$09` to `$002A`, and clears match state `$0059` at
+`$93FE`. `$9408-$9416` then advances `$07E8` and selects the next `$0068/$006C`
+presentation pair from the tables at `$9419/$9425`.
+
+The long FCEUX run proves that control flow rather than inferring it from the
+screen alone. Original frame 45337 renders `PERIOD 4` at 00:00 with ball state
+`$07`; frame 45338 records `$0059=00` at PC `$9400`, `$07E8` advancing to `$04`,
+and `$0068=0C/$006C=25` at PCs `$9413/$9418`, while the screen says `GAME SET`.
+Frames 45596-45597 are the solid NES blue transition and frame 45620 is back at
+the title. Native C preserves the final 00:00 frame, applies the same `$01/$07`
+and player-action eligibility gates, holds `GAME SET` for 258 frames, switches
+to blue, and signals the Win32 shell to return to its native title at age 282.
+The native frame-39634 capture retains the live court and match score, and the
+stable earlier gameplay comparison remains 2,560/57,344 differing pixels
+(4.4643%, below the 5% regression limit). The tile/sprite mechanism that draws
+the original message is NES presentation and remains outside portable coverage;
+the match termination and timing rules themselves are native state transitions.
+
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **85% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **89% portable Ghidra-to-C gameplay-loop coverage** and **69.2% match-rules completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

@@ -214,7 +214,8 @@ local capture_frames = {
     [11800]=true,[12000]=true,[12064]=true,[12096]=true,[12097]=true,[12100]=true,
     [12120]=true,[12160]=true,[12200]=true,[12300]=true,[12400]=true,[12412]=true,
     [12413]=true,[12420]=true,[12440]=true,[12480]=true,[12520]=true,[12600]=true,
-    [12700]=true,[12800]=true,[12900]=true,[13000]=true,[13100]=true,[13200]=true
+    [12700]=true,[12800]=true,[12900]=true,[13000]=true,[13100]=true,[13200]=true,
+    [45337]=true,[45338]=true,[45596]=true,[45597]=true,[45620]=true
 }
 
 local function write_state(frame)

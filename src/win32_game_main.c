@@ -51,6 +51,24 @@ static int g_intro_music_started;
 static int g_config_music_started;
 static int g_gameplay_audio_active;
 
+static void dd_reset_to_title(void) {
+    PlaySoundW(NULL, NULL, 0);
+    g_started = 0;
+    g_selection = 0u;
+    g_config_selection = 0u;
+    ZeroMemory(&g_config_view, sizeof(g_config_view));
+    ZeroMemory(&g_gameplay, sizeof(g_gameplay));
+    g_config_action_start = 0u;
+    g_config_action_applied = 0;
+    g_config_boundary_reached = 0;
+    g_tipoff_start_frame = 0u;
+    g_gameplay_input = 0u;
+    g_tipoff_audio_started = 0;
+    g_intro_music_started = 0;
+    g_config_music_started = 0;
+    g_gameplay_audio_active = 0;
+}
+
 static uint32_t dd_gameplay_key(WPARAM key) {
     if (key == VK_LEFT) return DD_INPUT_LEFT;
     if (key == VK_RIGHT) return DD_INPUT_RIGHT;
@@ -137,6 +155,11 @@ static int dd_render_current_frame(void) {
         uint32_t transition_frame = frame - g_tipoff_start_frame;
         if (transition_frame >= g_pack.tipoff_meta.visible_frame) {
             if (!dd_gameplay_advance_to(&g_pack, &g_gameplay, transition_frame, g_gameplay_input)) return 0;
+            if (g_gameplay.return_to_title) {
+                dd_reset_to_title();
+                return dd_render_title_selection(&g_pack, 0u, 1, g_pixels,
+                                                 g_pack.meta.width, g_pack.meta.height);
+            }
             return dd_render_gameplay(&g_pack, &g_gameplay, g_pixels,
                                       g_pack.tipoff_meta.width, g_pack.tipoff_meta.height);
         }

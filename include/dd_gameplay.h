@@ -6,6 +6,8 @@
 #include "dd_asset_pack.h"
 
 #define DD_GAMEPLAY_PLAYER_COUNT 10u
+#define DD_GAME_SET_BLUE_AGE 258u
+#define DD_GAME_SET_TITLE_AGE 282u
 
 enum {
     DD_INPUT_LEFT = 1u << 0,
@@ -22,7 +24,8 @@ typedef enum DDGameplayPhase {
     DD_GAMEPLAY_AWARD,
     DD_GAMEPLAY_LIVE,
     DD_GAMEPLAY_INBOUND,
-    DD_GAMEPLAY_FREE_THROW
+    DD_GAMEPLAY_FREE_THROW,
+    DD_GAMEPLAY_GAME_SET
 } DDGameplayPhase;
 
 typedef enum DDBallAction {
@@ -174,7 +177,9 @@ typedef struct DDGameplayState {
     uint8_t foul_offender;
     uint8_t match_clock_pulse;
     uint16_t free_throw_age;
+    uint16_t game_set_age;
     int clock_expired;
+    int return_to_title;
     int initialized;
 } DDGameplayState;
 

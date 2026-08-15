@@ -4,11 +4,11 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 88%**
+**Portable Ghidra-to-C gameplay-loop coverage: 89%**
 
-**Match-rules completeness: 65.4%**
+**Match-rules completeness: 69.2%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, final match end, blocks, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, and the foul/free-throw dispatcher spine now have native paths, while exact presentation-gated clock cadence, blocks, general out-of-bounds handling, free-throw formation movement, and broad CPU decision coverage remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 87.7%`, rounded to **88%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 88.5%`, rounded to **89%**.
 
 ## Player action dispatcher — 100%
 
@@ -160,17 +160,17 @@ metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
 switching are likewise excluded globally and are not represented as gameplay
 coverage entries.
 
-## Match rules and possession flow — 65.4%
+## Match rules and possession flow — 69.2%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
-| V (4) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes |
-| P (9) | live user control, CPU pass/shot choice, rebound sequence, inbound sequence, possession transfer, game clock, period transitions/end conditions, defensive steals/blocks, fouls and general out-of-bounds rules |
+| V (5) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions |
+| P (8) | live user control, CPU pass/shot choice, rebound sequence, inbound sequence, possession transfer, game clock, defensive steals/blocks, fouls and general out-of-bounds rules |
 | M (0) | none |
 
-Score: `(4 + 9 × 0.5) / 13 = 65.4%`.
+Score: `(5 + 8 × 0.5) / 13 = 69.2%`.
 
 The defensive entry is Partial: the original sustained-contact steal path and
 immediate loose-ball possession arbitration are now native, but shot blocks and
@@ -190,6 +190,17 @@ and enters rebound `$07` on underflow. Native checks prove the deferred ordinary
 two-point award and foul-shot one-point award; the renderer derives the same
 blank-leading two decimal HUD tiles from native score state. Buffered PPU queue
 mechanics remain excluded as NES-only presentation machinery.
+
+Period transitions/end conditions are Verified. The earlier long trace proves
+the delayed period-one reset to a second-period formation. The final-match trace
+adds the distinct bank-0 `$93AE` gate: only a zero clock with player slot two
+below action `$41` and ball action `$01` or `$07` reaches `$93EC-$93FE`. Original
+frame 45337 renders period four at 00:00; frame 45338 writes `$0059=00`, advances
+the `$07E8` presentation index, and installs `$0068=0C/$006C=25` while displaying
+`GAME SET`. Frames 45596-45597 are solid blue and frame 45620 is the title.
+Native tests cover both the in-flight rejection and rebound acceptance, then the
+258-frame game-set hold and 282-frame title return. Exact variable clock call
+gaps remain isolated under the separate Partial game-clock capability.
 
 ## Evidence and update rules
 
@@ -215,5 +226,5 @@ When updating this ledger:
 1. Translate the free-throw formation states `$42-$4A`, starting with `$8594/$85BE/$860A/$8682`.
 2. Translate the remaining CPU decision branches and pass-lane rejection.
 3. Translate the higher-level block, contested-rebound, and general rim-contact eligibility branches around `$B473`.
-4. Match the clock's presentation-state call gaps and implement fourth-period/final match end conditions.
+4. Match the clock's presentation-state call gaps.
 5. Add non-scripted sideline and baseline out-of-bounds handling.

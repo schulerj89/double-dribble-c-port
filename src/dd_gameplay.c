@@ -165,6 +165,8 @@ static void dd_begin_free_throw(DDGameplayState *state, uint32_t shooter,
     uint32_t player;
     state->phase = DD_GAMEPLAY_FREE_THROW;
     state->free_throw_age = 0u;
+    state->game_set_age = 0u;
+    state->return_to_title = 0;
     state->foul_shooter = (uint8_t)shooter;
     state->foul_offender = (uint8_t)offender;
     state->carrier = DD_NO_OWNER;
@@ -1224,6 +1226,8 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
     state->foul_shooter = DD_NO_OWNER;
     state->foul_offender = DD_NO_OWNER;
     state->free_throw_age = 0u;
+    state->game_set_age = 0u;
+    state->return_to_title = 0;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         DDPlayerState *object = &state->players[player];
         memset(object, 0, sizeof(*object));
@@ -1759,6 +1763,25 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
     ++state->scene_frame;
     ++state->sequence_frame;
     dd_step_game_clock(state);
+    if (state->phase == DD_GAMEPLAY_GAME_SET) {
+        if (state->game_set_age != UINT16_MAX) ++state->game_set_age;
+        if (state->game_set_age >= DD_GAME_SET_TITLE_AGE) state->return_to_title = 1;
+        return 1;
+    }
+    /* Original frames 45337/45338 show 00:00 for one rendered frame before
+       fourth-period mode $00 installs GAME SET.  Unlike periods 1-3, this
+       branch never prepares another tip formation. */
+    if (state->clock_expired && state->period >= 4u &&
+        state->scene_frame > state->clock_expired_frame &&
+        state->players[2].action < DD_PLAYER_INBOUNDER &&
+        (state->ball.action == DD_BALL_DRIBBLE ||
+         state->ball.action == DD_BALL_REBOUND)) {
+        state->phase = DD_GAMEPLAY_GAME_SET;
+        state->game_set_age = 0u;
+        state->carrier = DD_NO_OWNER;
+        state->ball.owner = DD_NO_OWNER;
+        return 1;
+    }
     if (state->clock_expired && state->period < 4u &&
         state->scene_frame - state->clock_expired_frame >= DD_PERIOD_RESET_DELAY) {
         ++state->period;
