@@ -21,6 +21,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay-input <input.assetpack> <transition-frame> <input-mask> <output.bmp>");
     puts("  --render-gameplay-user-contest <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-block <input.assetpack> <contact|landing> <output.bmp>");
+    puts("  --render-gameplay-shot <input.assetpack> <make|miss> <gather|release|result> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
@@ -305,6 +306,75 @@ int main(int argc, char **argv) {
              dd_render_gameplay(&pack, &state, pixels,
                                 pack.tipoff_meta.width, pack.tipoff_meta.height) &&
              dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 6 && strcmp(argv[1], "--render-gameplay-shot") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t player;
+        uint32_t steps = 0u;
+        int make;
+        int checkpoint;
+        int ok;
+        if (strcmp(argv[3], "make") == 0) make = 1;
+        else if (strcmp(argv[3], "miss") == 0) make = 0;
+        else return 1;
+        if (strcmp(argv[4], "gather") == 0) checkpoint = 0;
+        else if (strcmp(argv[4], "release") == 0) checkpoint = 1;
+        else if (strcmp(argv[4], "result") == 0) checkpoint = 2;
+        else return 1;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+        if (ok) {
+            /* Deterministic counterparts to the controlled FCEUX probes.
+               Both enter through the real B edge and shipping dispatcher;
+               only the pre-shot carrier coordinates differ. */
+            state.phase = DD_GAMEPLAY_LIVE;
+            state.possession_direction = 1u;
+            state.controlled_player = 0u;
+            state.carrier = 0u;
+            state.cpu_global_frame = 0u;
+            state.ball.action = DD_BALL_DRIBBLE;
+            state.ball.owner = 0u;
+            state.ball.receiver = 0xFFu;
+            state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+            state.players[0].facing = 0u;
+            state.players[0].court_x = make ? 0x00F700 : 0x00F600;
+            state.players[0].court_depth = make ? 0x006100 : 0x005A00;
+            state.players[0].height = 0x1000;
+            for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+            }
+            ok = dd_gameplay_step(&pack, &state, DD_INPUT_B);
+        }
+        if (ok && checkpoint >= 1) {
+            while (state.ball.action != DD_BALL_AIRBORNE && steps < 8u) {
+                ok = dd_gameplay_step(&pack, &state, 0u);
+                ++steps;
+            }
+            if (state.ball.action != DD_BALL_AIRBORNE) ok = 0;
+        }
+        if (ok && checkpoint == 2) {
+            while (state.ball.action != DD_BALL_SCORE &&
+                   state.ball.action != DD_BALL_LOOSE_LAUNCH &&
+                   state.ball.action != DD_BALL_REBOUND && steps < 420u) {
+                ok = dd_gameplay_step(&pack, &state, 0u);
+                ++steps;
+            }
+            if (make) ok = ok && state.ball.action == DD_BALL_SCORE &&
+                state.ball.outcome == 1u;
+            else ok = ok && state.ball.action != DD_BALL_SCORE;
+        }
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[5], pixels, pack.tipoff_meta.width,
                           pack.tipoff_meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);

@@ -33,6 +33,10 @@ param(
     [int]$ExceptionalReasonFrame = -1,
     [ValidateRange(0, 4)]
     [int]$ShotKindCase = 0,
+    [ValidateRange(-1, 255)]
+    [int]$UserShotDepth = -1,
+    [ValidateRange(-1, 65535)]
+    [int]$UserShotX = -1,
     [switch]$DisablePcCounts,
     [ValidateSet('A', 'B')]
     [string]$JumpButton = 'A'
@@ -72,6 +76,8 @@ $env:DD_INJECT_INBOUND_RULE_FRAME = $InboundRuleFrame.ToString([Globalization.Cu
 $env:DD_INJECT_INBOUND_RULE_CASE = $InboundRuleCase.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_EXCEPTIONAL_REASON_FRAME = $ExceptionalReasonFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_SHOT_KIND_CASE = $ShotKindCase.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_USER_SHOT_DEPTH = $UserShotDepth.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_USER_SHOT_X = $UserShotX.ToString([Globalization.CultureInfo]::InvariantCulture)
 
 $process = Start-Process -FilePath $FceuxPath `
     -ArgumentList @('-nothrottle', '1', '-turbo', '1', '-srendline', '0', '-erendline', '239', '-lua', ('"{0}"' -f $scriptPath), ('"{0}"' -f $RomPath)) `

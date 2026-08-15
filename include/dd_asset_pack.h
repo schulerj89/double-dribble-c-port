@@ -97,6 +97,7 @@ typedef struct DDTipoffAssetsHeader {
     uint32_t metasprite_size[DD_GAMEPLAY_METASPRITE_COUNT];
     int8_t held_ball_offsets[48];
     int8_t height_scripts[32];
+    uint8_t shot_animation[8];
     uint8_t cpu_role_targets[20];
     uint8_t cpu_spacing_targets[14];
     uint8_t cpu_region_targets[7];

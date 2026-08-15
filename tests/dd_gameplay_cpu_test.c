@@ -125,6 +125,15 @@ int main(int argc, char **argv) {
           assets->height_scripts[11] == 5 &&
           (uint8_t)assets->height_scripts[24] == 0x81u,
           "asset pack exposes $9B34's jump stream with reverse and landing sentinels");
+    check(assets->shot_animation[0] == 0x22u &&
+          assets->shot_animation[1] == 0x28u &&
+          assets->shot_animation[2] == 0x23u &&
+          assets->shot_animation[3] == 0x27u &&
+          assets->shot_animation[4] == 0x21u &&
+          assets->shot_animation[5] == 0x25u &&
+          assets->shot_animation[6] == 0x24u &&
+          assets->shot_animation[7] == 0x26u,
+          "asset pack exposes $A9DC's eight facing-indexed shot poses");
 
     memset(&jump_state, 0, sizeof(jump_state));
     check(dd_gameplay_advance_to(&pack, &jump_state, 300u, 0u),
@@ -1389,9 +1398,10 @@ int main(int argc, char **argv) {
     check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
           "start a user shot through the live B-button path");
     check(dispatch_state.players[0].action == DD_PLAYER_USER_SHOOT &&
+          dispatch_state.players[0].animation == 0x22u &&
           dispatch_state.ball.action == DD_BALL_SHOT_GATHER &&
           dispatch_state.ball.owner == 0u,
-          "$AA75 exposes player state $03 and ball state $04 to paired defense");
+          "$AA75->$A896 exposes state $03, shot pose $22 and ball state $04");
     check(dd_gameplay_step(&pack, &dispatch_state, 0u),
           "advance the user shot to the paired CPU dispatcher");
     check(dispatch_state.players[5].action == DD_PLAYER_JUMP_START &&
@@ -1399,12 +1409,12 @@ int main(int argc, char **argv) {
           dispatch_state.ball.owner == 0u && dispatch_state.carrier == 0xFFu,
           "$8A98->$9139 starts the contest as $B189 releases owned ball state $05");
     check(dispatch_state.ball.velocity_x == -0x00FF &&
-          dispatch_state.ball.velocity_depth == -0x000C &&
+          dispatch_state.ball.velocity_depth == 0x000C &&
           dispatch_state.shot_value == 3u &&
           dispatch_state.audio_event == 0x09u &&
-          dispatch_state.ball.flight_duration == 0xB9u &&
-          dispatch_state.ball.flight_curve == 0x2Eu &&
-          dispatch_state.ball.velocity_height == 0x027Au &&
+          dispatch_state.ball.flight_duration == 0xBFu &&
+          dispatch_state.ball.flight_curve == 0x2Fu &&
+          dispatch_state.ball.velocity_height == 0x0222u &&
           dispatch_state.ball.height == 0x2200,
           "$B189->$A7EA->$9D2D/$9BB0 marks the cross-half-court shot as three and installs its arc");
 
@@ -1495,6 +1505,76 @@ int main(int argc, char **argv) {
           dispatch_state.ball.flight_curve == 0x36u &&
           dispatch_state.ball.velocity_height == 0x0207,
           "$B343-$B373 applies the cross-court duration/curve/base override");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].facing = 0u;
+    dispatch_state.players[0].court_x = 0x00F700;
+    dispatch_state.players[0].court_depth = 0x006100;
+    dispatch_state.players[0].height = 0x1000;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "start controlled full-path made-shot proof");
+    check(dispatch_state.players[0].animation == 0x22u,
+          "$A896 selects facing-zero shooting metasprite $22 during gather");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "release controlled make through $A504->$B189");
+    check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
+          dispatch_state.ball.court_x == 0x00FD00 &&
+          dispatch_state.ball.court_depth == 0x006100 &&
+          dispatch_state.ball.height == 0x2200 &&
+          dispatch_state.ball.velocity_x == 0x00FF &&
+          dispatch_state.ball.velocity_depth == -0x000C &&
+          dispatch_state.ball.flight_duration == 0xBCu &&
+          dispatch_state.ball.flight_curve == 0x2Fu &&
+          dispatch_state.ball.velocity_height == 0x021Du,
+          "$B189 reproduces the controlled original make launch tuple exactly");
+    for (player = 0u; player < 400u &&
+         dispatch_state.ball.action != DD_BALL_SCORE &&
+         dispatch_state.ball.action != DD_BALL_LOOSE_LAUNCH; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance controlled shot through $B189->$AE25->$B377");
+    }
+    check(dispatch_state.ball.action == DD_BALL_SCORE &&
+          dispatch_state.ball.outcome == 1u,
+          "original make coordinates reach $B377 result one through the shipping shot loop");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+    dispatch_state.players[0].facing = 0u;
+    dispatch_state.players[0].court_x = 0x00F600;
+    dispatch_state.players[0].court_depth = 0x005A00;
+    dispatch_state.players[0].height = 0x1000;
+    for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+    }
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "start untouched full-path missed-shot proof");
+    for (player = 0u; player < 400u &&
+         dispatch_state.ball.action != DD_BALL_SCORE &&
+         dispatch_state.ball.action != DD_BALL_LOOSE_LAUNCH &&
+         dispatch_state.ball.action != DD_BALL_REBOUND; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance untouched shot through the miss/rebound path");
+    }
+    check(dispatch_state.ball.action != DD_BALL_SCORE &&
+          (dispatch_state.ball.action == DD_BALL_LOOSE_LAUNCH ||
+           dispatch_state.ball.action == DD_BALL_REBOUND),
+          "original miss coordinates avoid result one and enter a miss/rebound state");
 
     contest_state = dispatch_base;
     contest_state.phase = DD_GAMEPLAY_LIVE;

@@ -191,6 +191,18 @@ zero. The shot initializer follows `$B189->$9D2D->$9BB0` and the recovered
 `$9DEB/$9C1C/$9C5E` angle/vector tables; bounce-pass `$B167` remains its
 separate integer-height path.
 
+The user-shooting slice is verified end to end. `$AA75` installs player state
+`$03`, ball state `$04`, release gate `$04E0=1`, and height-script pointer
+`$9B34`. `$A896` resolves state `$03` through the pointer table at `$A8E6` and
+selects one of `$22,$28,$23,$27,$21,$25,$24,$26` from `$A9DC` by facing.
+`$A504->$B189` releases to ball state `$05`; `$AE25->$B377` produces result
+`$01` for a make or results `$02-$04` for `$08->$09` miss/rebound handling.
+DDAP v15 stores only the eight recovered pose indices. Controlled original
+make/miss traces and shipping-loop native tests prove both outcomes. The pose
+table itself remains excluded from the percentage as NES metasprite/OAM
+presentation; the portable state, flight, and outcome handlers were already
+present in the Verified dispatcher denominators.
+
 Dynamic FCEUX instrumentation records 13,810 entries apiece at `$9CA0` and
 `$9CF6`, 6,556 at `$A84C`, 574 height steps at `$9B84`, and four natural shot
 initializers at `$B189` in the bounded run through frame 6000. The no-input
@@ -318,7 +330,7 @@ one-point free throw. The score trace enters state `$06` with counter `$0C`,
 writes both score copies only on `$09->$08`, lowers height for `$05-$00`, and
 enters rebound `$07` on underflow. Controlled inside/outside traces cover the
 boundary in both directions, and native checks prove deferred one-, two-, and
-three-point awards. DDAP v14 and Win32 also play the recovered `$09` line-call
+three-point awards. DDAP v15 retains the recovered `$09` line-call
 and `$25` three-point scoring cues. The renderer derives the same blank-leading
 two decimal HUD tiles from native score state. Buffered PPU queue mechanics
 remain excluded as NES-only presentation machinery.

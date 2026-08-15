@@ -948,8 +948,27 @@ static void dd_attach_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *
     if (owner_index >= DD_GAMEPLAY_PLAYER_COUNT) return;
     owner = &state->players[owner_index];
     uint32_t offset = table * 16u + (uint32_t)(owner->facing & 7u) * 2u;
-    /* $B035 adds the first table byte to $0370 (court depth and projected
-       screen X), then the second byte to $03C0 (longitudinal court X). */
+    /* $B035 adds the first table byte to $0370 (longitudinal court X and
+       projected screen X), then the second byte to $03C0 (court depth). */
+    state->ball.court_x = owner->court_x +
+        (int32_t)assets->held_ball_offsets[offset] * 256;
+    state->ball.court_depth = owner->court_depth +
+        (int32_t)assets->held_ball_offsets[offset + 1u] * 256;
+}
+
+/* The established pass/dribble timeline predates the exact `$B035` axis
+   recovery and still stores its two native court axes through the legacy
+   adapter.  Keep that bounded adapter outside shot table 2 so correcting the
+   shooting path does not invalidate the separately verified inbound slice. */
+static void dd_attach_ball_legacy(const DDTipoffAssetsHeader *assets,
+                                  DDGameplayState *state, uint32_t table) {
+    uint32_t owner_index = state->ball.owner < DD_GAMEPLAY_PLAYER_COUNT
+        ? state->ball.owner : state->carrier;
+    const DDPlayerState *owner;
+    uint32_t offset;
+    if (owner_index >= DD_GAMEPLAY_PLAYER_COUNT) return;
+    owner = &state->players[owner_index];
+    offset = table * 16u + (uint32_t)(owner->facing & 7u) * 2u;
     state->ball.court_depth = owner->court_depth +
         (int32_t)assets->held_ball_offsets[offset] * 256;
     state->ball.court_x = owner->court_x +
@@ -1009,7 +1028,7 @@ static void dd_begin_pass(const DDTipoffAssetsHeader *assets, DDGameplayState *s
     /* $B0AB first runs $B035 with held-offset table zero while ownership is
        still intact, then targets receiver $0052 from ball slot zero. */
     ball->owner = (uint8_t)carrier;
-    dd_attach_ball(assets, state, 0u);
+    dd_attach_ball_legacy(assets, state, 0u);
     angle = dd_target_motion_vector(ball->court_x, ball->court_depth,
                                     state->players[receiver].court_x,
                                     state->players[receiver].court_depth,
@@ -1185,7 +1204,8 @@ static void dd_start_inbound_alternate(DDGameplayState *state, uint32_t inbounde
     }
 }
 
-static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
+static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
+                          DDGameplayState *state, uint32_t shooter) {
     DDPlayerState *player;
     if (shooter >= DD_GAMEPLAY_PLAYER_COUNT) return;
     player = &state->players[shooter];
@@ -1197,6 +1217,10 @@ static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
     state->ball.rim_contact = 0u;
     state->last_shooter = (uint8_t)shooter;
     state->shot_value = 2u;
+    /* `$A896` indexes the state-$03/$27 table at `$A9DC` by facing and
+       stores the selected metasprite in `$0300+X`.  Both user and CPU shot
+       gathers point at this same eight-byte table. */
+    player->animation = assets->shot_animation[player->facing & 7u];
     if (shooter == state->controlled_player && shooter < 5u) {
         /* Bank-0 $AA75 is the user B-button shot initializer: install the
            $9B26/$9B27 height stream, expose dispatcher state $03, and put
@@ -1252,7 +1276,11 @@ static void dd_initialize_shot_flight(DDGameplayState *state) {
     if (curve == 0u) curve = 1u;
     ball->flight_curve = (uint8_t)curve;
     height_difference = (uint8_t)(0x38u - (((uint32_t)ball->height >> 8u) & 0xFFu));
-    base = ((uint32_t)height_difference << 8u) / curve;
+    /* `$B2F8` leaves the full duration in divider operand `$0003` for the
+       first `$C3C5` call at `$B318`; only `$B32B` replaces that operand with
+       curve for the half-duration term. */
+    base = ((uint32_t)height_difference << 8u) /
+        (duration == 0u ? 1u : duration);
     base += ((duration >> 1u) << 8u) / curve;
     ball->velocity_height = (int32_t)(uint16_t)base;
     ball->vertical_phase = 0u;
@@ -1470,7 +1498,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 speed = 0;
                 if (player->action_age >= 14u && state->ball.action == DD_BALL_DRIBBLE &&
                     state->carrier == player_index) {
-                    dd_begin_shot(state, player_index);
+                    dd_begin_shot(assets, state, player_index);
                 }
             } else if (player->route_step == 5u) {
                 DDCPUDecision decision;
@@ -1484,7 +1512,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                     if (decision == DD_CPU_DECISION_SHOOT) {
                         /* The captured post-inbound region-five arrival enters
                            $27/ball $04 on this same scheduled turn. */
-                        dd_begin_shot(state, player_index);
+                        dd_begin_shot(assets, state, player_index);
                     } else if (decision == DD_CPU_DECISION_MOVE) {
                         player->action = DD_PLAYER_LIVE_CPU_SETUP;
                         player->action_age = 0u;
@@ -1535,7 +1563,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         }
         case DD_PLAYER_LIVE_CARRIER_ROUTE:
             speed = 0x0280;
-            dd_begin_shot(state, player_index);
+            dd_begin_shot(assets, state, player_index);
             break;
         case DD_PLAYER_LIVE_CARRIER_DECIDE:
             /* $8D57 advances the shared $9ABD jump stream.  Ball state $04
@@ -2123,7 +2151,7 @@ static void dd_step_dribble(const DDTipoffAssetsHeader *assets, DDGameplayState 
     int32_t height = 0x10C0;
     if (state->carrier >= DD_GAMEPLAY_PLAYER_COUNT) return;
     state->ball.owner = state->carrier;
-    dd_attach_ball(assets, state, 0u);
+    dd_attach_ball_legacy(assets, state, 0u);
     phase = state->live_frame % 18u;
     if (phase >= 6u && phase <= 9u) {
         for (index = 5u; index < phase; ++index) {
@@ -2298,7 +2326,7 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             /* $ACB6 attaches with table index 2, then adds 24 height units in
                tip modes $01/$03 and eight during ordinary held play. */
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
-                dd_attach_ball(assets, state, 1u);
+                dd_attach_ball_legacy(assets, state, 1u);
                 ball->height = state->players[ball->owner].height +
                     ((int32_t)(ball->held_height_offset == 0u
                         ? 0x08u : ball->held_height_offset) << 8u);
@@ -2960,7 +2988,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     }
     if (state->carrier == state->controlled_player && state->ball.action == DD_BALL_DRIBBLE) {
         if ((pressed & DD_INPUT_B) != 0u) {
-            dd_begin_shot(state, state->controlled_player);
+            dd_begin_shot(assets, state, state->controlled_player);
         } else if ((pressed & DD_INPUT_A) != 0u) {
             uint32_t receiver = dd_user_pass_receiver(state, state->controlled_player,
                                                       input_mask);
@@ -3078,7 +3106,7 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
                 assets, sequence_frame, state->tip_user_jump_frame);
         }
         state->players[5].height = dd_jump_height(assets, sequence_frame);
-        dd_attach_ball(assets, state, 0u);
+        dd_attach_ball_legacy(assets, state, 0u);
         state->ball.height = state->players[state->carrier].height + 0x1800;
     }
     if (sequence_frame == state->live_start_frame) {

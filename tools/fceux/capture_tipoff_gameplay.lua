@@ -41,6 +41,8 @@ local inject_inbound_rule_frame = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_FRA
 local inject_inbound_rule_case = tonumber(os.getenv("DD_INJECT_INBOUND_RULE_CASE") or "0")
 local inject_exceptional_reason_frame = tonumber(os.getenv("DD_INJECT_EXCEPTIONAL_REASON_FRAME") or "-1")
 local inject_shot_kind_case = tonumber(os.getenv("DD_INJECT_SHOT_KIND_CASE") or "0")
+local user_shot_depth = tonumber(os.getenv("DD_USER_SHOT_DEPTH") or "-1")
+local user_shot_x = tonumber(os.getenv("DD_USER_SHOT_X") or "-1")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -119,6 +121,8 @@ local sfx_calls = assert(io.open(join_path(capture_root, "gameplay-sfx-calls.csv
 sfx_calls:write("frame,event,current_object,ball_state,shot_kind\n")
 local exceptional_calls = assert(io.open(join_path(capture_root, "gameplay-exceptional-calls.csv"), "w"))
 exceptional_calls:write("frame,current,clock_gate,ball_state,input,current_target,current_facing,defender,defender_state,defender_target,defender_facing\n")
+local shot_animation = assert(io.open(join_path(capture_root, "gameplay-shot-animation.csv"), "w"))
+shot_animation:write("frame,pc,current_object,player_state,facing,metasprite,animation_phase,player_height,script_low,script_high,script_value,release_gate,ball_state,ball_owner,carrier,ball_x,ball_depth,ball_height,outcome\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 local previous_ball_state = -1
 local previous_player_state = {}
@@ -218,6 +222,35 @@ memory.registerexecute(0xC141, 1, function(address, size, value)
             memory.readbyte(0x0340), memory.readbyte(0x005F)))
     end
 end)
+
+local function record_shot_animation(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+        local object = memory.readbyte(0x004B)
+        local script_low = object < 0x10 and memory.readbyte(0x0500 + object) or 0xFF
+        local script_high = object < 0x10 and memory.readbyte(0x0510 + object) or 0xFF
+        local script_value = 0xFF
+        if script_high >= 0x80 and script_high < 0xC0 then
+            script_value = memory.readbyte(script_high * 0x100 + script_low)
+        end
+        shot_animation:write(string.format(
+            "%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X%02X,%02X,%02X,%02X\n",
+            frame, address, object,
+            object < 0x10 and memory.readbyte(0x0340 + object) or 0xFF,
+            object < 0x10 and memory.readbyte(0x0350 + object) or 0xFF,
+            object < 0x10 and memory.readbyte(0x0300 + object) or 0xFF,
+            object < 0x10 and memory.readbyte(0x0450 + object) or 0xFF,
+            object < 0x10 and memory.readbyte(0x0410 + object) or 0xFF,
+            script_low, script_high, script_value,
+            object < 0x10 and memory.readbyte(0x04E0 + object) or 0xFF,
+            memory.readbyte(0x0340), memory.readbyte(0x005B), memory.readbyte(0x0048),
+            memory.readbyte(0x0360), memory.readbyte(0x0370),
+            memory.readbyte(0x03C0), memory.readbyte(0x0410), memory.readbyte(0x0480)))
+    end
+end
+for _, address in ipairs({0xAA75, 0xA504, 0xA896, 0x9ABD, 0xB189, 0xAE25, 0xB377, 0xAEDE, 0xAF72}) do
+    memory.registerexecute(address, 1, record_shot_animation)
+end
 
 local function record_shot_kind(address, size, value)
     local frame = emu.framecount()
@@ -407,9 +440,11 @@ local capture_frames = {
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
     [2460]=true,[2480]=true,[2500]=true,[2519]=true,[2520]=true,[2530]=true,[2531]=true,
     [2540]=true,[2550]=true,[2557]=true,[2560]=true,[2570]=true,[2580]=true,[2590]=true,
-    [2600]=true,[2606]=true,[2608]=true,[2614]=true,[2618]=true,[2620]=true,[2640]=true,
+    [2600]=true,[2602]=true,[2606]=true,[2608]=true,[2614]=true,[2618]=true,[2620]=true,[2640]=true,
     [2644]=true,[2658]=true,[2660]=true,[2680]=true,[2684]=true,[2700]=true,[2723]=true,[2749]=true,[2760]=true,[2774]=true,
-    [2770]=true,[2783]=true,[2929]=true,[2944]=true,[3004]=true,[3324]=true,
+    [2770]=true,[2783]=true,[2788]=true,[2789]=true,[2790]=true,[2791]=true,[2815]=true,[2816]=true,
+    [2820]=true,[2830]=true,[2840]=true,[2860]=true,
+    [2929]=true,[2944]=true,[3004]=true,[3324]=true,
     [3501]=true,[3545]=true,[3553]=true,[3572]=true,[3600]=true,[3640]=true,
     [3680]=true,[3720]=true,[3800]=true,[3900]=true,[4000]=true,[4100]=true,[4200]=true,
     [11800]=true,[12000]=true,[12064]=true,[12096]=true,[12097]=true,[12100]=true,
@@ -463,6 +498,16 @@ while emu.framecount() < final_frame do
     end
     if next_frame >= move_start and next_frame <= move_end and move_direction ~= "none" then
         input[move_direction] = true
+    end
+    if next_frame == pass_frame - 1 and user_shot_depth >= 0 then
+        -- Controlled full-path shooting probe.  Only the user carrier's court
+        -- depth is changed before the real B-button edge; $AA75, $A504,
+        -- $B189, $AE25 and $B377 remain unmodified and decide the outcome.
+        memory.writebyte(0x03C0 + 0x02, user_shot_depth)
+        if user_shot_x >= 0 then
+            memory.writebyte(0x0360 + 0x02, math.floor(user_shot_x / 0x100))
+            memory.writebyte(0x0370 + 0x02, user_shot_x % 0x100)
+        end
     end
     if next_frame == inject_inbound_rule_frame and inject_inbound_rule_case ~= 0 then
         -- Controlled proofs for $A1CC reasons $13/$14 and $9583 reason $15.
@@ -758,6 +803,7 @@ user_contest_calls:close()
 shot_kind_calls:close()
 sfx_calls:close()
 exceptional_calls:close()
+shot_animation:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")
 for phase, phase_counts in pairs(counts) do
