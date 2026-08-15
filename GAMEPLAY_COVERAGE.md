@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 81%**
+**Portable Ghidra-to-C gameplay-loop coverage: 82%**
 
 **End-to-end match completeness: approximately 50%**
 
@@ -23,19 +23,19 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 80.7%`, rounded to **81%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 82.4%`, rounded to **82%**.
 
-## Player action dispatcher — 86.8%
+## Player action dispatcher — 92.6%
 
 Ghidra anchor `$89B2` subtracts `$20` from player action `$0340+slot` and dispatches through the 34-entry table at `$89C0`. `ExportGameplayLoopEvidence.java` prints all entries so this denominator is reproducible.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 25 | `$21-$29,$2D,$2E,$2F,$32,$36,$37,$38,$39,$3A,$3B,$3C,$3D,$3E,$3F,$40,$41` |
-| P | 9 | `$20,$2A,$2B,$2C,$30,$31,$33,$34,$35` |
+| V | 29 | `$21-$29,$2C-$2F,$31-$34,$36-$41` |
+| P | 5 | `$20,$2A,$2B,$30,$35` |
 | M | 0 | none |
 
-Score: `(25 + 9 × 0.5) / 34 = 86.8%`.
+Score: `(29 + 5 × 0.5) / 34 = 92.6%`.
 
 Every table entry now has an explicit native handler. States `$28/$29` reproduce
 the traced `$20` countdown, rotating-priority ball target, immediate `$B435`
@@ -74,6 +74,25 @@ backward `$80` sentinel. Controlled FCEUX frames 2601-2657 record
 direction `0->1`, then `$24->$28` with timer `$10->$0F`. Native regression
 checks reproduce the 27 scheduled interpreter updates and the `$A6C3` loose-ball
 contact branch. Both states are therefore V.
+
+State `$31` now follows `$8FE0`'s complete release countdown. Natural original
+frames 3545-3563 record timer `$08->$FF`, ball `$00->$02` and carrier `$07->$00`
+at timer `$04`, metasprite index subtraction by eight below `$06`, and the
+underflow transition `$31->$40`. Controlled probes separately prove the launch
+and underflow branches. The native inbound phase now enters `$31` from state
+`$30` only when every remaining `$36` formation object has reached `$37`, then
+uses the same alternating-frame timer; `$31` is V. State `$30` remains P because
+its alternate `$002C`, mode-bit `$40`, and timeout orchestration branches are
+not yet translated.
+
+States `$2C/$33/$34` share the literal `$8BC5->$D98A->$A84C` tail. `$A84C`
+calls the longitudinal fixed-point integrator twice and the depth integrator
+twice; it does not calculate a new target vector. Controlled probes seed
+`$0123/$FEDC` and preserve both terms while positions advance by
+`$0246/$FDB8` on every scheduled dispatch. Original frame 2601 produces the
+same `$00F358/$39D8` position for injected states `$33` and `$34`; state `$2C`
+continues identically through frames 2601-2607. Native tests reproduce the
+two-add result for all three states, promoting them to V.
 
 ## Ball action dispatcher — 100%
 

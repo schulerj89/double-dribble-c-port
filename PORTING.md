@@ -411,7 +411,7 @@ The extended APU trace also establishes that ordinary gameplay has no continuous
 
 DDAP v11 introduced `gameplay.audio`: twenty normalized events over eighteen frames, with provenance bank 1 `$8653` (ROM file offset `$4663`, bounded source span `$40`). Win32 loops the synthesized gesture only while gameplay is LIVE and ball action is dribble `$01`; pass, shot, rebound, and dead-ball states stop it. `--dump-gameplay-wav` exports the generated pack-only WAV. This is the audio actually observed in FCEUX, rather than an invented gameplay BGM. DDAP v12 retains it and adds the seven route targets extracted from `$AC78`.
 
-The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the gameplay audio event count. The rebuilt original-frame-3572/native-1371 screenshot comparison differs by 2,543 pixels out of 57,344 (4.4346%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
+The regression executable verifies all ten frame-3572 actions/targets, movement in off-ball `$20/$3C` states, the 28-frame `$25->$27` shot-gather transition, the post-tip HUD split, and the gameplay audio event count. The rebuilt original-frame-3572/native-1371 screenshot comparison differs by 2,560 pixels out of 57,344 (4.4643%). Native and original visual evidence is kept in ignored `captures/native-gameplay/` and `captures/original-post-inbound/` respectively.
 
 ### Complete dispatcher inventory slice
 
@@ -450,6 +450,36 @@ at frame 2629; it returns to `$1055`/pointer `$9B33` at frame 2653; frame 2655
 enters `$28` with countdown `$10`, which becomes `$0F` at frame 2657. The
 fractional `$55` never changes. The native test executes the same 27 scheduled
 script updates and separately exercises the contact/possession branch.
+
+The observed inbound release now follows `$8EE2->$9018->$8FE0`. Natural slot 7
+frames 3501-3543 remain in state `$30` while timer `$20->$0B` and the last
+formation object remains `$36`; after that object reaches `$37`, frame 3545
+enters `$31` with release timer `$08` and ball state `$00`. `$8FE0` decrements
+`$04E0+slot` on the alternating player schedule. At frame 3553 timer `$04`
+queues SFX `$0F`, writes ball state `$02`, and clears active carrier `$0048`;
+below `$06`, nonzero metasprite `$0300+slot` is reduced by eight. Frame 3563
+underflows `$00->$FF` and jumps through `$9014/$8F9A` into player state `$40`.
+Controlled `DD_INJECT_PLAYER_INBOUND_CASE=1/2` probes isolate the launch and
+underflow paths. Selected-bank-0 mappings are `$8EE2->$0EF2`, `$8FE0->$0FF0`,
+and `$9018->$1028`; fixed-bank `$D990` is ROM offset `$1D9A0`.
+
+Native inbound formation objects now change `$36->$37` on packed target arrival,
+state `$30` retains the observed `$20` hold countdown/readiness gate, and state
+`$31` performs the eight-tick release rather than relying on a fixed pass event.
+The native checkpoints remain release setup at frame 1344/live 988, pass launch
+at frame 1352/live 996, and reception at frame 1371/live 1015.
+
+Dispatcher states `$2C/$33/$34` contain no state-specific decision at all: each
+table entry targets `$8BC5`, which jumps to fixed-bank `$D98A`. On the observed
+gate-zero path `$D98A->$A84C->$A896->$A85A`, `$A84C` calls `$9CF6` twice for
+the 24-bit court-x position and `$9CA0` twice for the 16-bit court-depth
+position. Controlled state `$2C` frames 2601-2607 and state `$33/$34` frame
+2601 seed x/depth velocities `$0123/$FEDC`; every scheduled update preserves
+those vectors and adds `$0246/$FDB8` to position. Both `$33` and `$34` produce
+position `$00F358/$39D8` on their injected frame. Native C now integrates the
+existing vectors twice rather than synthesizing a new target speed. Mappings
+are selected-bank `$8BC5->$0BD5`, `$A84C->$285C`, `$A896->$28A6`, and
+fixed-bank `$D98A->$1D99A`.
 
 The four previously missing ball entries are likewise explicit:
 
@@ -622,7 +652,7 @@ promoting `$21/$41` to Verified.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **81% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **82% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

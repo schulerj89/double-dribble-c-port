@@ -21,6 +21,7 @@ local inject_player_state = tonumber(os.getenv("DD_INJECT_PLAYER_STATE") or "59"
 local inject_player_slot = tonumber(os.getenv("DD_INJECT_PLAYER_SLOT") or "7")
 local inject_player_route_case = tonumber(os.getenv("DD_INJECT_PLAYER_ROUTE_CASE") or "0")
 local inject_player_jump_case = tonumber(os.getenv("DD_INJECT_PLAYER_JUMP_CASE") or "0")
+local inject_player_inbound_case = tonumber(os.getenv("DD_INJECT_PLAYER_INBOUND_CASE") or "0")
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -317,6 +318,16 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x03F0 + player, 0xDC)
         memory.writebyte(0x0430 + player, 0x03)
         memory.writebyte(0x0440 + player, 0x45)
+        if inject_player_inbound_case ~= 0 then
+            -- Controlled $8FE0 release countdown installed by $9018.
+            memory.writebyte(0x0340 + player, 0x31)
+            memory.writebyte(0x04E0 + player,
+                inject_player_inbound_case == 2 and 0x00 or 0x08)
+            memory.writebyte(0x04F0 + player, 0x0A)
+            memory.writebyte(0x0300 + player, 0x40)
+            memory.writebyte(0x0340, 0x0B)
+            memory.writebyte(0x0048, player)
+        end
         if inject_player_jump_case ~= 0 then
             -- Controlled $8AF4->$8B12->$9ABD probe.  The nonzero global
             -- collision gate isolates the signed height script and landing.

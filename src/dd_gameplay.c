@@ -543,6 +543,56 @@ static void dd_begin_pass(DDGameplayState *state, uint32_t carrier, uint32_t rec
     state->carrier = DD_NO_OWNER;
 }
 
+/* $8FE0 decrements the $04E0 release timer installed by $9018. At four it
+   launches ball state $02; below six a nonzero metasprite index moves up by
+   eight; underflow replaces player state $31 with $40. */
+static void dd_step_inbound_release(DDGameplayState *state, uint32_t player_index) {
+    DDPlayerState *player = &state->players[player_index];
+    --player->release_timer;
+    if ((player->release_timer & 0x80u) != 0u) {
+        player->action = DD_PLAYER_LIVE_CPU;
+        player->action_age = 0u;
+        return;
+    }
+    if (player->release_timer == 4u) {
+        uint32_t receiver = state->ball.receiver;
+        if (receiver < DD_GAMEPLAY_PLAYER_COUNT && receiver != player_index) {
+            dd_begin_pass(state, player_index, receiver);
+            player->action = DD_PLAYER_INBOUND_READY;
+            player->action_age = 0u;
+        } else {
+            state->ball.action = DD_BALL_PASS;
+            state->ball.owner = DD_NO_OWNER;
+            state->carrier = DD_NO_OWNER;
+        }
+    }
+    if (player->release_timer < 6u && player->animation != 0u) {
+        player->animation = (uint8_t)(player->animation - 8u);
+    }
+}
+
+static int dd_inbound_formation_ready(const DDGameplayState *state,
+                                      uint32_t inbounder) {
+    uint32_t player;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        if (player != inbounder &&
+            state->players[player].action == DD_PLAYER_INBOUND_FORMATION) return 0;
+    }
+    return 1;
+}
+
+static void dd_start_inbound_release(DDGameplayState *state, uint32_t inbounder,
+                                     uint32_t receiver) {
+    DDPlayerState *player = &state->players[inbounder];
+    player->action = DD_PLAYER_INBOUND_READY;
+    player->action_age = 0u;
+    player->release_timer = 8u;
+    state->ball.action = DD_BALL_AWARDED;
+    state->ball.held_height_offset = 0x08u;
+    state->ball.receiver = (uint8_t)receiver;
+    state->ball.action_age = 0u;
+}
+
 static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
     if (shooter >= DD_GAMEPLAY_PLAYER_COUNT) return;
     state->ball.action = DD_BALL_SHOT_GATHER;
@@ -570,6 +620,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                                  uint32_t player_index, uint32_t live_frame) {
     DDPlayerState *player = &state->players[player_index];
     int32_t speed = 0x0180;
+    int integrate_existing_velocity = 0;
     ++player->cpu_updates;
     /* Dispatcher state $3B points at $8297, a bare RTS. It bypasses even the
        common movement tail, so every portable object field remains intact. */
@@ -770,9 +821,9 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         case DD_PLAYER_LIVE_CONTINUE:
         case DD_PLAYER_LIVE_CONTINUE_33:
         case DD_PLAYER_LIVE_CONTINUE_34:
-            /* $8BC5 is the shared $D98A movement/animation continuation used
-               by dispatcher states $2C, $33, and $34. */
-            speed = 0x0180;
+            /* $8BC5->$D98A->$A84C calls each fixed-point axis integrator
+               twice. It consumes existing vectors; it does not retarget. */
+            integrate_existing_velocity = 1;
             break;
         case DD_PLAYER_REBOUND_CHASE:
             /* $8E71 reaches the selected rebound point before state $2E. */
@@ -803,11 +854,22 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             }
             break;
         case DD_PLAYER_INBOUND_HOLD:
-        case DD_PLAYER_INBOUND_READY:
-            /* $8EE2/$8FE0 are stationary held/ready continuations. */
+            /* Observed $8EE2 path: clear motion, count $04F0 down, and call
+               $9018 only after the remaining $36 objects have reached $37. */
             speed = 0;
             player->velocity_x = 0;
             player->velocity_depth = 0;
+            if (player->hold_timer != 0u) --player->hold_timer;
+            if (player->hold_timer <= 0x0Au &&
+                dd_inbound_formation_ready(state, player_index)) {
+                uint32_t receiver = player_index + 1u;
+                if (receiver >= DD_GAMEPLAY_PLAYER_COUNT) receiver = player_index - 1u;
+                dd_start_inbound_release(state, player_index, receiver);
+            }
+            break;
+        case DD_PLAYER_INBOUND_READY:
+            speed = 0;
+            dd_step_inbound_release(state, player_index);
             break;
         case DD_PLAYER_FORMATION_CPU:
             speed = 0x0200;
@@ -926,7 +988,12 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         default:
             break;
     }
-    dd_move_cpu_player(player, player_index, live_frame, speed);
+    if (integrate_existing_velocity) {
+        player->court_x += player->velocity_x * 2;
+        player->court_depth += player->velocity_depth * 2;
+    } else {
+        dd_move_cpu_player(player, player_index, live_frame, speed);
+    }
 }
 
 static void dd_begin_live(DDGameplayState *state, uint32_t winner) {
@@ -1355,6 +1422,13 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
     if (state->inbound_age != UINT16_MAX) ++state->inbound_age;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         dd_move_cpu_player(&state->players[player], player, live_frame, 0x0200);
+        if (player != 5u &&
+            state->players[player].action == DD_PLAYER_INBOUND_FORMATION &&
+            dd_pack_cpu_position(&state->players[player]) ==
+                state->players[player].target_zone) {
+            state->players[player].action = DD_PLAYER_LIVE_SET;
+            state->players[player].action_age = 0u;
+        }
     }
     if (state->inbound_age == 177u) {
         state->carrier = 5u;
@@ -1362,17 +1436,9 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
         state->ball.action = DD_BALL_DRIBBLE;
         state->ball.action_age = 0u;
         state->players[5].action = DD_PLAYER_INBOUND_HOLD;
+        state->players[5].hold_timer = 0x20u;
+        state->players[5].action_age = 0u;
         dd_step_dribble(assets, state);
-    } else if (state->inbound_age == 221u) {
-        state->ball.action = DD_BALL_AWARDED;
-        state->ball.held_height_offset = 0x08u;
-        state->ball.action_age = 0u;
-        state->players[5].action = DD_PLAYER_INBOUND_READY;
-    } else if (state->inbound_age == 229u) {
-        state->ball.owner = 5u;
-        dd_attach_ball(assets, state, 0u);
-        dd_begin_pass(state, 5u, 6u);
-        state->players[5].action = DD_PLAYER_INBOUND_READY;
     } else if (state->inbound_age > 229u && state->ball.action == DD_BALL_PASS) {
         dd_step_ball(assets, state);
         if (state->ball.action == DD_BALL_DRIBBLE) {
@@ -1381,6 +1447,24 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
         }
     } else if (state->ball.action == DD_BALL_DRIBBLE) {
         dd_step_dribble(assets, state);
+    }
+
+    if (state->players[5].action == DD_PLAYER_INBOUND_HOLD &&
+        state->inbound_age > 177u && (state->inbound_age & 1u) != 0u) {
+        if (state->players[5].hold_timer != 0u) --state->players[5].hold_timer;
+        if (state->players[5].hold_timer <= 0x0Au &&
+            dd_inbound_formation_ready(state, 5u)) {
+            dd_start_inbound_release(state, 5u, 6u);
+        }
+    }
+    /* Original slot $07 is scheduled every other rendered frame. */
+    if (state->players[5].action == DD_PLAYER_INBOUND_READY) {
+        if (state->players[5].action_age != UINT16_MAX) {
+            ++state->players[5].action_age;
+        }
+        if ((state->players[5].action_age & 1u) == 0u) {
+            dd_step_inbound_release(state, 5u);
+        }
     }
 }
 

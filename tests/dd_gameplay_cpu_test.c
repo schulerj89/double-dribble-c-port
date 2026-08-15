@@ -178,6 +178,12 @@ int main(int argc, char **argv) {
     check(state.live_frame == 944u && state.carrier == 5u &&
           state.players[5].action == DD_PLAYER_INBOUND_HOLD,
           "live 944 gives the inbounder the held ball in state $30");
+    check(dd_gameplay_advance_to(&pack, &state, 1344u, 0u), "advance to inbound release setup");
+    check(state.live_frame == 988u &&
+          state.players[5].action == DD_PLAYER_INBOUND_READY &&
+          state.players[5].release_timer == 8u &&
+          state.ball.action == DD_BALL_AWARDED,
+          "live 988 follows formation readiness through $9018 into state $31");
     check(dd_gameplay_advance_to(&pack, &state, 1352u, 0u), "advance to inbound pass");
     check(state.live_frame == 996u && state.ball.action == DD_BALL_PASS &&
           state.ball.receiver == 6u,
@@ -321,10 +327,16 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_CONTINUE;
-    dispatch_state.players[5].target_x += 0x2000;
+    dispatch_state.players[5].velocity_x = 0x0123;
+    dispatch_state.players[5].velocity_depth = -0x0124;
+    live_start_x[5] = dispatch_state.players[5].court_x;
+    live_start_depth[5] = dispatch_state.players[5].court_depth;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
-    check(dispatch_state.players[5].velocity_x != 0,
-          "shared movement state $2C executes the $8BC5 continuation");
+    check(dispatch_state.players[5].court_x == live_start_x[5] + 0x0246 &&
+          dispatch_state.players[5].court_depth == live_start_depth[5] - 0x0248 &&
+          dispatch_state.players[5].velocity_x == 0x0123 &&
+          dispatch_state.players[5].velocity_depth == -0x0124,
+          "shared state $2C integrates both fixed-point vectors twice through $A84C");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
@@ -394,13 +406,55 @@ int main(int argc, char **argv) {
     check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD,
           "player state $2F advances to held state $30 at its return point");
 
+    dispatch_state = dispatch_base;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_LIVE_SET;
+    }
+    dispatch_state.players[5].action = DD_PLAYER_INBOUND_HOLD;
+    dispatch_state.players[5].hold_timer = 0x0Bu;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.carrier = 5u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_READY &&
+          dispatch_state.players[5].hold_timer == 0x0Au &&
+          dispatch_state.players[5].release_timer == 8u &&
+          dispatch_state.ball.action == DD_BALL_AWARDED &&
+          dispatch_state.ball.receiver == 6u,
+          "player state $30 waits for formation $37 then installs $9018 release state $31");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_INBOUND_READY;
+    dispatch_state.players[5].release_timer = 8u;
+    dispatch_state.players[5].animation = 0x40u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.receiver = 6u;
+    dispatch_state.carrier = 5u;
+    for (player = 0u; player < 4u; ++player) {
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    }
+    check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_READY &&
+          dispatch_state.players[5].release_timer == 4u &&
+          dispatch_state.players[5].animation == 0x30u &&
+          dispatch_state.ball.action == DD_BALL_PASS &&
+          dispatch_state.carrier == 0xFFu,
+          "player state $31 launches ball $02 and lifts its sprite at countdown $04");
+    dispatch_state.players[5].release_timer = 0u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_CPU &&
+          dispatch_state.players[5].release_timer == 0xFFu,
+          "player state $31 underflow follows $8FE0->$9014 into state $40");
+
     for (player = DD_PLAYER_LIVE_CONTINUE_33; player <= DD_PLAYER_LIVE_CONTINUE_34; ++player) {
         dispatch_state = dispatch_base;
         dispatch_state.players[5].action = (uint8_t)player;
-        dispatch_state.players[5].target_x += 0x2000;
+        dispatch_state.players[5].velocity_x = 0x0123;
+        dispatch_state.players[5].velocity_depth = -0x0124;
+        live_start_x[5] = dispatch_state.players[5].court_x;
+        live_start_depth[5] = dispatch_state.players[5].court_depth;
         run_cpu_dispatch(&pack, &dispatch_state, 5u);
-        check(dispatch_state.players[5].velocity_x != 0,
-              "shared movement states $33/$34 execute the $8BC5 continuation");
+        check(dispatch_state.players[5].court_x == live_start_x[5] + 0x0246 &&
+              dispatch_state.players[5].court_depth == live_start_depth[5] - 0x0248,
+              "shared movement states $33/$34 execute $8BC5's double integration");
     }
 
     dispatch_state = dispatch_base;

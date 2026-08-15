@@ -103,6 +103,8 @@ typedef struct DDPlayerState {
     uint8_t contact_age;
     uint8_t height_script_index;
     uint8_t height_script_reverse;
+    uint8_t release_timer;
+    uint8_t hold_timer;
 } DDPlayerState;
 
 typedef struct DDBallState {
