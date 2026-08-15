@@ -314,6 +314,44 @@ int main(int argc, char **argv) {
           "player state $24 lands through $80 into the original $10 recovery countdown");
 
     dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_TIP_CPU;
+    dispatch_state.object_phase = 0x1Fu;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_TIP_CPU,
+          "player state $2A waits while shared object phase remains below $20");
+    dispatch_state.object_phase = 0x20u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_TIP_CPU_AIRBORNE &&
+          dispatch_state.players[5].height_script_index == 11u &&
+          dispatch_state.players[5].height_script_reverse == 0u,
+          "player state $2A installs $9B34 and advances to $2B at phase $20");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_TIP_CPU_AIRBORNE;
+    dispatch_state.players[5].height = 0x1055;
+    dispatch_state.players[5].height_script_index = 11u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.carrier = 0xFFu;
+    for (player = 0u; player < 27u; ++player) {
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    }
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER &&
+          dispatch_state.players[5].height == 0x1055 &&
+          dispatch_state.ball.action == DD_BALL_DRIBBLE &&
+          dispatch_state.carrier == 5u,
+          "player state $2B completes $9ABD and awards state $25 to the tip owner");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_TIP_CPU_AIRBORNE;
+    dispatch_state.players[5].height_script_index = 10u;
+    dispatch_state.ball.owner = 0u;
+    dispatch_state.carrier = 0u;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[9].action == DD_PLAYER_LIVE_TEAMMATE,
+          "player state $2B returns the losing five-player side to state $20");
+
+    dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_JUMP_CONTEST;
     dispatch_state.players[5].height = 0x2000;
     dispatch_state.players[5].height_script_index = 11u;
@@ -459,10 +497,14 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_FORMATION_CPU;
-    dispatch_state.players[5].target_x += 0x2000;
+    dispatch_state.players[5].velocity_x = 0x0123;
+    dispatch_state.players[5].velocity_depth = -0x0124;
+    live_start_x[5] = dispatch_state.players[5].court_x;
+    live_start_depth[5] = dispatch_state.players[5].court_depth;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
-    check(dispatch_state.players[5].velocity_x != 0,
-          "player formation state $35 has an explicit movement continuation");
+    check(dispatch_state.players[5].court_x == live_start_x[5] + 0x0246 &&
+          dispatch_state.players[5].court_depth == live_start_depth[5] - 0x0248,
+          "player state $35 shares $8BC5's double fixed-point integration");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_ROUTE_INIT;

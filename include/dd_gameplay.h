@@ -139,6 +139,7 @@ typedef struct DDGameplayState {
     uint8_t phase;
     uint8_t controlled_flash_palette;
     uint8_t cpu_global_frame;
+    uint8_t object_phase;
     uint8_t cpu_priority_player;
     uint8_t possession_direction;
     uint8_t possession_count;

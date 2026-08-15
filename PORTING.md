@@ -451,6 +451,17 @@ enters `$28` with countdown `$10`, which becomes `$0F` at frame 2657. The
 fractional `$55` never changes. The native test executes the same 27 scheduled
 script updates and separately exercises the contact/possession branch.
 
+Tip CPU states `$2A/$2B` use that same interpreter. `$8DD2` compares shared
+object phase `$004A` with `$20`; on/after the threshold it clears direction,
+loads `$9B34`, and writes `$2B`. `$8DF7` calls `$9ABD`, checks contact only when
+the next script byte is zero, and on landing selects winner state `$25` or
+resets the losing five-player side to `$20`. Natural frames 2471-2503 record
+`$004A=$00,$02,...,$20` followed by `$2A->$2B`; frames 2505-2555 traverse
+height `$15->$26->$10`, and frame 2557 records owner/carrier `$07/$07`, ball
+state `$01`, and player `$25`. Native `object_phase` is the portable form of
+`$004A`; its isolated checks cover below-threshold stability, winner landing,
+and loser reset. Mappings are `$8DD2->$0DE2` and `$8DF7->$0E07` in bank 0.
+
 The observed inbound release now follows `$8EE2->$9018->$8FE0`. Natural slot 7
 frames 3501-3543 remain in state `$30` while timer `$20->$0B` and the last
 formation object remains `$36`; after that object reaches `$37`, frame 3545
@@ -469,14 +480,15 @@ state `$30` retains the observed `$20` hold countdown/readiness gate, and state
 The native checkpoints remain release setup at frame 1344/live 988, pass launch
 at frame 1352/live 996, and reception at frame 1371/live 1015.
 
-Dispatcher states `$2C/$33/$34` contain no state-specific decision at all: each
+Dispatcher states `$2C/$33/$34/$35` contain no state-specific decision at all: each
 table entry targets `$8BC5`, which jumps to fixed-bank `$D98A`. On the observed
 gate-zero path `$D98A->$A84C->$A896->$A85A`, `$A84C` calls `$9CF6` twice for
 the 24-bit court-x position and `$9CA0` twice for the 16-bit court-depth
-position. Controlled state `$2C` frames 2601-2607 and state `$33/$34` frame
+position. Controlled state `$2C` frames 2601-2607 and state `$33/$34/$35` frame
 2601 seed x/depth velocities `$0123/$FEDC`; every scheduled update preserves
 those vectors and adds `$0246/$FDB8` to position. Both `$33` and `$34` produce
-position `$00F358/$39D8` on their injected frame. Native C now integrates the
+position `$00F358/$39D8` on their injected frame. The `$35` result corrects an
+earlier native target-seeking approximation. Native C now integrates the
 existing vectors twice rather than synthesizing a new target speed. Mappings
 are selected-bank `$8BC5->$0BD5`, `$A84C->$285C`, `$A896->$28A6`, and
 fixed-bank `$D98A->$1D99A`.
@@ -652,7 +664,7 @@ promoting `$21/$41` to Verified.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **82% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **84% portable Ghidra-to-C gameplay-loop coverage** and approximately **50% end-to-end match completeness**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

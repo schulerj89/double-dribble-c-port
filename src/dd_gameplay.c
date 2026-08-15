@@ -703,13 +703,35 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             }
             break;
         case DD_PLAYER_TIP_CPU:
-        case DD_PLAYER_TIP_CPU_AIRBORNE:
-            /* $8DD2/$8DF7 are tip-off animation/height states. The formation
-               phase advances their traced script; live dispatch keeps them
-               stable if a handoff frame still exposes either value. */
+            /* $8DD2 waits for shared object phase $004A >= $20, then installs
+               the same $9B34 height stream and advances $2A->$2B. */
             speed = 0;
-            player->velocity_x = 0;
-            player->velocity_depth = 0;
+            if (state->object_phase >= 0x20u) {
+                player->height_script_index = 11u;
+                player->height_script_reverse = 0u;
+                player->action = DD_PLAYER_TIP_CPU_AIRBORNE;
+                player->action_age = 0u;
+            }
+            break;
+        case DD_PLAYER_TIP_CPU_AIRBORNE:
+            /* $8DF7 runs $9ABD and gives the jumper state $25 when it owns
+               the tip; otherwise its five-player side returns to state $20. */
+            speed = 0;
+            if (dd_step_player_height_script(assets, player)) {
+                if (state->ball.owner == player_index) {
+                    state->carrier = (uint8_t)player_index;
+                    state->ball.action = DD_BALL_DRIBBLE;
+                    player->action = DD_PLAYER_LIVE_CARRIER;
+                    player->action_age = 0u;
+                } else {
+                    uint32_t first = player_index < 5u ? 0u : 5u;
+                    uint32_t teammate;
+                    for (teammate = first; teammate < first + 5u; ++teammate) {
+                        state->players[teammate].action = DD_PLAYER_LIVE_TEAMMATE;
+                        state->players[teammate].action_age = 0u;
+                    }
+                }
+            }
             break;
         case DD_PLAYER_LIVE_TEAMMATE: {
             uint32_t opponent = player_index < 5u ? player_index + 5u : player_index - 5u;
@@ -821,6 +843,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         case DD_PLAYER_LIVE_CONTINUE:
         case DD_PLAYER_LIVE_CONTINUE_33:
         case DD_PLAYER_LIVE_CONTINUE_34:
+        case DD_PLAYER_FORMATION_CPU:
             /* $8BC5->$D98A->$A84C calls each fixed-point axis integrator
                twice. It consumes existing vectors; it does not retarget. */
             integrate_existing_velocity = 1;
@@ -870,9 +893,6 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         case DD_PLAYER_INBOUND_READY:
             speed = 0;
             dd_step_inbound_release(state, player_index);
-            break;
-        case DD_PLAYER_FORMATION_CPU:
-            speed = 0x0200;
             break;
         case DD_PLAYER_INBOUND_FORMATION:
             /* Bank 0 $904D calls fixed target mover $D978 and advances to
@@ -1573,6 +1593,7 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
     }
     if (sequence_frame <= DD_AWARD_FRAME) {
         age = sequence_frame - DD_TOSS_START_FRAME;
+        state->object_phase = (uint8_t)age;
         state->ball.height = 0x1800;
         if (age != 0u) {
             uint32_t tick;

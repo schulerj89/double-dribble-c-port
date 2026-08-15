@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 82%**
+**Portable Ghidra-to-C gameplay-loop coverage: 84%**
 
 **End-to-end match completeness: approximately 50%**
 
@@ -23,19 +23,19 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 82.4%`, rounded to **82%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 83.8%`, rounded to **84%**.
 
-## Player action dispatcher — 92.6%
+## Player action dispatcher — 97.1%
 
 Ghidra anchor `$89B2` subtracts `$20` from player action `$0340+slot` and dispatches through the 34-entry table at `$89C0`. `ExportGameplayLoopEvidence.java` prints all entries so this denominator is reproducible.
 
 | Status | Count | Original states |
 | --- | ---: | --- |
-| V | 29 | `$21-$29,$2C-$2F,$31-$34,$36-$41` |
-| P | 5 | `$20,$2A,$2B,$30,$35` |
+| V | 32 | `$21-$2F,$31-$41` |
+| P | 2 | `$20,$30` |
 | M | 0 | none |
 
-Score: `(29 + 5 × 0.5) / 34 = 92.6%`.
+Score: `(32 + 2 × 0.5) / 34 = 97.1%`.
 
 Every table entry now has an explicit native handler. States `$28/$29` reproduce
 the traced `$20` countdown, rotating-priority ball target, immediate `$B435`
@@ -85,14 +85,24 @@ uses the same alternating-frame timer; `$31` is V. State `$30` remains P because
 its alternate `$002C`, mode-bit `$40`, and timeout orchestration branches are
 not yet translated.
 
-States `$2C/$33/$34` share the literal `$8BC5->$D98A->$A84C` tail. `$A84C`
+States `$2C/$33/$34/$35` share the literal `$8BC5->$D98A->$A84C` tail. `$A84C`
 calls the longitudinal fixed-point integrator twice and the depth integrator
 twice; it does not calculate a new target vector. Controlled probes seed
 `$0123/$FEDC` and preserve both terms while positions advance by
 `$0246/$FDB8` on every scheduled dispatch. Original frame 2601 produces the
-same `$00F358/$39D8` position for injected states `$33` and `$34`; state `$2C`
+same `$00F358/$39D8` position for injected states `$33`, `$34`, and `$35`; state `$2C`
 continues identically through frames 2601-2607. Native tests reproduce the
-two-add result for all three states, promoting them to V.
+two-add result for all four states, promoting them to V.
+
+States `$2A/$2B` now expose their dispatcher behavior directly as well as
+through the existing tip-off sequence. `$8DD2` waits for shared phase `$004A`
+to reach `$20`, installs pointer `$9B34`, clears its direction, and enters
+`$2B`. `$8DF7` runs the same verified `$9ABD` interpreter and awards `$25`
+when the jumper owns the ball; otherwise it restores that five-player side to
+`$20`. Natural original frames 2471-2503 prove phase `$00->$20` and `$2A->$2B`;
+frames 2505-2557 prove height `$10->$26->$10`, tip ownership `$07`, and
+`$2B->$25`. Isolated native checks cover the below-threshold, winner, and loser
+branches, promoting both states to V.
 
 ## Ball action dispatcher — 100%
 
