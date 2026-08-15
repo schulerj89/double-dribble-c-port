@@ -588,6 +588,20 @@ static uint8_t dd_pack_cpu_position(const DDPlayerState *player) {
     return dd_pack_cpu_coordinates(player->court_x, player->court_depth);
 }
 
+/* `$B189->$AB53` enables the special finish only in four packed cells per
+   side. User object slots `$02-$06` accept BA/BB/9C/9D; CPU slots `$07-$0B`
+   accept A5/A4/83/84. This byte test is intentionally not a radius around the
+   visual hoop: it includes the original wide approach lane and rejects the
+   immediately adjacent packed columns/depth bands. */
+static int dd_dunk_cell_eligible(uint32_t shooter, uint8_t packed) {
+    if (shooter < 5u) {
+        return packed == 0xBAu || packed == 0xBBu ||
+               packed == 0x9Cu || packed == 0x9Du;
+    }
+    return packed == 0xA5u || packed == 0xA4u ||
+           packed == 0x83u || packed == 0x84u;
+}
+
 static uint16_t dd_pack_extended_coordinates(int32_t court_x, int32_t court_depth) {
     uint32_t x = (uint32_t)dd_clamp(court_x >> 8, 0, 0x1FF);
     uint32_t depth = (uint32_t)dd_clamp(court_depth >> 8, 0, 0xFF);
@@ -1338,13 +1352,11 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
                           DDGameplayState *state, uint32_t shooter) {
     DDPlayerState *player;
     int32_t hoop_x;
-    int32_t rim_distance;
-    int32_t lane_distance;
+    uint8_t packed;
     if (shooter >= DD_GAMEPLAY_PLAYER_COUNT) return;
     player = &state->players[shooter];
     hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
-    rim_distance = dd_absolute(player->court_x - hoop_x);
-    lane_distance = dd_absolute(player->court_depth - 0x005800);
+    packed = dd_pack_cpu_position(player);
     state->ball.action = DD_BALL_SHOT_GATHER;
     state->ball.owner = (uint8_t)shooter;
     state->last_touch_player = (uint8_t)shooter;
@@ -1354,13 +1366,10 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
     state->ball.rim_contact = 0u;
     state->last_shooter = (uint8_t)shooter;
     state->shot_value = 2u;
-    /* The original close-range branch leaves the ordinary $AA75/$AAEE shot
-       chain for the bank-2 dunk presentation.  The controlled trace enters
-       with the ball at $01B4/$57 beside the right rim.  Keep that recovered
-       gate explicit: only a carrier in the rim lane can enter the native
-       dunk make/miss sequence; no half-court request can be promoted. */
-    state->dunk_active = (uint8_t)(rim_distance <= 0x0C00 &&
-                                   lane_distance <= 0x0800);
+    /* `$B189-$B1DC` checks the `$AB53` packed cell before it initializes the
+       ordinary shot vector. A match enters the special presentation only for
+       the exact four cells assigned to that player's side. */
+    state->dunk_active = (uint8_t)dd_dunk_cell_eligible(shooter, packed);
     state->dunk_age = 0u;
     state->dunk_outcome = (uint8_t)(((state->cpu_entropy +
                                       state->possession_count + shooter) & 3u) == 0u

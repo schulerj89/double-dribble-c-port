@@ -73,6 +73,17 @@
       ],
       "coverage_change_percent": 0.0,
       "reason": "These are regressions inside already catalogued rendering, tip-off, and configuration paths. They do not create new routine coverage credit."
+    },
+    {
+      "milestone": "phase-1b-natural-dunk-eligibility",
+      "status": "verified",
+      "completed": [
+        "user `$B189` packed dunk cells `$BA/$BB/$9C/$9D`",
+        "CPU `$B189` packed dunk cells `$A5/$A4/$83/$84`",
+        "adjacent-cell ordinary-shot rejection"
+      ],
+      "coverage_change_percent": 0.0,
+      "reason": "This replaces an incorrect approximation inside the already catalogued shot initializer; the comprehensive inventory is still pending."
     }
   ],
   "phases": [
@@ -105,7 +116,8 @@
       "name": "Visible gameplay regressions and configuration continuity",
       "status": "in_progress",
       "priority": 1,
-      "depends_on": [0],
+      "depends_on": [],
+      "coordination": "Runs alongside phase 0 because each visible-flow trace also expands and validates the exhaustive inventory.",
       "work": [
         "Fix player/metasprite disappearance near the top court edge without reintroducing NES scanline dropout or HUD wrapping",
         "Recover and apply the original tip-off jumper facing and sprite selection for user and CPU wins",
@@ -134,7 +146,7 @@
       "name": "Complete CPU offense and defense",
       "status": "pending",
       "priority": 2,
-      "depends_on": [1],
+      "depends_on": [0, 1],
       "work": [
         "Audit every `$D759-$DA39` decision exit, receiver search, pass rejection, obstacle route, clock override, shot region, and cooldown",
         "Translate defensive assignment, help, contest, steal, block, rebound, loose-ball, transition, and inbound decisions",

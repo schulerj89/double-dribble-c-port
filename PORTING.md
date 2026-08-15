@@ -1701,6 +1701,22 @@ This milestone deliberately leaves catalogued coverage at **92.6%**. Natural
 dunk eligibility, complete blocking, exhaustive CPU audit, free throws, and the
 comprehensive routine manifest remain active phases in `PORTING_PLAN.json`.
 
+The next correction replaces the native dunk radius with the original literal
+eligibility gate. Headless Ghidra at bank-0 `$B189-$B1DC` (ROM
+`$3199-$31EC`) shows `$AB53` packing the current shooter into `$05B0+X`.
+Original user slots `$02-$06` enter the special finish only for packed cells
+`$BA/$BB/$9C/$9D`; CPU slots `$07-$0B` use `$A5/$A4/$83/$84`. On a match,
+`$B1B9` stores `$003B=1`, `$B1BD` selects main state `$002A=0C`, and `$B1D3`
+chooses one of the side-specific animation variants before ordinary shot-vector
+initialization continues at `$B1DE`. The former C radius covered only the center
+of that approach lane, so natural attempts from valid outer cells silently
+became jump shots. Native code now compares the exact packed byte. Regression
+tests exercise all eight accepted cells through shipping user-B or CPU-state
+`$26` paths and prove adjacent `$B9/$A6` remain ordinary shots. The native dunk
+capture starts from `$BA`, a cell deliberately outside the removed radius, so a
+successful screenshot also proves this repair rather than the old synthetic
+center case.
+
 ## Open research questions
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.

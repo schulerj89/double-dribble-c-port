@@ -2502,6 +2502,60 @@ int main(int argc, char **argv) {
     check(dispatch_state.audio_event == 0x14u,
           "dunk miss requests the original loose-ball SFX `$14`");
 
+    /* `$B189-$B1DC` uses four literal `$AB53` packed cells for each side.
+       Cover all eight cells and the immediately adjacent rejected columns. */
+    {
+        static const uint8_t user_dunk_cell[4] = {0xBAu, 0xBBu, 0x9Cu, 0x9Du};
+        static const uint8_t cpu_dunk_cell[4] = {0xA5u, 0xA4u, 0x83u, 0x84u};
+        uint32_t cell;
+        for (cell = 0u; cell < 4u; ++cell) {
+            dispatch_state = dispatch_base;
+            dispatch_state.phase = DD_GAMEPLAY_LIVE;
+            dispatch_state.controlled_player = 0u;
+            dispatch_state.carrier = 0u;
+            dispatch_state.ball.owner = 0u;
+            dispatch_state.ball.action = DD_BALL_DRIBBLE;
+            dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+            set_packed_position(&dispatch_state.players[0], user_dunk_cell[cell]);
+            check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B) &&
+                  dispatch_state.dunk_active != 0u,
+                  "each literal user `$B189` dunk cell activates from shipping B input");
+
+            dispatch_state = dispatch_base;
+            dispatch_state.phase = DD_GAMEPLAY_LIVE;
+            dispatch_state.controlled_player = 0u;
+            dispatch_state.carrier = 5u;
+            dispatch_state.ball.owner = 5u;
+            dispatch_state.ball.action = DD_BALL_DRIBBLE;
+            dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER_ROUTE;
+            set_packed_position(&dispatch_state.players[5], cpu_dunk_cell[cell]);
+            run_cpu_dispatch(&pack, &dispatch_state, 5u);
+            check(dispatch_state.dunk_active != 0u,
+                  "each literal CPU `$B189` dunk cell activates through state `$26`");
+        }
+        dispatch_state = dispatch_base;
+        dispatch_state.phase = DD_GAMEPLAY_LIVE;
+        dispatch_state.controlled_player = 0u;
+        dispatch_state.carrier = 0u;
+        dispatch_state.ball.owner = 0u;
+        dispatch_state.ball.action = DD_BALL_DRIBBLE;
+        dispatch_state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
+        set_packed_position(&dispatch_state.players[0], 0xB9u);
+        check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B) &&
+              dispatch_state.dunk_active == 0u,
+              "packed cell `$B9` beside the user dunk lane remains an ordinary shot");
+        dispatch_state = dispatch_base;
+        dispatch_state.phase = DD_GAMEPLAY_LIVE;
+        dispatch_state.carrier = 5u;
+        dispatch_state.ball.owner = 5u;
+        dispatch_state.ball.action = DD_BALL_DRIBBLE;
+        dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER_ROUTE;
+        set_packed_position(&dispatch_state.players[5], 0xA6u);
+        run_cpu_dispatch(&pack, &dispatch_state, 5u);
+        check(dispatch_state.dunk_active == 0u,
+              "packed cell `$A6` beside the CPU dunk lane remains an ordinary shot");
+    }
+
     period_state = dispatch_base;
     period_state.clock_minutes = 0u;
     period_state.clock_seconds = 0u;

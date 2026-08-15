@@ -559,8 +559,10 @@ int main(int argc, char **argv) {
             state.ball.owner = 0u;
             state.players[0].action = DD_PLAYER_LIVE_USER_CARRIER;
             state.players[0].facing = 0u;
-            state.players[0].court_x = 0x01B400;
-            state.players[0].court_depth = 0x005700;
+            /* Packed cell `$BA` is accepted by original `$B189` but lay
+               outside the port's former narrow radius gate. */
+            state.players[0].court_x = 0x01A400;
+            state.players[0].court_depth = 0x005800;
             state.players[0].height = 0x1000;
             for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
                 state.players[player].action = DD_PLAYER_ROUTE_WAIT;
