@@ -13,7 +13,7 @@ New-Item -ItemType Directory -Force -Path $captureRoot | Out-Null
 Add-Type -AssemblyName System.Drawing
 
 foreach ($outcome in @('make', 'miss')) {
-    foreach ($checkpoint in @('gather', 'release', 'result')) {
+    foreach ($checkpoint in @('gather', 'release', 'result', 'inbound')) {
         $bmpPath = Join-Path $captureRoot ("$outcome-$checkpoint.bmp")
         $pngPath = Join-Path $captureRoot ("$outcome-$checkpoint.png")
         & $CliPath --render-gameplay-shot $AssetPackPath $outcome $checkpoint $bmpPath

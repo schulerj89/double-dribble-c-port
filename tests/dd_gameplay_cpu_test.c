@@ -134,6 +134,15 @@ int main(int argc, char **argv) {
           assets->shot_animation[6] == 0x24u &&
           assets->shot_animation[7] == 0x26u,
           "asset pack exposes $A9DC's eight facing-indexed shot poses");
+    check((uint8_t)assets->rebound_target_phase[0] == 0xFEu &&
+          (uint8_t)assets->rebound_target_phase[1] == 0xFFu &&
+          assets->rebound_target_phase[2] == 0x01 &&
+          assets->rebound_target_phase[3] == 0x02 &&
+          assets->rebound_formation[0] == 0xA4u &&
+          assets->rebound_formation[1] == DD_PLAYER_REBOUND_CHASE &&
+          assets->rebound_formation[20] == 0xBBu &&
+          assets->rebound_formation[21] == DD_PLAYER_REBOUND_CHASE,
+          "asset pack exposes $8503/$8507's two-direction rebound formation tables");
 
     memset(&jump_state, 0, sizeof(jump_state));
     check(dd_gameplay_advance_to(&pack, &jump_state, 300u, 0u),
@@ -936,11 +945,29 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].action = DD_PLAYER_INBOUND_HOLD;
     dispatch_state.players[5].hold_timer = 0x0Au;
     dispatch_state.inbound_variant = 1u;
+    dispatch_state.possession_direction = 1u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_LIVE_USER_INBOUND &&
           dispatch_state.controlled_player == 5u &&
           dispatch_state.ball.action == DD_BALL_AWARDED,
           "player state $30 mode-bit $40 branch installs selected action $0D");
+    dispatch_state = dispatch_base;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        dispatch_state.players[player].action = DD_PLAYER_LIVE_SET;
+        dispatch_state.players[player].role = (uint8_t)(player % 5u);
+    }
+    dispatch_state.players[5].action = DD_PLAYER_INBOUND_HOLD;
+    dispatch_state.players[5].hold_timer = 0x0Au;
+    dispatch_state.inbound_variant = 1u;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.cpu_global_frame = 0u;
+    dispatch_state.camera_x = dispatch_state.players[5].court_x - 0x8000;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_READY &&
+          dispatch_state.ball.receiver >= 5u &&
+          dispatch_state.ball.receiver < DD_GAMEPLAY_PLAYER_COUNT &&
+          dispatch_state.ball.receiver != 5u,
+          "player state $30 clear-mode made basket follows $A0DA->$9018 automatic inbound");
     dispatch_state = dispatch_base;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
         dispatch_state.players[player].action = DD_PLAYER_LIVE_SET;
@@ -1546,6 +1573,22 @@ int main(int argc, char **argv) {
     check(dispatch_state.ball.action == DD_BALL_SCORE &&
           dispatch_state.ball.outcome == 1u,
           "original make coordinates reach $B377 result one through the shipping shot loop");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u) &&
+          dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "dispatch both teams through the pending $8491 formation gate");
+    check(dispatch_state.players[5].action == DD_PLAYER_REBOUND_CHASE &&
+          dispatch_state.players[0].action == DD_PLAYER_INBOUND_FORMATION,
+          "$AE25->$8491 assigns the receiving CPU role zero to $2D after a user make");
+    for (player = 0u; player < 600u &&
+         dispatch_state.ball.action != DD_BALL_PASS; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance user make through $2D->$2E->$2F->$30->$31 inbound");
+    }
+    check(dispatch_state.ball.action == DD_BALL_PASS &&
+          dispatch_state.ball.receiver >= 5u &&
+          dispatch_state.ball.receiver < DD_GAMEPLAY_PLAYER_COUNT &&
+          dispatch_state.ball.receiver != 5u,
+          "$8EE2 clear-mode branch automatically inbounds a user make to a CPU teammate");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -1575,6 +1618,18 @@ int main(int argc, char **argv) {
           (dispatch_state.ball.action == DD_BALL_LOOSE_LAUNCH ||
            dispatch_state.ball.action == DD_BALL_REBOUND),
           "original miss coordinates avoid result one and enter a miss/rebound state");
+    for (player = 0u; player < 80u &&
+         dispatch_state.phase != DD_GAMEPLAY_INBOUND; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance missed user shot through $9635 reason-$16 inbound setup");
+    }
+    check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
+          dispatch_state.inbound_reason == 0x16u &&
+          dispatch_state.players[5].action == DD_PLAYER_INBOUNDER &&
+          dispatch_state.players[5].target_zone == 0x1Du &&
+          dispatch_state.players[5].target_x == 0x01D800 &&
+          dispatch_state.players[5].target_depth == 0x000800,
+          "$AF46->$9635->$9651 assigns CPU role zero state $41 at wrapped target $001D");
 
     contest_state = dispatch_base;
     contest_state.phase = DD_GAMEPLAY_LIVE;

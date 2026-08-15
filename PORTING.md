@@ -597,15 +597,19 @@ shot to object `$07`. Native C shares one exceptional-dead-ball helper for both
 callers, preserves shooter/offender ownership, and deliberately avoids the
 ordinary inbound formation tail.
 
-Following the timeout exposed an older rebound-return approximation.  Ghidra
+Following the timeout exposed an older rebound-return approximation. Ghidra
 shows `$8E71` and `$8EBF` both using `$D978` packed equality followed by
-`$D98D`'s double fixed-point integration.  Natural frames 2783-3004 carry
-`$FF01` longitudinal and signed `$000C` depth terms through
-`$2D->$2E->$2F->$30->$0D`; native now preserves those vectors and the traced
-frame-2783 sub-cell `$00EC0A/$5988`.  Original/native pixel differences for
-2783/582, 2944/743, 3004/803, 3324/1123, 3501/1300, 3545/1344, 3553/1352,
-and 3572/1371 are respectively **5.2037%, 4.5968%, 5.0520%, 4.8671%,
-4.7189%, 5.1252%, 5.2734%, and 5.6536%**.
+`$D98D`'s double fixed-point integration. The installation itself begins at
+`$8491`: gate `$0056`, role `$0690`, signed phase table `$8503`, and the 20
+target/action pairs at `$8507` select one `$2D` rebound chaser and nine `$36`
+formation routes. Natural and controlled traces show the low-entropy object
+phase changing individual targets by `$FE/$FF/$01/$02`; native preserves the
+observed per-slot phases while still batching the NES object cadence. DDAP v16
+contains both ROM tables. `$2D` keeps the `$FF01` longitudinal and signed
+`$000C` depth terms before `$2E->$2F->$30`. The subsequent `$8EE2` branch uses
+`$A0DA` to select an on-screen non-role-zero teammate for automatic state `$31`
+inbound after a user make, while mode bit `$40` selects user state `$0D` in the
+opposite arrangement.
 
 State `$20`'s missing paired-player path is `$8A16->$9102`. `$9102` feeds
 current and paired projected coordinates to the shared `$9B42` two-axis box
@@ -1234,7 +1238,7 @@ outside/three. The three-point score probe keeps kind `$01` through counters
 cover these four boundary cases, the far-page cases, release ordering, and all
 one-/two-/three-point score branches.
 
-DDAP v15 retains the audible results, not only event numbers. Matched FCEUX
+DDAP v16 retains the audible results, not only event numbers. Matched FCEUX
 APU runs isolate `$09` as a 189-frame pulse-2 cue at duty 50%/volume 6 whose
 timer moves `256->162->255` before stopping. `$25` is a 42-frame two-pulse
 arpeggio; comparing shot kind 1 against kind 0 proves the simultaneous
@@ -1271,7 +1275,7 @@ entry rather than injecting a result after release.
 | Ghidra/ASM | Recovered behavior | Native C |
 | --- | --- | --- |
 | `$AA75` | clear `$04F0+X`, install height stream `$9B34` from `$9B26`, set player `$03`, release gate `$04E0=1`, and ball `$04` | `dd_begin_shot` |
-| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v15 `shot_animation[8]` and `player.animation` |
+| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v16 `shot_animation[8]` and `player.animation` |
 | `$A504` | update movement, pose, projection, and `$9ABD` height stream; on the release gate call `$B189` and `$A7EA` | user-shot gather dispatcher |
 | `$B035` table 2 | add the first facing offset to longitudinal `$0370` and the second to depth `$03C0` | exact shot attachment path |
 | `$B189->$9D2D->$9BB0` | target virtual hoop object `$0D`, derive signed angle/vector, duration, curve, and vertical base | `dd_initialize_shot_flight` |
@@ -1297,11 +1301,14 @@ enters rebound state `$07` at frame 2816. Native regressions reproduce the
 make launch tuple exactly and drive both cases through the shipping input and
 dispatcher loop, proving one score and one non-score/rebound outcome.
 
-Ignored visual evidence includes original release/make/miss frames and six
-native gather/release/result captures. Whole-frame differences are 17.6322%
+Ignored visual evidence includes original release/make/miss frames and eight
+native gather/release/result/inbound captures. Whole-frame differences are 17.6322%
 at release, 15.8831% at the make result, and 15.7628% at the miss result; the
-known residual is dominated by the diagnostic's intentionally parked off-ball
-players, clock timing, and dynamic sprite ordering. Visual inspection confirms
+known residual is dominated by clock timing, frame selection, and dynamic
+sprite ordering. The post-result comparisons differ by **14.8193%** for the
+automatic make inbound (original 2929/native make-inbound) and **13.3214%**
+for the missed-shot boundary formation (original 2944/native miss-inbound).
+Visual inspection confirms
 the recovered `$22` shooting pose, hoop entry for the make, and loose ball for
 the miss. Numeric/state comparisons are the acceptance gate for this slice.
 
@@ -1314,6 +1321,39 @@ Reproduce the evidence with:
 .\tools\Capture-NativeShooting.ps1
 .\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
 ```
+
+### Post-shot make/miss formation and inbound state flow
+
+This follow fixes the scattered-player aftermath rather than repositioning
+players in the renderer. The relevant state effects recovered from Ghidra and
+confirmed in FCEUX are:
+
+| State / helper | Original effect | Native translation |
+| --- | --- | --- |
+| `$AE25` result `$01` | flip `$0050`, set/decrement gate `$0056`, enter ball score `$06` | change possession direction and arm `rebound_formation_pending` |
+| `$8491->$8503/$8507` | combine gate, role `$0690`, team side, and object phase; install one `$2D` plus nine `$36` targets | DDAP v16 tables plus the traced per-slot cadence adapter |
+| player `$2D->$2E->$2F->$30` | chase/claim the scored ball, return to the boundary, then wait for all `$36->$37` routes | native rebound-chase dispatcher chain and formation readiness gate |
+| `$8EE2->$A0DA->$9018` | when mode bit `$40` is clear, find an on-screen non-role-zero teammate and enter automatic release `$31` | `dd_automatic_inbound_receiver` and normal ball `$02` pass |
+| ball `$07->$AF46` | on an untouched miss, increment the rebound counter; its third dispatch may reach the boundary rule | outcome-zero guard lasts only while `action_age < 3` |
+| `$9635->$9651->$D6BD` | queue reason `$16`, flip possession, reset ten formation targets, and assign receiving role zero state `$41` | `dd_begin_common_inbound` and native `$36/$41` formation |
+| `$96AF-$96CA` | determine `$05E0` from the source side, then add `$9763` to `$05D0` with 8-bit wrap and no carry into `$05E0` | explicit low-byte wrap preserving the independently derived ninth bit |
+
+The controlled make reaches `$8491` at original frame 2790. Receiving role
+zero (original slot `$07`, native player 5) gets `$2D/$BB`; the other nine get
+`$36`. It then reaches `$30`, `$8EE2` takes the clear-mode branch, `$A0DA`
+selects a teammate, and `$9018` launches the inbound. The untouched miss enters
+ball state `$07` at frames 2815-2816 and reaches `$9635` at frame 2818. At that
+instant the original ball is `x=$01D328, depth=$004FE0`, packed `$009D`.
+Because `$9763[$9D]=$80`, low-byte wrap produces target `$001D`, which `$ABCD`
+expands to `x=$01D800, depth=$000800`. The earlier native 16-bit addition
+incorrectly produced `$011D` and parked the inbounder at depth `$88`, causing
+the visibly broken formation.
+
+FCEUX frame 2944 and native `miss-inbound.png` now show the same baseline-side
+formation; frame 2929 and native `make-inbound.png` show the made-basket
+automatic inbound. The regression drives both shots from B input through the
+shipping ball/player dispatchers, asserts the make's CPU receiver, and asserts
+the miss's reason `$16`, state `$41`, and exact `$001D` coordinates.
 
 Coverage remains **92.6% unrounded (93% displayed)** and match rules remain
 **80.8%**. The portable shot, result, score, and miss states were already

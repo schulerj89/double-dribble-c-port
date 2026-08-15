@@ -88,8 +88,9 @@ standard `$9018->$31` arrangement, mode-bit `$40` action `$0D` arrangement,
 and `$002C`'s additional opposite-role-zero `$0F` assignment. Both states are V.
 
 The inbound path is also state-driven end to end rather than checkpoint-driven.
-The made-basket return installs the frame-2783 `$2D/$36` formation, reaches
-`$2E/$2F/$30/$0D` through scheduled dispatches, and feeds the frame-3324
+The made-basket return installs `$2D/$36` from ROM tables `$8503/$8507` on
+the same per-object cadence observed at frame 2790, reaches
+`$2E/$2F/$30/$31` or `$0D` through scheduled dispatches, and feeds the frame-3324
 `$36/$41` turnover inbound after `$0D`'s recovered 320-frame limit. Direction+A
 now follows `$A129/$A21F`: natural frame 3010 selects object `$04`, frame 3012
 launches ball `$02` and receiver `$0C`, and frame 3051 transfers control and
@@ -101,6 +102,14 @@ control entries. The shared `$9651` setup, opposite possession direction,
 sloped court boundary, possession violations, and every portable helper reached
 by those branches are inventoried separately below, promoting match-level
 inbound to Verified.
+
+The controlled user miss supplies the opposite low-byte wrap case. Original
+frame 2818 enters `$AF46` for the third rebound dispatch, reaches `$9635`, and
+passes source packed position `$009D` to `$9651`. `$9763[$9D]=$80`; `$96C1`
+adds that offset only to the low byte, yielding `$05D7/$05E7=$1D/$00` rather
+than carrying into `$011D`. The native regression asserts target
+`x=$01D800, depth=$000800` and state `$41`, preventing the earlier malformed
+formation where the inbounder remained at depth `$88`.
 
 States `$2C/$33/$34/$35` share the literal `$8BC5->$D98A->$A84C` tail. `$A84C`
 calls the longitudinal fixed-point integrator twice and the depth integrator
@@ -197,7 +206,8 @@ The user-shooting slice is verified end to end. `$AA75` installs player state
 selects one of `$22,$28,$23,$27,$21,$25,$24,$26` from `$A9DC` by facing.
 `$A504->$B189` releases to ball state `$05`; `$AE25->$B377` produces result
 `$01` for a make or results `$02-$04` for `$08->$09` miss/rebound handling.
-DDAP v15 stores only the eight recovered pose indices. Controlled original
+DDAP v16 stores the eight recovered pose indices and the `$8503/$8507`
+post-basket formation data. Controlled original
 make/miss traces and shipping-loop native tests prove both outcomes. The pose
 table itself remains excluded from the percentage as NES metasprite/OAM
 presentation; the portable state, flight, and outcome handlers were already
@@ -330,7 +340,7 @@ one-point free throw. The score trace enters state `$06` with counter `$0C`,
 writes both score copies only on `$09->$08`, lowers height for `$05-$00`, and
 enters rebound `$07` on underflow. Controlled inside/outside traces cover the
 boundary in both directions, and native checks prove deferred one-, two-, and
-three-point awards. DDAP v15 retains the recovered `$09` line-call
+three-point awards. DDAP v16 retains the recovered `$09` line-call
 and `$25` three-point scoring cues. The renderer derives the same blank-leading
 two decimal HUD tiles from native score state. Buffered PPU queue mechanics
 remain excluded as NES-only presentation machinery.
