@@ -779,7 +779,7 @@ through `$D94E` are now translated and Verified in the later CPU-policy slice.
 
 Ball launch state `$0A` is a one-frame initializer at `$B017`, not a wait state.
 The unmodified trace changes `$0A->$05` at frames 2470-2471 and shows vertical
-term `$0305` plus curve byte `$D8`. The routine does not write owner or camera
+term `$0305` plus curve byte `$0C`. The routine does not write owner or camera
 carrier, and the native version now preserves both. Dispatcher states `$0B` and
 `$0C` share `$ACAB`, which clears only integer height `$0410` before projection.
 The long natural capture contains 1,542 `$0B` frames. An opt-in state `$0C`
@@ -977,6 +977,79 @@ a pixel-equality claim. The logical 256x224 crop reports 11,441/57,344 differing
 pixels (19.9515%) at contact and 6,919/57,344 (12.0658%) after landing; the
 repeatable diff makes that remaining visual gap explicit rather than hiding it.
 
+## Fixed-point height and movement physics
+
+Status: **Verified**. The earlier native code mixed direct integer approaches,
+clamps, and per-state gravity approximations. The portable primitives now
+follow the ROM's shared fixed-point helpers and their actual call graph.
+
+### Ghidra control/data flow followed
+
+| Ghidra/ASM | Recovered behavior | Native C |
+| --- | --- | --- |
+| bank 0 `$9CA0-$9CF5` | sign-extend 8.8 X velocity `$0390/$03A0`, add it to 16.8 X `$0360/$0370/$0380`, accept integer `$0010-$01F1`; on failure retain position and zero X velocity | `dd_integrate_longitudinal` |
+| bank 0 `$9CF6-$9D2C` | add 8.8 depth `$03E0/$03F0` to `$03B0/$03C0/$03D0`, accept rows `$05-$98`; on failure retain position and zero depth velocity | `dd_integrate_depth` |
+| bank 0 `$A84C-$A859` | call `$9CF6` twice, then `$9CA0` twice | shared installed-vector player tail |
+| fixed `$D98A/$D98D` | enter the shared `$A84C` tail after state-specific setup/arrival logic | states `$2C/$2D/$2F/$33/$34/$35` and other installed-vector paths |
+| bank 0 `$9B84-$9BAF` plus fixed `$C3C5` | divide `(elapsed << 8)` by curve, subtract quotient from base vertical, then add the wrapped 8.8 delta to height | `dd_integrate_height` |
+| bank 0 `$B412-$B434` | reset elapsed and integer height, preserve the height fraction, subtract `$0050` from base vertical, saturate a signed-negative base to zero | `dd_restart_height_bounce` |
+| bank 0 `$9D2D/$9BB0` | classify target angle using `$9DEB`, then expand/rotate signed motion using `$9C1C/$9C5E` | `dd_target_motion_vector` |
+| bank 0 `$B189-$B2EE` | initialize shot state `$05`, aim at the active hoop, derive duration/curve, and use two divider results for base vertical | `dd_initialize_shot_flight` |
+| bank 0 `$AD41/$ADF2/$AE25/$AF46/$AFDD` | pass, bounce pass, airborne shot, rebound, and loose-airborne states call the shared axis/height helpers at their individual recovered counts | native ball dispatcher states `$02/$03/$05/$07/$09` |
+
+`$B167` remains deliberately separate: bounce-pass state `$03` updates only
+integer height using its high-byte velocity/gravity algorithm. `$B017` also
+distinguishes the flight divisor `$004C=$0C` from a separate object field
+`$04B0=$D8`; native `flight_curve` represents `$004C`, so it is `$0C`, not the
+old `$D8` approximation.
+
+The selected-bank-0 ROM-file mappings (including the 16-byte iNES header) are
+`$9B84->$1B94`, `$9BB0->$1BC0`, `$9C1C->$1C2C`, `$9C5E->$1C6E`,
+`$9CA0->$1CB0`, `$9CF6->$1D06`, `$9D2D->$1D3D`, `$9DEB->$1DFB`,
+`$A84C->$285C`, `$AD41->$2D51`, `$AE25->$2E35`, `$AF46->$2F56`,
+`$AFDD->$2FED`, `$B017->$3027`, `$B167->$3177`, `$B189->$3199`, and
+`$B412->$3422`. Fixed-bank `$C3C5`, `$D98A`, and `$D98D` map to
+`$1C3D5`, `$1D99A`, and `$1D99D`. These addresses are evidence only; the
+native runtime does not load or execute ROM instructions.
+
+### Dynamic and native verification
+
+The gameplay Lua trace now records every physics call with object, action,
+position, velocity, height, base, elapsed, curve, packed position, and target.
+The bounded input run reaches `$9CA0/$9CF6` 13,810 times each, `$A84C` 6,556
+times, `$9B84` 574 times, and `$B189` four times. A no-input shot records:
+
+| Original event | X / velocity | Depth / velocity | Height inputs/result |
+| ---: | --- | --- | --- |
+| frame 2749 `$B189` → frame 2750 ball entry | `$005700 / $FF43` | `$004B00 / $00AB` | `$3800`, base `$0200`, elapsed `$00`, curve `$05` |
+| frame 2750 helper returns | `$005643 / $FF43` | `$004BAB / $00AB` | `$39CD`, elapsed `$01` |
+| frame 2751 helper returns | `$005586 / $FF43` | `$004C56 / $00AB` | `$3B67`, elapsed `$02` |
+
+That height is exactly
+`$3800 + ($0200 - floor($0100 / 5)) = $39CD`; the next step is `$3B67`.
+Native regression checks assert both values, the long-shot vector
+`$FF01/$000C` plus curve/base `$2F/$027C`, the double-add `$A84C` path, and
+upper/lower rejection for both axes. The user-control checks additionally
+prove that boundary attempts preserve sub-cell coordinates and zero rejected
+velocity rather than snapping to a clamp.
+
+Reproduce the ignored evidence with:
+
+```powershell
+.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2450 -FinalFrame 6000 -CaptureName original-fixed-physics -JumpStart 2502 -JumpEnd 2515 -JumpButton B -DisablePcCounts
+.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2450 -FinalFrame 3000 -CaptureName original-fixed-physics-no-input -DisablePcCounts
+.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+```
+
+The first post-apex reference screenshot is
+`captures/original-fixed-physics-no-input/frame-2749.png`; the capture remains
+ignored along with its RAM/CSV evidence. Native transition frame 548 is the
+corresponding release checkpoint. Its 256x224 gameplay crop differs in
+3,074/57,344 pixels (5.3606%); the residual is chiefly the already-documented
+opening route's slightly different gather sub-cell, not the fixed-point arc.
+The stable live-handoff gate remains 2,300/57,344 (4.0109%), below its 5% limit.
+
 ## Complete CPU pass/shot decision policy
 
 Status: **Verified**. The previous native choice used only longitudinal distance
@@ -1030,7 +1103,7 @@ remain unchanged.
 
 ## Open research questions
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **94% portable Ghidra-to-C gameplay-loop coverage** (94.4% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 
 - Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
 - Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.

@@ -437,6 +437,29 @@ int main(int argc, char **argv) {
           "prepare isolated dispatcher checks");
 
     dispatch_state = dispatch_base;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.action = DD_BALL_AIRBORNE;
+    dispatch_state.ball.court_x = 0x010000;
+    dispatch_state.ball.court_depth = 0x005000;
+    dispatch_state.ball.height = 0x3800;
+    dispatch_state.ball.velocity_x = 0;
+    dispatch_state.ball.velocity_depth = 0;
+    dispatch_state.ball.velocity_height = 0x0200;
+    dispatch_state.ball.vertical_phase = 0u;
+    dispatch_state.ball.flight_curve = 0x05u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step first traced $9B84 height sample");
+    check(dispatch_state.ball.height == 0x39CD &&
+          dispatch_state.ball.vertical_phase == 1u,
+          "$9B84/$C3C5 adds $0200-floor($0100/5), matching original frame 2750");
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "step second traced $9B84 height sample");
+    check(dispatch_state.ball.height == 0x3B67 &&
+          dispatch_state.ball.vertical_phase == 2u,
+          "$9B84 preserves 8.8 fraction and adds $0200-floor($0200/5) on phase two");
+
+    dispatch_state = dispatch_base;
     dispatch_state.carrier = 0u;
     dispatch_state.ball.owner = 0u;
     dispatch_state.ball.action = DD_BALL_DRIBBLE;
@@ -707,6 +730,38 @@ int main(int argc, char **argv) {
           dispatch_state.players[5].velocity_x == 0x0123 &&
           dispatch_state.players[5].velocity_depth == -0x0124,
           "shared state $2C integrates both fixed-point vectors twice through $A84C");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CONTINUE;
+    dispatch_state.players[5].court_x = 0x01F180;
+    dispatch_state.players[5].court_depth = 0x009880;
+    dispatch_state.players[5].velocity_x = 0x0100;
+    dispatch_state.players[5].velocity_depth = 0x0100;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.action = DD_BALL_SHOT_GATHER;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].court_x == 0x01F180 &&
+          dispatch_state.players[5].court_depth == 0x009880 &&
+          dispatch_state.players[5].velocity_x == 0 &&
+          dispatch_state.players[5].velocity_depth == 0,
+          "$9CA0/$9CF6 reject upper-bound candidates, preserve both coordinates, and clear speed");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CONTINUE;
+    dispatch_state.players[5].court_x = 0x001000;
+    dispatch_state.players[5].court_depth = 0x000500;
+    dispatch_state.players[5].velocity_x = -0x0100;
+    dispatch_state.players[5].velocity_depth = -0x0100;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.action = DD_BALL_SHOT_GATHER;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].court_x == 0x001000 &&
+          dispatch_state.players[5].court_depth == 0x000500 &&
+          dispatch_state.players[5].velocity_x == 0 &&
+          dispatch_state.players[5].velocity_depth == 0,
+          "$9CA0/$9CF6 apply the same preserve-and-stop rule at the lower court edges");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
@@ -1191,6 +1246,44 @@ int main(int argc, char **argv) {
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER;
+    dispatch_state.players[0].court_x = 0x01F180;
+    dispatch_state.players[0].court_depth = 0x009880;
+    dispatch_state.ball.action = DD_BALL_SHOT_GATHER;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.court_x = 0x010000;
+    dispatch_state.ball.court_depth = 0x005000;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_RIGHT | DD_INPUT_UP),
+          "drive the user into both upper fixed-point court bounds");
+    check(dispatch_state.players[0].court_x == 0x01F180 &&
+          dispatch_state.players[0].court_depth == 0x009880 &&
+          dispatch_state.players[0].velocity_x == 0 &&
+          dispatch_state.players[0].velocity_depth == 0,
+          "controlled movement uses $9CA0/$9CF6 rejection instead of clamping through the edge");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.controlled_player = 0u;
+    dispatch_state.carrier = 0xFFu;
+    dispatch_state.players[0].action = DD_PLAYER_LIVE_USER;
+    dispatch_state.players[0].court_x = 0x001000;
+    dispatch_state.players[0].court_depth = 0x000500;
+    dispatch_state.ball.action = DD_BALL_SHOT_GATHER;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.court_x = 0x010000;
+    dispatch_state.ball.court_depth = 0x005000;
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_LEFT | DD_INPUT_DOWN),
+          "drive the user into both lower fixed-point court bounds");
+    check(dispatch_state.players[0].court_x == 0x001000 &&
+          dispatch_state.players[0].court_depth == 0x000500 &&
+          dispatch_state.players[0].velocity_x == 0 &&
+          dispatch_state.players[0].velocity_depth == 0,
+          "controlled lower-edge movement preserves sub-cell position and clears rejected axes");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
     dispatch_state.cpu_global_frame = 0u;
     dispatch_state.controlled_player = 0u;
     dispatch_state.carrier = 0u;
@@ -1217,6 +1310,11 @@ int main(int argc, char **argv) {
           dispatch_state.ball.action == DD_BALL_AIRBORNE &&
           dispatch_state.ball.owner == 0u && dispatch_state.carrier == 0xFFu,
           "$8A98->$9139 starts the contest as $B189 releases owned ball state $05");
+    check(dispatch_state.ball.velocity_x == -0x00FF &&
+          dispatch_state.ball.velocity_depth == 0x000C &&
+          dispatch_state.ball.flight_curve == 0x2Fu &&
+          dispatch_state.ball.velocity_height == 0x027Cu,
+          "$B189->$9D2D/$9BB0 installs the table vector and divider-derived long-shot arc");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -1412,6 +1510,8 @@ int main(int argc, char **argv) {
     dispatch_state.ball.action_age = 0u;
     dispatch_state.ball.height = 0x38D8;
     dispatch_state.ball.velocity_height = 0x0100;
+    dispatch_state.ball.vertical_phase = 0u;
+    dispatch_state.ball.flight_curve = 0x10u;
     for (player = 0u; player < 60u; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
               "step traced loose-ball airborne arc");
@@ -1420,9 +1520,9 @@ int main(int argc, char **argv) {
           "ball state $09 remains airborne through its traced sixtieth frame");
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "finish loose-ball airborne state $09");
     check(dispatch_state.ball.action == DD_BALL_REBOUND &&
-          dispatch_state.ball.velocity_height == 0x02E0 &&
+          dispatch_state.ball.velocity_height == 0x0290 &&
           dispatch_state.ball.rim_contact == 0u,
-          "ball state $09 crosses $AFDD's $E0 threshold into rebound state $07");
+          "ball state $09 crosses $AFDD's $E0 threshold and $B412 reduces the rebound base");
 
     dispatch_state = dispatch_base;
     dispatch_state.ball.action = DD_BALL_SHOT_LAUNCH;
@@ -1431,7 +1531,7 @@ int main(int argc, char **argv) {
     check(dd_gameplay_step(&pack, &dispatch_state, 0u), "step shot initializer state $0A");
     check(dispatch_state.ball.action == DD_BALL_AIRBORNE &&
           dispatch_state.ball.velocity_height == 0x0305 &&
-          dispatch_state.ball.flight_curve == 0xD8u &&
+          dispatch_state.ball.flight_curve == 0x0Cu &&
           dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u,
           "ball state $0A reproduces $B017's launch terms and advances to $05");
 

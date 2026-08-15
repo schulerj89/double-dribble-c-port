@@ -18,8 +18,8 @@ $components = @(
     },
     [pscustomobject]@{
         Name = 'Core loop'; Weight = 0.25; Expected = 7
-        Verified = @('objects','scheduler','targets','dribble-audio','user-control')
-        Partial = @('movement-physics','general-collision')
+        Verified = @('objects','scheduler','targets','dribble-audio','user-control','movement-physics')
+        Partial = @('general-collision')
         Missing = @()
     },
     [pscustomobject]@{

@@ -4,7 +4,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 93%**
+**Portable Ghidra-to-C gameplay-loop coverage: 94%**
 
 **Match-rules completeness: 80.8%**
 
@@ -23,7 +23,7 @@ native gameplay behavior and do not count toward the user's 99% portable target.
 
 The weighted headline is:
 
-`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 92.6%`, rounded to **93%**.
+`player actions × 30% + ball actions × 25% + portable core loop × 25% + match rules × 20% = 94.4%`, rounded to **94%**.
 
 ## Player action dispatcher — 100%
 
@@ -145,7 +145,7 @@ Score: `13 / 13 = 100%`.
 
 Every table entry now has an explicit native handler. State `$0A` reproduces the
 observed one-dispatch `$B017` initializer, including vertical term `$0305` and
-curve byte `$D8`, while preserving owner/carrier fields the original does not
+curve byte `$0C`, while preserving owner/carrier fields the original does not
 write. States `$0B/$0C` share `$ACAB`: only the integer height byte is cleared,
 leaving the fractional byte and motion terms untouched. Natural FCEUX traces
 cover `$0A` and 1,542 frames of `$0B`; an opt-in controlled trace covers `$0C`.
@@ -162,17 +162,43 @@ camera carrier and rim latch exactly as the original does. The ball dispatcher
 is therefore fully Verified. Higher-level block, foul, and general rim-contact
 eligibility remain tracked under core/rules rather than hidden in this score.
 
-## Portable core per-frame loop — 85.7%
+## Portable core per-frame loop — 92.9%
 
 Seven portable subsystems produce this score.
 
 | Status | Subsystems |
 | --- | --- |
-| V (5) | native object state, alternating 30 Hz team scheduler, packed target coordinates, state-driven dribble audio, user control/control ownership |
-| P (2) | fixed-point height and movement physics, general player/ball collision resolution |
+| V (6) | native object state, alternating 30 Hz team scheduler, packed target coordinates, state-driven dribble audio, user control/control ownership, fixed-point height and movement physics |
+| P (1) | general player/ball collision resolution |
 | M (0) | none |
 
-Score: `(5 + 2 × 0.5) / 7 = 85.7%`.
+Score: `(6 + 1 × 0.5) / 7 = 92.9%`.
+
+Fixed-point height and movement physics is Verified. Bank-0 `$9CA0` adds a
+signed 8.8 velocity to the 16.8 longitudinal coordinate, accepting integer
+positions `$0010-$01F1`; `$9CF6` does the same for depth rows `$05-$98`.
+Rejected candidates do not clamp: the old coordinate, including its fractional
+byte, survives and only that axis velocity becomes zero. `$A84C` calls each
+integrator twice for the shared player states, while ball states
+`$02/$03/$05/$07/$09` use the same bounded primitives at their recovered call
+counts.
+
+Ball height now follows `$9B84->$C3C5`: after incrementing elapsed phase, each
+step adds `base_vertical - floor((elapsed << 8) / curve)` with 16-bit wrap.
+`$B412` preserves the wrapped height fraction, clears integer height, subtracts
+`$0050` from the next-bounce base, and saturates a signed-negative result to
+zero. The shot initializer follows `$B189->$9D2D->$9BB0` and the recovered
+`$9DEB/$9C1C/$9C5E` angle/vector tables; bounce-pass `$B167` remains its
+separate integer-height path.
+
+Dynamic FCEUX instrumentation records 13,810 entries apiece at `$9CA0` and
+`$9CF6`, 6,556 at `$A84C`, 574 height steps at `$9B84`, and four natural shot
+initializers at `$B189` in the bounded run through frame 6000. The no-input
+shot at original frames 2749-2750 proves X `$005700->$005643` with `$FF43`,
+depth `$004B00->$004BAB` with `$00AB`, and height `$3800->$39CD` from base
+`$0200`, elapsed `$01`, curve `$05`. Native tests assert that exact height,
+the next `$3B67` sample, valid double additions, and preserve-and-stop behavior
+at all four court limits for both dispatcher and user-controlled movement.
 
 User control/control ownership is Verified from bank-0 `$A129`, `$AD41`, and
 `$A29D`. Direction+A uses the original directional half-plane scoring and

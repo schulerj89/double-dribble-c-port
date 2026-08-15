@@ -100,6 +100,8 @@ local score_calls = assert(io.open(join_path(capture_root, "gameplay-score-calls
 score_calls:write("frame,counter,ball_state,score_copy_a,score_copy_b,height,scoring_side,shot_kind\n")
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
+local physics_calls = assert(io.open(join_path(capture_root, "gameplay-physics-calls.csv"), "w"))
+physics_calls:write("frame,pc,current_object,state,x,velocity_x,depth,velocity_depth,height,vertical_base,elapsed,curve,packed,target,global_phase\n")
 local control_calls = assert(io.open(join_path(capture_root, "gameplay-control-calls.csv"), "w"))
 control_calls:write("frame,pc,current_object,receiver,switch_candidate,ball_state,owner,carrier,direction,mode,input,pressed,p2,p3,p4,p5,p6\n")
 local block_calls = assert(io.open(join_path(capture_root, "gameplay-block-calls.csv"), "w"))
@@ -218,6 +220,34 @@ for _, address in ipairs({
     0xD99A, 0xDA36, 0xDA38
 }) do
     memory.registerexecute(address, 1, record_cpu_decision)
+end
+local function record_physics_call(address, size, value)
+    local frame = emu.framecount()
+    if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+        local object = memory.readbyte(0x004B)
+        if object < 0x10 then
+            physics_calls:write(string.format(
+                "%d,%04X,%02X,%02X,%02X%02X%02X,%02X%02X,%02X%02X%02X,%02X%02X,%02X%02X,%02X%02X,%02X,%02X,%02X%02X,%02X%02X,%02X\n",
+                frame, address, object, memory.readbyte(0x0340 + object),
+                memory.readbyte(0x0360 + object), memory.readbyte(0x0370 + object),
+                memory.readbyte(0x0380 + object), memory.readbyte(0x0390 + object),
+                memory.readbyte(0x03A0 + object), memory.readbyte(0x03B0 + object),
+                memory.readbyte(0x03C0 + object), memory.readbyte(0x03D0 + object),
+                memory.readbyte(0x03E0 + object), memory.readbyte(0x03F0 + object),
+                memory.readbyte(0x0410 + object), memory.readbyte(0x0420 + object),
+                memory.readbyte(0x0430 + object), memory.readbyte(0x0440 + object),
+                memory.readbyte(0x004A), memory.readbyte(0x004C),
+                memory.readbyte(0x05C0 + object), memory.readbyte(0x05B0 + object),
+                memory.readbyte(0x05E0 + object), memory.readbyte(0x05D0 + object),
+                memory.readbyte(0x001A)))
+        end
+    end
+end
+for _, address in ipairs({
+    0x9B84, 0x9BAF, 0x9CA0, 0x9CEB, 0x9CF5, 0x9CF6, 0x9D22, 0x9D2C,
+    0xA84C, 0xABCD, 0xAC29, 0xB167, 0xB17E, 0xB188, 0xB189
+}) do
+    memory.registerexecute(address, 1, record_physics_call)
 end
 for _, address in ipairs({0xA129, 0xA1C9, 0xA21F, 0xA230, 0xA241,
                           0xA29D, 0xA314, 0xA329, 0xA33D, 0xA342,
@@ -630,6 +660,7 @@ clock_calls:close()
 collision_calls:close()
 score_calls:close()
 cpu_decisions:close()
+physics_calls:close()
 control_calls:close()
 block_calls:close()
 exceptional_calls:close()

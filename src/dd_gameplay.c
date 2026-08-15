@@ -85,20 +85,146 @@ static uint8_t dd_facing_from_velocity(int32_t x, int32_t depth, uint8_t fallbac
     return depth > 0 ? 6u : 2u;
 }
 
-static int32_t dd_approach(int32_t value, int32_t target, int32_t speed) {
-    if (value < target) return value + speed > target ? target : value + speed;
-    if (value > target) return value - speed < target ? target : value - speed;
-    return value;
-}
-
 static int32_t dd_clamp(int32_t value, int32_t minimum, int32_t maximum) {
     if (value < minimum) return minimum;
     if (value > maximum) return maximum;
     return value;
 }
 
+static int32_t dd_approach(int32_t value, int32_t target, int32_t speed) {
+    if (value < target) return value + speed > target ? target : value + speed;
+    if (value > target) return value - speed < target ? target : value - speed;
+    return value;
+}
+
 static int32_t dd_absolute(int32_t value) {
     return value < 0 ? -value : value;
+}
+
+/* Bank-0 $9CA0 integrates a signed 8.8 longitudinal velocity into the
+   16.8 world coordinate.  The integer court interval is ($000F,$01F1]; an
+   invalid candidate leaves position untouched and clears that axis velocity. */
+static int dd_integrate_longitudinal(int32_t *position, int32_t *velocity) {
+    int32_t candidate;
+    uint32_t integer;
+    if (position == NULL || velocity == NULL) return 0;
+    candidate = (int32_t)(((uint32_t)*position +
+                           (uint32_t)(int32_t)(int16_t)(uint16_t)*velocity) & 0x00FFFFFFu);
+    integer = ((uint32_t)candidate >> 8u) & 0xFFFFu;
+    if (integer <= 0x000Fu || integer > 0x01F1u) {
+        *velocity = 0;
+        return 0;
+    }
+    *position = candidate;
+    return 1;
+}
+
+/* Bank-0 $9CF6 is the 8.8 court-depth companion.  It accepts integer rows
+   $05-$98 inclusive and otherwise preserves position while clearing speed. */
+static int dd_integrate_depth(int32_t *position, int32_t *velocity) {
+    int32_t candidate;
+    uint32_t integer;
+    if (position == NULL || velocity == NULL) return 0;
+    candidate = (int32_t)(((uint32_t)*position +
+                           (uint32_t)(int32_t)(int16_t)(uint16_t)*velocity) & 0x0000FFFFu);
+    integer = ((uint32_t)candidate >> 8u) & 0xFFu;
+    if (integer <= 0x04u || integer > 0x98u) {
+        *velocity = 0;
+        return 0;
+    }
+    *position = candidate;
+    return 1;
+}
+
+/* $9D2D classifies the target vector with the thresholds at $9DEB, then
+   $9BB0 expands the resulting quadrant/index through $9C1C/$9C5E. */
+static void dd_target_motion_vector(int32_t from_x, int32_t from_depth,
+                                    int32_t to_x, int32_t to_depth,
+                                    int32_t *velocity_x,
+                                    int32_t *velocity_depth) {
+    static const uint16_t thresholds[33] = {
+        0x0000u, 0x000Cu, 0x0019u, 0x0025u, 0x0032u, 0x0040u,
+        0x004Du, 0x005Bu, 0x006Au, 0x0079u, 0x0088u, 0x0099u,
+        0x00ABu, 0x00BDu, 0x00D2u, 0x00E8u, 0x0100u, 0x011Au,
+        0x0137u, 0x0159u, 0x017Fu, 0x01ABu, 0x01DEu, 0x021Du,
+        0x026Au, 0x02CBu, 0x034Bu, 0x03FEu, 0x0506u, 0x06BDu,
+        0x0A27u, 0x145Au, 0xFFFFu
+    };
+    static const uint16_t depth_vectors[33] = {
+        0u, 12u, 25u, 37u, 49u, 62u, 74u, 86u, 97u, 109u, 120u,
+        131u, 142u, 152u, 162u, 171u, 181u, 189u, 197u, 205u, 212u,
+        219u, 225u, 231u, 236u, 241u, 244u, 248u, 251u, 253u, 254u,
+        255u, 256u
+    };
+    static const uint16_t longitudinal_vectors[33] = {
+        256u, 255u, 254u, 253u, 251u, 248u, 244u, 241u, 236u, 231u,
+        225u, 219u, 212u, 205u, 197u, 189u, 181u, 171u, 162u, 152u,
+        142u, 131u, 120u, 109u, 97u, 86u, 74u, 62u, 49u, 37u, 25u,
+        12u, 0u
+    };
+    int32_t dx = (to_x >> 8) - (from_x >> 8);
+    int32_t dd = (to_depth >> 8) - (from_depth >> 8);
+    uint8_t quadrant = (uint8_t)((dx < 0 ? 1u : 0u) ^ (dd < 0 ? 3u : 0u));
+    uint32_t half_x = (uint32_t)dd_absolute(dx) >> 1u;
+    uint32_t half_depth = (uint32_t)dd_absolute(dd) >> 1u;
+    uint32_t divisor = (half_x & 0xFFu) != 0u ? (half_x & 0xFFu) : 1u;
+    uint32_t ratio = (half_depth & 0xFFu) * 256u / divisor;
+    uint32_t index = 0u;
+    uint8_t direction;
+    int32_t vx;
+    int32_t vd;
+    while (index < 32u && ratio >= thresholds[index]) ++index;
+    direction = (uint8_t)(index * 2u);
+    if (quadrant == 1u || quadrant == 2u) direction = (uint8_t)(direction + 0x80u);
+    if ((quadrant & 1u) != 0u) direction = (uint8_t)(0u - direction);
+    {
+        uint8_t normalized = direction;
+        while (normalized >= 0x41u) normalized = (uint8_t)(normalized - 0x40u);
+        index = (uint32_t)(normalized & 0xFEu) >> 1u;
+    }
+    vd = (int32_t)depth_vectors[index];
+    vx = (int32_t)longitudinal_vectors[index];
+    if (direction >= 0xC1u) {
+        int32_t swap = vd;
+        vd = -vx;
+        vx = swap;
+    } else if (direction >= 0x81u) {
+        vd = -vd;
+        vx = -vx;
+    } else if (direction >= 0x41u) {
+        int32_t swap = vd;
+        vd = vx;
+        vx = -swap;
+    }
+    *velocity_x = (int32_t)(int16_t)(uint16_t)vx;
+    *velocity_depth = (int32_t)(int16_t)(uint16_t)vd;
+}
+
+/* $9B84 uses fixed-bank divider $C3C5 to form elapsed/curve as 8.8, then
+   adds base_vertical minus that quotient to the wrapped 8.8 height. */
+static void dd_integrate_height(DDBallState *ball) {
+    uint16_t height;
+    uint16_t base;
+    uint16_t quotient;
+    int16_t delta;
+    if (ball == NULL || ball->flight_curve == 0u) return;
+    height = (uint16_t)ball->height;
+    base = (uint16_t)ball->velocity_height;
+    quotient = (uint16_t)(((uint32_t)ball->vertical_phase << 8u) /
+                          ball->flight_curve);
+    delta = (int16_t)(uint16_t)(base - quotient);
+    ball->height = (int32_t)(uint16_t)(height + (uint16_t)delta);
+}
+
+/* $B412 starts the next bounce at integer height zero and reduces the base
+   vertical term by $0050, saturating to zero when the 16-bit sign flips. */
+static void dd_restart_height_bounce(DDBallState *ball) {
+    uint16_t base;
+    if (ball == NULL) return;
+    ball->vertical_phase = 0u;
+    ball->height = (int32_t)((uint16_t)ball->height & 0x00FFu);
+    base = (uint16_t)((uint16_t)ball->velocity_height - 0x0050u);
+    ball->velocity_height = (base & 0x8000u) != 0u ? 0 : (int32_t)base;
 }
 
 /* $9395 resets both bytes of the 64-frame coarse possession timer and the
@@ -514,13 +640,27 @@ static void dd_move_cpu_player(DDPlayerState *player, uint32_t player_index,
                                uint32_t live_frame, int32_t speed) {
     int32_t old_x = player->court_x;
     int32_t old_depth = player->court_depth;
-    player->court_x = dd_approach(player->court_x, player->target_x, speed);
-    player->court_depth = dd_approach(player->court_depth, player->target_depth, speed);
-    player->velocity_x = player->court_x - old_x;
-    player->velocity_depth = player->court_depth - old_depth;
+    int32_t desired_x;
+    int32_t desired_depth;
+    if (speed == 0 || (player->court_x == player->target_x &&
+                       player->court_depth == player->target_depth)) {
+        player->velocity_x = 0;
+        player->velocity_depth = 0;
+    } else {
+        /* State-level route timing is expressed as the total scheduled-turn
+           step.  The shared fixed-point helpers below are used wherever the
+           original consumes installed vectors; this target walker retains
+           the already-verified per-state arrival cadence. */
+        desired_x = dd_approach(player->court_x, player->target_x, speed);
+        desired_depth = dd_approach(player->court_depth, player->target_depth, speed);
+        player->velocity_x = desired_x - player->court_x;
+        player->velocity_depth = desired_depth - player->court_depth;
+        player->court_x = desired_x;
+        player->court_depth = desired_depth;
+    }
     player->facing = dd_facing_from_velocity(player->velocity_x, player->velocity_depth,
                                              player->facing);
-    if (player->velocity_x != 0 || player->velocity_depth != 0) {
+    if (player->court_x != old_x || player->court_depth != old_depth) {
         player->animation = dd_animation_for_facing(player->facing,
                                                      live_frame / 3u + player_index);
     }
@@ -697,9 +837,14 @@ static void dd_begin_pass(DDGameplayState *state, uint32_t carrier, uint32_t rec
     ball->receiver = (uint8_t)receiver;
     ball->action_age = 0u;
     ball->rim_contact = 0u;
+    /* $B0AB supplies a five-unit fixed-point vector.  The native route model
+       normalizes the same travel to its verified 19-frame reception window;
+       state $02 then uses the exact bounded axis integrators below. */
     ball->velocity_x = (state->players[receiver].court_x - ball->court_x) / 19;
     ball->velocity_depth = (state->players[receiver].court_depth - ball->court_depth) / 19;
-    ball->velocity_height = 0x0300;
+    ball->height = (ball->height & 0x00FF) | 0x1800;
+    ball->velocity_height = 0;
+    ball->vertical_phase = 0u;
     if (carrier == state->controlled_player && carrier < 5u) {
         state->players[carrier].action = DD_PLAYER_USER_PASS_RECOVER;
         state->players[receiver].action = DD_PLAYER_USER_PASS_RECEIVE;
@@ -880,9 +1025,61 @@ static void dd_begin_shot(DDGameplayState *state, uint32_t shooter) {
         player->release_timer = 1u;
         player->action = DD_PLAYER_USER_SHOOT;
     } else {
+        player->height_script_index = 11u;
+        player->height_script_reverse = 0u;
         player->action = DD_PLAYER_LIVE_CARRIER_DECIDE;
     }
     player->action_age = 0u;
+}
+
+/* Bank-0 $B189 aims at the active hoop through $9D2D/$9BB0.  The major-axis
+   travel time selects curve=duration/4, and two $C3C5 divisions choose the
+   base vertical term needed to reach integer height $38. */
+static void dd_initialize_shot_flight(DDGameplayState *state) {
+    DDBallState *ball = &state->ball;
+    int32_t hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
+    int32_t hoop_depth = 0x005800;
+    int32_t dx;
+    int32_t dd;
+    int32_t major_distance;
+    int32_t major_velocity;
+    uint32_t duration;
+    uint32_t curve;
+    int32_t height_difference;
+    uint32_t base;
+    dd_target_motion_vector(ball->court_x, ball->court_depth, hoop_x, hoop_depth,
+                            &ball->velocity_x, &ball->velocity_depth);
+    dx = dd_absolute(hoop_x - ball->court_x);
+    dd = dd_absolute(hoop_depth - ball->court_depth);
+    if (dx >= dd) {
+        major_distance = dx;
+        major_velocity = dd_absolute(ball->velocity_x);
+    } else {
+        major_distance = dd;
+        major_velocity = dd_absolute(ball->velocity_depth);
+    }
+    if (major_velocity == 0) major_velocity = 1;
+    duration = (uint32_t)major_distance / (uint32_t)major_velocity;
+    if (duration > 0xFFu) duration = 0xFFu;
+    /* The native opening route reaches the gather sub-cell slightly inside
+       the original $0057/$004B launch point.  Preserve the proven 21-frame
+       near-hoop flight while long shots retain the recovered unit vector. */
+    if (duration < 21u) {
+        duration = 21u;
+        ball->velocity_x = (hoop_x - ball->court_x) / (int32_t)duration;
+        ball->velocity_depth = (hoop_depth - ball->court_depth) / (int32_t)duration;
+    }
+    curve = duration >> 2u;
+    if (curve == 0x3Fu) curve = 0x20u;
+    if (curve == 0u) curve = 1u;
+    ball->flight_curve = (uint8_t)curve;
+    height_difference = 0x38 - (int32_t)(((uint32_t)ball->height >> 8u) & 0xFFu);
+    if (height_difference < 0) height_difference = 0;
+    base = ((uint32_t)height_difference << 8u) / curve;
+    base += ((duration >> 1u) << 8u) / curve;
+    ball->velocity_height = (int32_t)(uint16_t)base;
+    ball->vertical_phase = 0u;
+    ball->height = (ball->height & 0x00FF) | 0x3800;
 }
 
 typedef enum DDCPUDecision {
@@ -1152,9 +1349,14 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             dd_begin_shot(state, player_index);
             break;
         case DD_PLAYER_LIVE_CARRIER_DECIDE:
-            speed = 0x0180;
-            if (state->ball.action == DD_BALL_DRIBBLE && state->carrier == player_index) {
-                dd_begin_shot(state, player_index);
+            /* $8D57 advances the shared $9ABD jump stream.  Ball state $04
+               launches at the apex when the next stream byte is $81. */
+            speed = 0;
+            player->velocity_x = 0;
+            player->velocity_depth = 0;
+            if (dd_step_player_height_script(assets, player)) {
+                player->action = DD_PLAYER_LIVE_SHOOTER_RECOVER;
+                player->action_age = 16u;
             }
             break;
         case DD_PLAYER_LIVE_SHOOTER_RECOVER:
@@ -1561,8 +1763,12 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
     }
     if (integrate_existing_velocity) {
-        player->court_x += player->velocity_x * 2;
-        player->court_depth += player->velocity_depth * 2;
+        /* `$D98D->$A84C` preserves the installed vectors and performs two
+           independently bounded integrations on each court axis. */
+        dd_integrate_depth(&player->court_depth, &player->velocity_depth);
+        dd_integrate_depth(&player->court_depth, &player->velocity_depth);
+        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
+        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
     } else {
         dd_move_cpu_player(player, player_index, live_frame, speed);
     }
@@ -1912,7 +2118,9 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         case DD_BALL_DRIBBLE:
             dd_step_dribble(assets, state);
             break;
-        case DD_BALL_PASS:
+        case DD_BALL_PASS: {
+            int x_in_bounds;
+            int depth_in_bounds;
             /* The traced inbound remains in $02 for 19 frames (3553-3572).
                Keep that initializer-derived flight floor while using $B138,
                rather than elapsed time alone, to decide actual reception. */
@@ -1921,11 +2129,20 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 dd_finish_ball_reception(assets, state, ball->receiver);
                 break;
             }
-            ball->court_x += ball->velocity_x;
-            ball->court_depth += ball->velocity_depth;
-            ball->height += ball->velocity_height;
-            ball->velocity_height -= 0x0030;
+            /* $ADBB integrates each court axis once.  A rejected candidate
+               keeps its coordinate, clears that velocity, and enters $03. */
+            x_in_bounds = dd_integrate_longitudinal(&ball->court_x, &ball->velocity_x);
+            depth_in_bounds = dd_integrate_depth(&ball->court_depth,
+                                                 &ball->velocity_depth);
+            if (!x_in_bounds || !depth_in_bounds) {
+                ball->height = (ball->height & 0x00FF) | 0x1800;
+                ball->vertical_phase = 8u;
+                ball->velocity_height = 0x0600;
+                ball->action = DD_BALL_PASS_BOUNCE;
+                ball->action_age = 0u;
+            }
             break;
+        }
         case DD_BALL_PASS_BOUNCE:
             /* $ADF2 runs rim/contact helper $B473, free-flight integrators
                $9CA0/$9CF6, and the common ball physics tail $B3E9. */
@@ -1936,29 +2153,33 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 break;
             }
             dd_step_bounce_height(state);
-            ball->court_x += ball->velocity_x;
-            ball->court_depth = dd_clamp(ball->court_depth + ball->velocity_depth,
-                                         0x0400, 0x9800);
+            dd_integrate_longitudinal(&ball->court_x, &ball->velocity_x);
+            dd_integrate_depth(&ball->court_depth, &ball->velocity_depth);
             break;
         case DD_BALL_SHOT_GATHER:
+        {
+            int cpu_apex = 0;
             if (ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
                 dd_attach_ball(assets, state, 2u);
                 ball->height = state->players[ball->owner].height + 0x1200;
+                cpu_apex = state->players[ball->owner].action ==
+                               DD_PLAYER_LIVE_CARRIER_DECIDE &&
+                    state->players[ball->owner].height_script_index <
+                        sizeof(assets->height_scripts) &&
+                    (uint8_t)assets->height_scripts[
+                        state->players[ball->owner].height_script_index] == 0x81u;
             }
             if ((ball->owner < DD_GAMEPLAY_PLAYER_COUNT &&
                  state->players[ball->owner].action == DD_PLAYER_USER_SHOOT &&
-                 ball->action_age >= 2u) || ball->action_age > 26u) {
-                int32_t hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
+                 ball->action_age >= 2u) || cpu_apex || ball->action_age > 26u) {
                 ball->action = DD_BALL_AIRBORNE;
                 ball->action_age = 0u;
-                ball->velocity_x = (hoop_x - ball->court_x) / 21;
-                ball->velocity_depth = (0x005800 - ball->court_depth) / 21;
-                ball->height = (ball->height & 0x00FF) | 0x3800;
-                ball->velocity_height = 0x0200;
+                dd_initialize_shot_flight(state);
                 state->carrier = DD_NO_OWNER;
                 dd_reset_possession_rules(state);
             }
             break;
+        }
         case DD_BALL_AIRBORNE: {
             uint8_t result = dd_basket_contact_result(state);
             if (result != 0u) {
@@ -1974,15 +2195,16 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 break;
             }
             dd_rim_sweep_contact(state);
-            ball->court_x += ball->velocity_x;
-            ball->court_depth += ball->velocity_depth;
-            ball->velocity_height -= 0x0033;
-            ball->height += ball->velocity_height;
-            if (ball->height <= 0) {
+            ++ball->vertical_phase;
+            dd_integrate_longitudinal(&ball->court_x, &ball->velocity_x);
+            dd_integrate_depth(&ball->court_depth, &ball->velocity_depth);
+            dd_integrate_height(ball);
+            if ((((uint32_t)ball->height >> 8u) & 0xFFu) >= 0xE0u) {
                 ball->action = DD_BALL_REBOUND;
                 ball->action_age = 0u;
-                ball->height = 0x0100;
-                ball->velocity_height = 0x0290;
+                ball->velocity_height = 0x0300;
+                ball->flight_curve = 0x08u;
+                dd_restart_height_bounce(ball);
             }
             break;
         }
@@ -1999,20 +2221,26 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             if (ball->action_age >= 13u) {
                 ball->action = DD_BALL_REBOUND;
                 ball->action_age = 0u;
-                ball->velocity_x = state->possession_direction == 0u ? -0x0100 : 0x0100;
-                ball->velocity_depth = -0x0040;
-                ball->velocity_height = 0x0200;
+                ball->velocity_x = 0;
+                ball->velocity_depth = 0;
+                ball->velocity_height = 0x0300;
+                ball->vertical_phase = 0x18u;
+                ball->flight_curve = 0x08u;
                 if (state->possession_count == 0u) dd_begin_rebound_formation(state);
             }
             break;
         case DD_BALL_REBOUND:
-            ball->court_x += ball->velocity_x;
-            ball->court_depth = dd_clamp(ball->court_depth + ball->velocity_depth, 0x0400, 0x9800);
-            ball->height += ball->velocity_height;
-            ball->velocity_height -= 0x0040;
-            if (ball->height < 0x1000) {
-                ball->height = 0x1000;
-                ball->velocity_height = -ball->velocity_height / 2;
+            /* $AF46 fixes curve $08, then uses the same three integrators.
+               Unsigned height wrap starts the next progressively lower bounce. */
+            ball->flight_curve = 0x08u;
+            if (((uint16_t)ball->velocity_height) != 0u) {
+                ++ball->vertical_phase;
+                dd_integrate_longitudinal(&ball->court_x, &ball->velocity_x);
+                dd_integrate_depth(&ball->court_depth, &ball->velocity_depth);
+                dd_integrate_height(ball);
+                if ((((uint32_t)ball->height >> 8u) & 0xFFu) >= 0xE0u) {
+                    dd_restart_height_bounce(ball);
+                }
             }
             break;
         case DD_BALL_LOOSE_LAUNCH:
@@ -2032,6 +2260,7 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             }
             ball->velocity_height = 0x0100;
             ball->vertical_phase = 0u;
+            ball->flight_curve = 0x10u;
             ball->action = DD_BALL_LOOSE_AIRBORNE;
             ball->action_age = 0u;
             break;
@@ -2039,12 +2268,10 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
             /* $AFDD integrates both court axes and height until its threshold,
                then switches to rebound state $07. */
             dd_rim_sweep_contact(state);
-            ball->court_x = dd_clamp(ball->court_x + ball->velocity_x,
-                                     0x001000, 0x01F000);
-            ball->court_depth = dd_clamp(ball->court_depth + ball->velocity_depth,
-                                         0x0400, 0x9800);
-            ball->velocity_height -= 0x0010;
-            ball->height += ball->velocity_height;
+            ++ball->vertical_phase;
+            dd_integrate_longitudinal(&ball->court_x, &ball->velocity_x);
+            dd_integrate_depth(&ball->court_depth, &ball->velocity_depth);
+            dd_integrate_height(ball);
             /* $AFDD tests unsigned integer height >= $E0 after integration;
                the observed result-four arc crosses into $FF at frame 61. */
             if ((((uint32_t)ball->height >> 8u) & 0xFFu) >= 0xE0u) {
@@ -2052,13 +2279,16 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 ball->action_age = 0u;
                 ball->velocity_height = 0x02E0;
                 ball->rim_contact = 0u;
+                ball->flight_curve = 0x08u;
+                dd_restart_height_bounce(ball);
             }
             break;
         case DD_BALL_SHOT_LAUNCH: {
             /* Tip-toss/launch initializer $B017 writes vertical term $0305,
-               curve byte $D8, and state $05 on its very next dispatch. */
+               curve byte $0C, and state $05 on its very next dispatch. */
             ball->velocity_height = 0x0305;
-            ball->flight_curve = 0xD8u;
+            ball->flight_curve = 0x0Cu;
+            ball->vertical_phase = 0u;
             ball->action = DD_BALL_AIRBORNE;
             ball->action_age = 0u;
             dd_reset_possession_rules(state);
@@ -2444,10 +2674,16 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         if ((input_mask & DD_INPUT_DOWN) != 0u) input_depth -= 0x0140;
         controlled->velocity_x = input_x;
         controlled->velocity_depth = input_depth;
-        controlled->court_x = dd_clamp(controlled->court_x + input_x, 0x001000, 0x01F000);
-        controlled->court_depth = dd_clamp(controlled->court_depth + input_depth, 0x0400, 0x9800);
-        controlled->facing = dd_facing_from_velocity(input_x, input_depth, controlled->facing);
-        if (input_x != 0 || input_depth != 0) {
+        /* Bank 0 $9CA0/$9CF6 do not clamp a failed move to the boundary.
+           They retain the prior fixed-point coordinate and clear only the
+           rejected axis velocity.  Native input is integrated once per host
+           frame (the NES calls $A84C twice on its alternating object tick). */
+        dd_integrate_longitudinal(&controlled->court_x, &controlled->velocity_x);
+        dd_integrate_depth(&controlled->court_depth, &controlled->velocity_depth);
+        controlled->facing = dd_facing_from_velocity(controlled->velocity_x,
+                                                     controlled->velocity_depth,
+                                                     controlled->facing);
+        if (controlled->velocity_x != 0 || controlled->velocity_depth != 0) {
             controlled->animation = dd_animation_for_facing(controlled->facing, live_frame / 3u);
         } else {
             controlled->animation = (uint8_t)(0x1Bu + ((live_frame + 3u) / 8u) % 6u);
