@@ -20,6 +20,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay <input.assetpack> <transition-frame> <output.bmp>");
     puts("  --render-gameplay-input <input.assetpack> <transition-frame> <input-mask> <output.bmp>");
     puts("  --render-gameplay-user-contest <input.assetpack> <output.bmp>");
+    puts("  --render-gameplay-user-block <input.assetpack> <contact|landing> <output.bmp>");
     puts("  --render-gameplay-switch-block <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-block <input.assetpack> <contact|landing> <output.bmp>");
     puts("  --render-gameplay-shot <input.assetpack> <make|miss> <gather|release|result|chase|pickup|inbound|receive> <output.bmp>");
@@ -313,6 +314,78 @@ int main(int argc, char **argv) {
              dd_render_gameplay(&pack, &state, pixels,
                                 pack.tipoff_meta.width, pack.tipoff_meta.height) &&
              dd_write_bmp(argv[3], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-gameplay-user-block") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t player;
+        uint32_t steps = 0u;
+        int capture_landing;
+        int ok;
+        if (strcmp(argv[3], "contact") == 0) capture_landing = 0;
+        else if (strcmp(argv[3], "landing") == 0) capture_landing = 1;
+        else return 1;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+        if (ok) {
+            state.phase = DD_GAMEPLAY_LIVE;
+            state.controlled_player = 0u;
+            state.carrier = 5u;
+            state.cpu_global_frame = 0u;
+            state.players[0].action = DD_PLAYER_LIVE_USER;
+            state.players[0].court_x = 0x010000;
+            state.players[0].court_depth = 0x005800;
+            state.players[0].height = 0x1000;
+            state.players[0].paired_player = 5u;
+            state.players[5].action = DD_PLAYER_LIVE_CARRIER_DECIDE;
+            state.players[5].court_x = 0x010600;
+            state.players[5].court_depth = 0x005800;
+            state.players[5].paired_player = 0u;
+            state.ball.action = DD_BALL_SHOT_GATHER;
+            state.ball.owner = 5u;
+            state.ball.court_x = state.players[5].court_x;
+            state.ball.court_depth = state.players[5].court_depth;
+            state.ball.height = 0x2200;
+            for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                if (player != 5u) state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+            }
+            /* X maps to NES A. Enter through the shipping `$A3E2->$A607`
+               edge, then keep the controlled collision probe on `$A6C3`'s
+               exact shifted X/height boxes until the apex byte accepts it. */
+            ok = dd_gameplay_step(&pack, &state, DD_INPUT_A) &&
+                 state.players[0].action == DD_PLAYER_USER_CONTEST;
+            state.players[5].action = DD_PLAYER_ROUTE_WAIT;
+            while (ok && state.ball.action != DD_BALL_AWARDED && steps < 80u) {
+                state.ball.action = DD_BALL_AIRBORNE;
+                state.ball.owner = 5u;
+                state.ball.court_x = state.players[0].court_x + 0x0600;
+                state.ball.court_depth = state.players[0].court_depth;
+                state.ball.height = state.players[0].height + 0x0800;
+                ok = dd_gameplay_step(&pack, &state, 0u);
+                ++steps;
+            }
+            ok = ok && state.ball.action == DD_BALL_AWARDED &&
+                 state.ball.owner == 0u;
+            while (ok && capture_landing &&
+                   !(state.carrier == 0u && state.ball.action == DD_BALL_DRIBBLE) &&
+                   steps < 160u) {
+                ok = dd_gameplay_step(&pack, &state, 0u);
+                ++steps;
+            }
+            if (capture_landing &&
+                !(state.carrier == 0u && state.ball.action == DD_BALL_DRIBBLE)) ok = 0;
+        }
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
                           pack.tipoff_meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);

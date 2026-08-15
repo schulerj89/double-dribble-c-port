@@ -837,7 +837,33 @@ int main(int argc, char **argv) {
           dispatch_state.players[5].velocity_x == 0 &&
           dispatch_state.players[5].velocity_depth == 0,
           "player state $22 returns to $20 when $9102 reports separation");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_TEAMMATE;
+    dispatch_state.players[5].paired_player = 2u;
+    dispatch_state.players[2].paired_player = 5u;
+    dispatch_state.players[5].court_x = 0x010000;
+    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[0].court_x = 0x004000;
+    dispatch_state.players[0].court_depth = 0x002000;
+    dispatch_state.players[2].court_x = 0x014000;
+    dispatch_state.players[2].court_depth = 0x006800;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].target_x == dispatch_state.players[2].court_x &&
+          dispatch_state.players[5].target_depth == dispatch_state.players[2].court_depth &&
+          dispatch_state.players[5].court_x == 0x010180 &&
+          dispatch_state.players[5].court_depth == 0x005980,
+          "$8A28->$90B3 follows mutable $0580 exactly and applies $8BF8's 3/4 vector cadence");
+    dispatch_state.players[5].court_x = dispatch_state.players[2].court_x;
+    dispatch_state.players[5].court_depth = dispatch_state.players[2].court_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_PAIRED_DEFENDER,
+          "$9102 contact uses the mutable pair rather than arithmetic slot+5");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_TEAMMATE;
     dispatch_state.players[0].action = 0x03u;
+    dispatch_state.players[5].paired_player = 0u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_JUMP_START,
           "player state $20 follows $9139 paired action $03 into jump state $23");

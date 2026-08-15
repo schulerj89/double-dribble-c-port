@@ -778,8 +778,10 @@ static int dd_cpu_target_occupied(const DDGameplayState *state, uint32_t player,
 /* $9102 compares the current player with its $0580 paired opponent using
    two-unit half extents on both portable court axes. */
 static int dd_paired_player_contact(const DDGameplayState *state, uint32_t player) {
-    uint32_t opponent = state->phase == DD_GAMEPLAY_INBOUND
-        ? state->players[player].paired_player : (player < 5u ? player + 5u : player - 5u);
+    uint32_t opponent;
+    if (player >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
+    opponent = state->players[player].paired_player;
+    if (opponent >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
     return dd_axis_boxes_overlap(state->players[player].court_depth,
                                  state->players[opponent].court_depth,
                                  0x0200, 0x0200) &&
@@ -1868,9 +1870,11 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             }
             break;
         case DD_PLAYER_LIVE_TEAMMATE: {
-            uint32_t opponent = state->phase == DD_GAMEPLAY_INBOUND
-                ? state->players[player_index].paired_player
-                : (player_index < 5u ? player_index + 5u : player_index - 5u);
+            uint32_t opponent = player->paired_player;
+            if (opponent >= DD_GAMEPLAY_PLAYER_COUNT) {
+                speed = 0;
+                break;
+            }
             if (state->phase == DD_GAMEPLAY_INBOUND && player->role == 3u &&
                 player->action_age >= 5u) {
                 /* The traced `$9102` projected-box contact latches object $05
@@ -1892,12 +1896,17 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 player->action = DD_PLAYER_JUMP_START;
                 player->action_age = 0u;
             }
-            int32_t basket_side = player_index < 5u ? 0x1400 : -0x1400;
-            speed = 0x0200;
-            player->target_x = dd_clamp(state->players[opponent].court_x + basket_side,
-                                        0x001000, 0x01F000);
-            player->target_depth = dd_clamp(state->players[opponent].court_depth,
-                                            0x0400, 0x9800);
+            /* `$8A28->$90B3` follows the mutable `$0580+X` link and aims at
+               that opponent's exact `$0360/$0370/$03C0` position. `$8BF8`
+               then scales both installed 8.8 components by 3/4 before the
+               shared `$D98A->$A84C` double integration. The native cadence
+               adapter therefore advances 1.5 court units per scheduled turn.
+               The removed 20-unit basket-side offset could never satisfy
+               `$9102`'s combined four-unit boxes, so defenders could not
+               naturally latch `$20->$22` or be in range to block. */
+            speed = 0x0180;
+            player->target_x = state->players[opponent].court_x;
+            player->target_depth = state->players[opponent].court_depth;
             break;
         }
         case DD_PLAYER_LIVE_FOLLOW_TARGET:
@@ -1911,9 +1920,13 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             }
             break;
         case DD_PLAYER_LIVE_PAIRED_DEFENDER: {
-            uint32_t opponent = state->phase == DD_GAMEPLAY_INBOUND
-                ? state->players[player_index].paired_player
-                : (player_index < 5u ? player_index + 5u : player_index - 5u);
+            uint32_t opponent = player->paired_player;
+            if (opponent >= DD_GAMEPLAY_PLAYER_COUNT) {
+                player->action = DD_PLAYER_LIVE_TEAMMATE;
+                player->action_age = 0u;
+                speed = 0;
+                break;
+            }
             speed = 0;
             if (state->players[opponent].action == DD_PLAYER_USER_SHOOT) {
                 /* $8A98 shares $9139 with state $20: an already-latched

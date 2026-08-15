@@ -84,6 +84,17 @@
       ],
       "coverage_change_percent": 0.0,
       "reason": "This replaces an incorrect approximation inside the already catalogued shot initializer; the comprehensive inventory is still pending."
+    },
+    {
+      "milestone": "phase-1c-mutable-pair-defense-tracking",
+      "status": "verified",
+      "completed": [
+        "state `$20/$22` always follows mutable `$0580+X` pairing",
+        "state `$20` targets the paired player's exact position through the `$90B3->$8BF8` 3/4-vector cadence",
+        "shipping X/A user block entry, exact `$A6C3` contact, awarded ownership, and landing transfer captures"
+      ],
+      "coverage_change_percent": 0.0,
+      "reason": "This repairs incorrect native behavior in already catalogued defense and user-control routines; comprehensive routine coverage remains inventory-gated."
     }
   ],
   "phases": [

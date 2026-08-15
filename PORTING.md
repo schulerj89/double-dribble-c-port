@@ -1717,6 +1717,31 @@ capture starts from `$BA`, a cell deliberately outside the removed radius, so a
 successful screenshot also proves this repair rather than the old synthetic
 center case.
 
+The defensive follow-up corrects a separate native approximation in player
+states `$20/$22`. Ghidra at `$8A16` calls `$9102`, which loads the opponent
+through mutable link `$0580+X`; it never assumes the arithmetic player five
+slots away. When the current rotating object remains separated, `$8A28` calls
+`$90B3` to derive a vector to the linked player's exact 24-bit position,
+`$8BF8` scales both 8.8 components to 3/4, and `$D98A->$A84C` performs the
+shared double integration. The former port used a 20-unit basket-side offset
+and, outside inbound, ignored `$0580`. That target could not enter `$9102`'s
+combined four-unit contact box, leaving defenders unlatched and poorly placed
+for a block. Native state `$20` now follows the mutable opponent exactly at
+the equivalent 1.5-unit scheduled cadence; state `$22` and its release check
+use the same link.
+
+Regression coverage deliberately changes the link from player 5 to player 2,
+proves the tracker moves toward player 2 rather than player 0, then proves
+`$9102` latches `$20->$22` only at the linked contact. The native user-block
+capture enters through shipping X/NES-A at `$A3E2->$A607`, reaches the exact
+apex-only `$A638->$A6C3` collision, awards ball state `$00` to the user, and
+then shows the `$A693->$92BD->$A44B` landing transfer. Its controlled collision
+fixture uses the same four-unit height/X boxes as the original FCEUX block
+probe; it does not enlarge the hit area.
+
+Reproduce the native contact/landing pair with
+`tools\Capture-NativeUserBlock.ps1` after a normal asset-pack build.
+
 ## Open research questions
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
