@@ -104,6 +104,8 @@ typedef struct DDTipoffAssetsHeader {
     uint8_t net_animation_tiles[24];
     int8_t rebound_target_phase[4];
     uint8_t rebound_formation[40];
+    uint8_t free_throw_formation[40];
+    uint8_t free_throw_facing[20];
     uint8_t cpu_role_targets[20];
     uint8_t cpu_spacing_targets[14];
     uint8_t cpu_region_targets[7];

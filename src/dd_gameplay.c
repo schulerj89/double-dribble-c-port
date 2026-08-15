@@ -408,6 +408,13 @@ static void dd_begin_free_throw(DDGameplayState *state, uint32_t shooter,
     state->possession_direction = shooter < 5u ? 1u : 0u;
     state->phase = DD_GAMEPLAY_FREE_THROW;
     state->free_throw_age = 0u;
+    state->free_throw_coarse_age = 0u;
+    state->free_throw_initialized = 0u;
+    state->free_throw_attempts = 0u;
+    state->free_throw_timer = 0u;
+    state->free_throw_dead_timer = 0u;
+    state->free_throw_aim = 0u;
+    state->free_throw_aim_direction = 0;
     state->game_set_age = 0u;
     state->return_to_title = 0;
     state->foul_shooter = (uint8_t)shooter;
@@ -2385,6 +2392,13 @@ static void dd_prepare_period_formation(DDGameplayState *state) {
     state->foul_shooter = DD_NO_OWNER;
     state->foul_offender = DD_NO_OWNER;
     state->free_throw_age = 0u;
+    state->free_throw_coarse_age = 0u;
+    state->free_throw_initialized = 0u;
+    state->free_throw_attempts = 0u;
+    state->free_throw_timer = 0u;
+    state->free_throw_dead_timer = 0u;
+    state->free_throw_aim = 0u;
+    state->free_throw_aim_direction = 0;
     state->game_set_age = 0u;
     state->return_to_title = 0;
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
@@ -3166,63 +3180,267 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
     }
 }
 
-/* Controlled FCEUX frames 2608-3146 expose the foul/free-throw spine after
-   $A347: dead ball $0B, shooter states $42/$4A, formation $43->$44, ball
-   $01->$00, shooter $45->$46->$47, then shot states $04->$05.  The detailed
-   formation walkers remain a later slice, but these timings keep the rule,
-   one-point shot, and return to live play native and deterministic. */
+/* `$852F-$85C6` swaps the fouled shooter into role zero and installs the
+   `$85C7` target/action table.  This is deliberately pack-backed: those 40
+   bytes are game data, while the following dispatcher is native control. */
+static void dd_initialize_free_throw_formation(const DDTipoffAssetsHeader *assets,
+                                                DDGameplayState *state) {
+    uint32_t shooter = state->foul_shooter;
+    uint32_t shooter_first = shooter < 5u ? 0u : 5u;
+    uint32_t role_zero = dd_team_role(state, shooter_first, 0u);
+    uint32_t player;
+    uint32_t table_base = state->possession_direction == 0u ? 20u : 0u;
+    if (role_zero != shooter) dd_swap_inbound_role_links(state, role_zero, shooter);
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        DDPlayerState *object = &state->players[player];
+        uint32_t other_team = (player < 5u) == (shooter < 5u) ? 0u : 10u;
+        uint32_t entry = table_base + other_team + (uint32_t)(object->role % 5u) * 2u;
+        object->action = assets->free_throw_formation[entry + 1u];
+        object->action_age = 0u;
+        object->contact_age = 0u;
+        object->height = 0x1000;
+        dd_set_cpu_target(object, assets->free_throw_formation[entry]);
+    }
+    /* `$85A8-$85B4` replaces the shooter's table target with the ball's
+       current court coordinate before state `$4A` waits on `$0064=$60`. */
+    state->players[shooter].target_x = state->ball.court_x;
+    state->players[shooter].target_depth = state->ball.court_depth;
+    state->players[shooter].action = DD_PLAYER_FREE_THROW_WALK;
+    state->players[shooter].action_age = 0u;
+    state->free_throw_dead_timer = 0x60u;
+    state->free_throw_initialized = 1u;
+    state->dead_ball_latch = 0u;
+    state->carrier = DD_NO_OWNER;
+    state->ball.owner = DD_NO_OWNER;
+    state->ball.receiver = DD_NO_OWNER;
+    state->ball.action = DD_BALL_DEAD;
+    state->ball.action_age = 0u;
+}
+
+static void dd_begin_free_throw_shot(const DDTipoffAssetsHeader *assets,
+                                     DDGameplayState *state, uint32_t shooter) {
+    DDPlayerState *player = &state->players[shooter];
+    player->height_script_index = 11u;
+    player->height_script_reverse = 0u;
+    player->action = DD_PLAYER_FREE_THROW_GATHER;
+    player->action_age = 0u;
+    player->animation = assets->shot_animation[player->facing & 7u];
+    state->ball.action = DD_BALL_SHOT_GATHER;
+    state->ball.action_age = 0u;
+    state->ball.owner = (uint8_t)shooter;
+    state->ball.receiver = DD_NO_OWNER;
+    state->ball.outcome = 0u;
+    state->ball.rim_contact = 0u;
+    state->carrier = (uint8_t)shooter;
+    state->last_shooter = (uint8_t)shooter;
+    state->last_touch_player = (uint8_t)shooter;
+    state->shot_value = 1u;
+    state->free_throw_coarse_age = 0u;
+}
+
+static void dd_release_free_throw(DDGameplayState *state) {
+    int32_t aim_error = (int32_t)state->free_throw_aim - 0x58;
+    state->ball.action = DD_BALL_AIRBORNE;
+    state->ball.action_age = 0u;
+    state->ball.owner = DD_NO_OWNER;
+    state->carrier = DD_NO_OWNER;
+    dd_initialize_shot_flight(state);
+    /* `$87C0-$87EB` moves the free-throw cursor through `$50-$60`; the
+       launch routine consumes its current horizontal placement.  Preserve
+       that signed error as a small lateral term after `$B189` has aimed the
+       base vector, so center timing can make while early/late timing rims. */
+    state->ball.velocity_depth += aim_error * 0x28;
+    dd_reset_possession_rules(state);
+}
+
+static void dd_restore_after_free_throws(DDGameplayState *state) {
+    uint32_t player;
+    uint32_t controlled = dd_team_role(state, 0u, 0u);
+    state->phase = DD_GAMEPLAY_LIVE;
+    state->controlled_player = (uint8_t)controlled;
+    state->inbound_reason = 0u;
+    state->rule_message_age = UINT16_MAX;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        DDPlayerState *object = &state->players[player];
+        if (player == controlled) {
+            object->action = state->ball.owner == player
+                ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_USER;
+        } else if (state->ball.owner == player) {
+            object->action = DD_PLAYER_LIVE_CARRIER;
+        } else {
+            object->action = player < 5u
+                ? DD_PLAYER_LIVE_TEAMMATE : DD_PLAYER_LIVE_CPU;
+        }
+        object->action_age = 0u;
+        object->height = 0x1000;
+    }
+}
+
+/* Ghidra bank-0 `$852F-$89AF`, verified against the controlled FCEUX
+   `$42/$4A->$43->$44/$45->$46->$47->$48->$49` trace.  Only player dispatch
+   runs on the original alternating 30 Hz cadence; the ball remains 60 Hz. */
 static void dd_step_free_throw(const DDTipoffAssetsHeader *assets,
-                               DDGameplayState *state) {
+                               DDGameplayState *state, uint32_t input_mask) {
     uint32_t shooter = state->foul_shooter;
     DDBallState *ball = &state->ball;
+    DDPlayerState *shooter_state;
+    uint32_t player;
+    int scheduled;
+    int shooter_became_ready = 0;
     if (shooter >= DD_GAMEPLAY_PLAYER_COUNT) {
         state->phase = DD_GAMEPLAY_LIVE;
         return;
     }
+    shooter_state = &state->players[shooter];
     if (state->free_throw_age != UINT16_MAX) ++state->free_throw_age;
-    if (state->free_throw_age == 2u) state->dead_ball_latch = 0u;
-    if (state->free_throw_age == 160u) state->inbound_reason = 0u;
-    if (state->free_throw_age == 2u) {
-        state->players[shooter].action = DD_PLAYER_FREE_THROW_WALK;
-    } else if (state->free_throw_age == 192u) {
-        state->players[shooter].action = DD_PLAYER_FREE_THROW_SHOOTER;
-    } else if (state->free_throw_age == 194u) {
-        state->carrier = (uint8_t)shooter;
-        ball->owner = (uint8_t)shooter;
-        ball->action = DD_BALL_DRIBBLE;
-        ball->action_age = 0u;
-        state->players[shooter].action = DD_PLAYER_FREE_THROW_FORMATION;
-        dd_step_dribble(assets, state);
-    } else if (state->free_throw_age == 214u) {
-        state->players[shooter].court_x = state->possession_direction == 0u
-            ? 0x009200 : 0x016E00;
-        state->players[shooter].court_depth = 0x005800;
-        state->players[shooter].action = DD_PLAYER_FREE_THROW_READY;
-        ball->action = DD_BALL_AWARDED;
-        ball->action_age = 0u;
-        ball->owner = (uint8_t)shooter;
-    } else if (state->free_throw_age == 252u) {
-        state->players[shooter].action = DD_PLAYER_FREE_THROW_SET;
-    } else if (state->free_throw_age == 348u) {
-        ball->action = DD_BALL_SHOT_GATHER;
-        ball->action_age = 0u;
-        ball->owner = (uint8_t)shooter;
-        ball->receiver = DD_NO_OWNER;
-        ball->outcome = 0u;
-        ball->rim_contact = 0u;
-        state->last_shooter = (uint8_t)shooter;
-        state->shot_value = 1u;
-        state->players[shooter].action = DD_PLAYER_FREE_THROW_GATHER;
-    } else if (state->free_throw_age == 402u) {
-        state->players[shooter].height = 0x1000;
-        state->players[shooter].action = DD_PLAYER_FREE_THROW_FOLLOW;
+    if (state->free_throw_initialized == 0u) {
+        dd_initialize_free_throw_formation(assets, state);
     }
-    dd_step_ball(assets, state, 0u);
-    if (state->free_throw_age > 348u && ball->action == DD_BALL_DRIBBLE &&
-        ball->owner < DD_GAMEPLAY_PLAYER_COUNT) {
-        uint32_t winner = ball->owner;
-        state->phase = DD_GAMEPLAY_LIVE;
-        dd_transfer_contact_possession(state, winner);
+    ++state->cpu_global_frame;
+    scheduled = (state->cpu_global_frame & 1u) == 0u;
+    if (shooter_state->action == DD_PLAYER_FREE_THROW_SET) {
+        if (state->free_throw_coarse_age != UINT16_MAX) ++state->free_throw_coarse_age;
+        if (state->free_throw_coarse_age >= 5u * 64u) {
+            /* `$8806-$882A`: five coarse ticks request `$2C`, publish rule
+               reason `$12`, and leave the attempt sequence. */
+            state->inbound_reason = 0x12u;
+            dd_begin_common_inbound(state, 0x12u, shooter);
+            return;
+        }
+    }
+    if (scheduled) {
+        if (state->free_throw_dead_timer != 0u) {
+            --state->free_throw_dead_timer;
+            if (state->free_throw_dead_timer == 0u) {
+                shooter_state->action = DD_PLAYER_FREE_THROW_SHOOTER;
+                shooter_state->action_age = 0u;
+            }
+        }
+        for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+            DDPlayerState *object = &state->players[player];
+            if (object->action != DD_PLAYER_FREE_THROW_SHOOTER &&
+                object->action != DD_PLAYER_FREE_THROW_FORMATION) continue;
+            if (object->action_age != UINT16_MAX) ++object->action_age;
+            dd_move_cpu_player(object, player, state->live_frame, 0x0200);
+            if (!dd_cpu_at_target(object, 0x0200)) continue;
+            if (object->action == DD_PLAYER_FREE_THROW_SHOOTER) {
+                object->action = DD_PLAYER_FREE_THROW_FORMATION;
+                dd_set_cpu_target(object, state->possession_direction == 0u
+                                  ? 0xA9u : 0xB6u);
+                state->carrier = (uint8_t)shooter;
+                ball->owner = (uint8_t)shooter;
+                ball->action = DD_BALL_DRIBBLE;
+                ball->action_age = 0u;
+            } else if (player == shooter) {
+                object->facing = state->possession_direction == 0u ? 4u : 0u;
+                object->action = DD_PLAYER_FREE_THROW_READY;
+                object->action_age = 0u;
+                shooter_became_ready = 1;
+                ball->action = DD_BALL_AWARDED;
+                ball->action_age = 0u;
+            } else {
+                uint32_t facing_base = state->possession_direction == 0u ? 10u : 0u;
+                uint32_t other_team = (player < 5u) == (shooter < 5u) ? 0u : 5u;
+                object->facing = assets->free_throw_facing[
+                    facing_base + other_team + (uint32_t)(object->role % 5u)];
+                object->court_depth = object->court_depth < 0x005000
+                    ? 0x004000 : 0x006800;
+                object->action = DD_PLAYER_FREE_THROW_SPOT;
+                object->action_age = 0u;
+            }
+        }
+        if (shooter_state->action == DD_PLAYER_FREE_THROW_READY && !shooter_became_ready) {
+            int ready = 1;
+            for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                if (player != shooter &&
+                    state->players[player].action != DD_PLAYER_FREE_THROW_SPOT) {
+                    ready = 0;
+                    break;
+                }
+            }
+            if (ready) {
+                uint8_t aim = (uint8_t)(state->cpu_entropy & 0x7Eu);
+                if (aim < 0x52u) aim = 0x52u;
+                if (aim > 0x5Eu) aim = 0x5Eu;
+                shooter_state->action = DD_PLAYER_FREE_THROW_SET;
+                shooter_state->action_age = 0u;
+                state->free_throw_timer = 0x30u;
+                state->free_throw_aim = aim;
+                state->free_throw_aim_direction =
+                    (state->cpu_entropy & 0x80u) != 0u ? -1 : 1;
+                state->free_throw_coarse_age = 0u;
+            }
+        } else if (shooter_state->action == DD_PLAYER_FREE_THROW_SET) {
+            if (state->free_throw_aim_direction >= 0) {
+                state->free_throw_aim = (uint8_t)(state->free_throw_aim - 2u);
+                if (state->free_throw_aim == 0x50u) state->free_throw_aim_direction = -1;
+            } else {
+                state->free_throw_aim = (uint8_t)(state->free_throw_aim + 2u);
+                if (state->free_throw_aim == 0x60u) {
+                    state->free_throw_aim_direction = 1;
+                    dd_request_audio_event(state, 0x12u);
+                }
+            }
+            if (shooter < 5u) {
+                if ((input_mask & DD_INPUT_B) != 0u) {
+                    dd_begin_free_throw_shot(assets, state, shooter);
+                }
+            } else {
+                if (state->free_throw_timer != 0u) --state->free_throw_timer;
+                if (state->free_throw_timer == 0u &&
+                    (((state->cpu_entropy & 0x80u) == 0u) ||
+                     state->free_throw_aim == 0x60u)) {
+                    dd_begin_free_throw_shot(assets, state, shooter);
+                }
+            }
+        } else if (shooter_state->action == DD_PLAYER_FREE_THROW_GATHER) {
+            int landed;
+            if (shooter_state->action_age != UINT16_MAX) ++shooter_state->action_age;
+            landed = dd_step_player_height_script(assets, shooter_state);
+            if (ball->action == DD_BALL_SHOT_GATHER &&
+                shooter_state->height_script_index < sizeof(assets->height_scripts) &&
+                (uint8_t)assets->height_scripts[shooter_state->height_script_index] == 0x81u) {
+                dd_release_free_throw(state);
+            }
+            if (landed) {
+                shooter_state->action = DD_PLAYER_FREE_THROW_FOLLOW;
+                shooter_state->action_age = 0u;
+                state->free_throw_timer = 0x50u;
+            }
+        } else if (shooter_state->action == DD_PLAYER_FREE_THROW_RECOVER) {
+            if (state->free_throw_timer != 0u) --state->free_throw_timer;
+            if (state->free_throw_timer == 0x20u) {
+                ball->action = DD_BALL_AWARDED;
+                ball->action_age = 0u;
+                ball->owner = (uint8_t)shooter;
+                state->carrier = (uint8_t)shooter;
+                dd_attach_ball(assets, state, 0u);
+            }
+            if (state->free_throw_timer == 0u) {
+                shooter_state->action = DD_PLAYER_FREE_THROW_SET;
+                shooter_state->action_age = 0u;
+                state->free_throw_timer = (uint8_t)(state->cpu_entropy & 0x1Fu);
+                if (state->free_throw_timer == 0u) state->free_throw_timer = 7u;
+                state->free_throw_coarse_age = 0u;
+            }
+        }
+    }
+    dd_step_ball(assets, state, input_mask);
+    if (scheduled && shooter_state->action == DD_PLAYER_FREE_THROW_FOLLOW &&
+        ball->action != DD_BALL_AWARDED && ball->action != DD_BALL_AIRBORNE &&
+        ball->action != DD_BALL_SCORE && ball->action != DD_BALL_SHOT_GATHER) {
+        ++state->free_throw_attempts;
+        if (state->free_throw_attempts < 2u) {
+            /* `$8902-$8919/$894C-$89A1`: retain the formation, wait 80
+               scheduled ticks, and reattach the ball when the timer is `$20`. */
+            state->possession_direction = shooter < 5u ? 1u : 0u;
+            state->rebound_formation_pending = 0u;
+            shooter_state->action = DD_PLAYER_FREE_THROW_RECOVER;
+            shooter_state->action_age = 0u;
+            state->free_throw_timer = 0x50u;
+        } else {
+            dd_restore_after_free_throws(state);
+        }
     }
 }
 
@@ -3243,7 +3461,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
        rendered frame; decision code consumes the same high/low bit bands. */
     state->cpu_entropy = (uint8_t)(state->cpu_entropy + state->cpu_global_frame + 1u);
     if (state->phase == DD_GAMEPLAY_FREE_THROW) {
-        dd_step_free_throw(assets, state);
+        dd_step_free_throw(assets, state, input_mask);
         dd_update_camera(state);
         state->live_frame = live_frame;
         state->previous_input = input_mask;

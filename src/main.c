@@ -30,6 +30,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay-team <input.assetpack> <0|2|3> <output.bmp>");
     puts("  --render-gameplay-top-edge <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-tip-jump <input.assetpack> <output.bmp>");
+    puts("  --render-gameplay-free-throw <input.assetpack> <ready|gather|airborne> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
@@ -252,6 +253,71 @@ int main(int argc, char **argv) {
         memset(&state, 0, sizeof(state));
         ok = dd_gameplay_configure(&pack, &state, 0u, (uint32_t)team, 0u) &&
             dd_gameplay_advance_to(&pack, &state, 144u, 0u);
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+            dd_render_gameplay(&pack, &state, pixels,
+                               pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+            dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
+                         pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-gameplay-free-throw") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t steps = 0u;
+        int checkpoint_ready;
+        int checkpoint_gather;
+        int ok;
+        if (strcmp(argv[3], "ready") == 0) {
+            checkpoint_ready = 1;
+            checkpoint_gather = 0;
+        } else if (strcmp(argv[3], "gather") == 0) {
+            checkpoint_ready = 0;
+            checkpoint_gather = 1;
+        } else if (strcmp(argv[3], "airborne") == 0) {
+            checkpoint_ready = 0;
+            checkpoint_gather = 0;
+        } else {
+            return 1;
+        }
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+        if (ok) {
+            state.phase = DD_GAMEPLAY_FREE_THROW;
+            state.foul_shooter = 0u;
+            state.foul_offender = 5u;
+            state.possession_direction = 1u;
+            state.ball.action = DD_BALL_DEAD;
+            state.ball.court_x = state.players[0].court_x;
+            state.ball.court_depth = state.players[0].court_depth;
+            state.free_throw_initialized = 0u;
+            while (ok && state.players[0].action != DD_PLAYER_FREE_THROW_SET &&
+                   steps < 2500u) {
+                ok = dd_gameplay_step(&pack, &state, 0u);
+                ++steps;
+            }
+            ok = ok && state.players[0].action == DD_PLAYER_FREE_THROW_SET;
+            while (ok && !checkpoint_ready &&
+                   state.players[0].action != DD_PLAYER_FREE_THROW_GATHER &&
+                   steps < 2600u) {
+                ok = dd_gameplay_step(&pack, &state, DD_INPUT_B);
+                ++steps;
+            }
+            ok = ok && (checkpoint_ready ||
+                state.players[0].action == DD_PLAYER_FREE_THROW_GATHER);
+            while (ok && !checkpoint_ready && !checkpoint_gather &&
+                   state.ball.action != DD_BALL_AIRBORNE && steps < 2700u) {
+                ok = dd_gameplay_step(&pack, &state, 0u);
+                ++steps;
+            }
+            if (!checkpoint_ready && !checkpoint_gather) {
+                ok = ok && state.ball.action == DD_BALL_AIRBORNE;
+            }
+        }
         pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
                                     pack.tipoff_meta.height * sizeof(uint32_t));
         ok = ok && pixels != NULL &&

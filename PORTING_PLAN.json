@@ -143,6 +143,18 @@
       ],
       "coverage_change_percent": 0.4,
       "reason": "Two of 216 portable routines advance from Partial to Verified after static Ghidra proof, dynamic FCEUX event traces, named native implementations, and deterministic regressions."
+    },
+    {
+      "milestone": "phase-3a-free-throw-dispatcher-and-formation",
+      "status": "verified",
+      "completed": [
+        "ROM-backed `$85C7/$86AF` formation and facing data in DDAP v20",
+        "states `$42-$49` with role swap, lane movement, aim oscillation, user B input, CPU timer, height-script release, two attempts, timeout, and continuation",
+        "natural CPU and controlled user FCEUX traces plus native ready/gather/airborne captures",
+        "four comprehensive routine nodes promoted to Verified"
+      ],
+      "coverage_change_percent": 0.9,
+      "reason": "Four of 216 portable routines advance from Partial to Verified after bounded Ghidra instruction/table export, dynamic FCEUX traces, native state-machine translation, and deterministic regression/capture coverage."
     }
   ],
   "phases": [
@@ -203,7 +215,7 @@
     {
       "id": 2,
       "name": "Complete CPU offense and defense",
-      "status": "pending",
+      "status": "in_progress",
       "priority": 2,
       "depends_on": [0, 1],
       "work": [
@@ -221,7 +233,7 @@
     {
       "id": 3,
       "name": "Fouls, violations, and free throws",
-      "status": "pending",
+      "status": "in_progress",
       "priority": 3,
       "depends_on": [2],
       "work": [

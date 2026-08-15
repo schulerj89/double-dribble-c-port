@@ -19,6 +19,7 @@ param(
     [string]$MoveDirection = 'none',
     [int]$ContactFrame = -1,
     [int]$ContactClockGate = -1,
+    [int]$UserFreeThrowFrame = -1,
     [int]$BasketFrame = -1,
     [ValidateRange(1, 4)]
     [int]$BasketResult = 1,
@@ -70,6 +71,7 @@ $env:DD_MOVE_DIRECTION = $MoveDirection
 $env:DD_ENABLE_PC_COUNTS = if ($DisablePcCounts) { '0' } else { '1' }
 $env:DD_INJECT_CONTACT_FRAME = $ContactFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_CONTACT_CLOCK_GATE = $ContactClockGate.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_FREE_THROW_FRAME = $UserFreeThrowFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_FRAME = $BasketFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_RESULT = $BasketResult.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_COUNTER = $BasketCounter.ToString([Globalization.CultureInfo]::InvariantCulture)

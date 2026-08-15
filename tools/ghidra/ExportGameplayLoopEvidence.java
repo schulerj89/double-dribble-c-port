@@ -72,6 +72,28 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
         report.println();
     }
 
+    private void printInstructionRange(PrintWriter report, String name,
+                                       long start, long end) throws Exception {
+        report.printf("==== %s instruction range $%04X-$%04X ====%n", name, start, end);
+        Address cursor = toAddr(start);
+        while (cursor.getOffset() <= end) {
+            Instruction instruction = getInstructionAt(cursor);
+            if (instruction == null) {
+                disassemble(cursor);
+                instruction = getInstructionAt(cursor);
+            }
+            if (instruction == null) {
+                report.printf("%s  <data %02X>%n", cursor,
+                    currentProgram.getMemory().getByte(cursor) & 0xff);
+                cursor = cursor.add(1L);
+            } else {
+                report.printf("%s  %s%n", instruction.getAddress(), instruction);
+                cursor = instruction.getMaxAddress().add(1L);
+            }
+        }
+        report.println();
+    }
+
     @Override
     public void run() throws Exception {
         if (getScriptArgs().length != 2) {
@@ -99,6 +121,8 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
                 printByteTable(report, "CPU avoidance direction", 0x8BC8L, 32);
                 printByteTable(report, "made-basket target phase", 0x8503L, 4);
                 printByteTable(report, "made-basket target/action", 0x8507L, 40);
+                printByteTable(report, "free-throw formation target/action", 0x85C7L, 40);
+                printByteTable(report, "free-throw formation facing", 0x86AFL, 20);
                 printByteTable(report, "movement depth vectors", 0x9C1CL, 66);
                 printByteTable(report, "movement longitudinal vectors", 0x9C5EL, 66);
                 printByteTable(report, "movement angle thresholds", 0x9DEBL, 66);
@@ -111,6 +135,8 @@ public class ExportGameplayLoopEvidence extends GhidraScript {
                 printByteTable(report, "user shooting height-script pointer", 0x9B26L, 2);
                 printByteTable(report, "basket net animation tiles", 0x9922L, 24);
                 printByteTable(report, "held-ball facing offsets", 0xB07BL, 48);
+                printInstructionRange(report, "foul/free-throw state machine",
+                                      0x852FL, 0x89B1L);
             } else {
                 printByteTable(report, "CPU region policy offsets", 0xD8B9L, 28);
                 printByteTable(report, "CPU packed target policy", 0xD8D5L, 28);

@@ -604,7 +604,7 @@ shows `$8E71` and `$8EBF` both using `$D978` packed equality followed by
 target/action pairs at `$8507` select one `$2D` rebound chaser and nine `$36`
 formation routes. Natural and controlled traces show the low-entropy object
 phase changing individual targets by `$FE/$FF/$01/$02`; native preserves the
-observed per-slot phases while still batching the NES object cadence. DDAP v19
+observed per-slot phases while still batching the NES object cadence. DDAP v20
 contains both ROM tables. `$2D` keeps the `$FF01` longitudinal and signed
 `$000C` depth terms before `$2E->$2F->$30`. The subsequent `$8EE2` branch uses
 `$A0DA` to select an on-screen non-role-zero teammate for automatic state `$31`
@@ -733,9 +733,27 @@ the shooter in `$42->$4A` and the other players in formation `$43`; formation
 objects independently reach `$44`. The shooter receives ball `$01` at frame
 2802, advances through ball `$00`/player `$45` at 2822, player `$46` at 2860,
 ball `$04`/player `$47` at 2956, ball `$05` at 2982, and player `$48` at 3010.
-The native match phase reproduces this dispatcher spine and scores its result-one
-basket as one point rather than the ordinary two. Formation movement and the
-remaining post-attempt branches are intentionally still Partial.
+The old host-frame checkpoints have now been removed. Headless Ghidra exports
+the complete instruction range `$852F-$89AF` plus the 40-byte `$85C7`
+target/action table and 20-byte `$86AF` facing table. DDAP v20 stores those
+bounded tables. Native `dd_step_free_throw` swaps the shooter into role zero,
+walks all ten objects on the alternating 30 Hz dispatcher cadence, preserves
+the intermediate `$42/$4A->$43->$44/$45` states, and waits until all nine lane
+objects are ready before entering `$46`.
+
+The `$87C0` translation oscillates the aim value by two through `$50-$60`.
+User slots take controller bit `$40` (native B) exactly as the original does;
+CPU slots consume the `$0067=$30` timer and entropy/aim gates. `$884F/$8887`
+then use the original `$9B26` height stream, release at its `$81` apex, install
+shot kind two as native one-point `shot_value`, and enter `$48`. `$88DE/$894C`
+count the result, wait `$50` scheduled ticks, reattach at `$20`, and run the
+second attempt without reforming the lane. The five-coarse-tick exit publishes
+reason `$12` and the exact `$2C` rule whistle. Deterministic regressions cover
+formation, CPU timing, indefinite user wait, B launch, one-point score, and
+the pack bytes; `Capture-NativeFreeThrow.ps1` renders ready/gather/airborne
+checkpoints. The four recursively inventoried entries `$8594/$85BE/$860A/$8682`
+are now Verified; remaining foul eligibility and final rebound variants remain
+part of the broader match-rules audit.
 
 Controlled `$AE25->$B377` probes now isolate all four basket results: result
 `$01` enters score state `$06`, while `$02/$03/$04` enter loose initializer `$08`
@@ -1238,7 +1256,7 @@ outside/three. The three-point score probe keeps kind `$01` through counters
 cover these four boundary cases, the far-page cases, release ordering, and all
 one-/two-/three-point score branches.
 
-DDAP v19 retains the audible results, not only event numbers. Matched FCEUX
+DDAP v20 retains the audible results, not only event numbers. Matched FCEUX
 APU runs isolate `$09` as a 189-frame pulse-2 cue at duty 50%/volume 6 whose
 timer moves `256->162->255` before stopping. `$25` is a 42-frame two-pulse
 arpeggio; comparing shot kind 1 against kind 0 proves the simultaneous
@@ -1275,7 +1293,7 @@ entry rather than injecting a result after release.
 | Ghidra/ASM | Recovered behavior | Native C |
 | --- | --- | --- |
 | `$AA75` | clear `$04F0+X`, install height stream `$9B34` from `$9B26`, set player `$03`, release gate `$04E0=1`, and ball `$04` | `dd_begin_shot` |
-| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v19 `shot_animation[8]` and `player.animation` |
+| `$A896` plus `$A8E6/$A9DC` | state `$03` and CPU state `$27` share the facing-indexed metasprites `$22,$28,$23,$27,$21,$25,$24,$26` | DDAP v20 `shot_animation[8]` and `player.animation` |
 | `$A504->$A84C` | integrate the takeoff depth vector twice and longitudinal vector twice, then update pose, projection, and `$9ABD` height; fresh input does not retarget the airborne state | user-shot gather dispatcher preserves takeoff momentum |
 | `$8D1F->$AAEE->$AA98->$B503` and `$8D57` | face the CPU shooter toward the active hoop, clear its three motion vectors, use shared pose selection, and advance the shot height stream | CPU shot initializer and state `$27` dispatcher |
 | `$B035` table 2 | add the first facing offset to longitudinal `$0370` and the second to depth `$03C0` | exact shot attachment path |
@@ -1316,7 +1334,7 @@ continues, but state `$03` does not accept a new steering vector mid-jump.
 The make trace also proves the net sequence independently of ball motion.
 Original frame 2792 has phase 2 applied, frame 2798 has phase 1, and frame
 2807 has restored phase 0. Table `$9922` is 24 bytes: two basket sides by
-three four-tile frames. DDAP v19 extracts those bytes, and the native renderer
+three four-tile frames. DDAP v20 extracts those bytes, and the native renderer
 patches the equivalent two adjacent tiles on two rows before drawing the
 court. Native regression checks assert the exact table and phase transitions
 `2->1->0`.
@@ -1352,7 +1370,7 @@ confirmed in FCEUX are:
 | State / helper | Original effect | Native translation |
 | --- | --- | --- |
 | `$AE25` result `$01` | flip `$0050`, set/decrement gate `$0056`, enter ball score `$06` | change possession direction and arm `rebound_formation_pending` |
-| `$8491->$8503/$8507` | combine gate, role `$0690`, team side, and object phase; install one `$2D` plus nine `$36` targets | DDAP v19 tables plus the traced per-slot cadence adapter |
+| `$8491->$8503/$8507` | combine gate, role `$0690`, team side, and object phase; install one `$2D` plus nine `$36` targets | DDAP v20 tables plus the traced per-slot cadence adapter |
 | player `$2D->$2E->$2F->$30` | chase/claim the scored ball, return to the boundary, then wait for all `$36->$37` routes | native rebound-chase dispatcher chain and formation readiness gate |
 | `$8EBF/$8C6B->$AD0E->$B035` | claim the scored or loose ball, reset its local phase, set held height `$10`, and add the table-0 longitudinal/depth hand offsets | exact owner/carrier assignment and pickup attachment |
 | `$8EE2->$A0DA->$9018->$B0B8` | find an on-screen non-role-zero teammate, enter release `$31`, and immediately install pass angle, facing, and velocity before the countdown | `dd_automatic_inbound_receiver`, `dd_start_inbound_release`, and `dd_prepare_pass_motion` |
@@ -1427,7 +1445,7 @@ Headless Ghidra maps the bank-1 streams to `$87B6/$87CA` (ROM
 run at frame 2600 injects only a clean rim result and freezes gameplay after
 frame 2615: `gameplay-sfx-calls.csv` contains exactly `18`, then `1F,22`, and
 the isolated pulse/triangle/noise output ends at normalized frame 436. DDAP
-v19 stores 104 normalized note events as `basket.score`; native code requests
+v20 stores 104 normalized note events as `basket.score`; native code requests
 event `$18` at the make and plays the complete 437-frame cue without a 6502 or
 APU emulator.
 
@@ -1626,7 +1644,7 @@ The ball sound follow is exact at the portable dispatcher boundary. Bank 0
 (`$3007`) each request event `$0A` on their first bounce/landing wrap;
 `$AF72-$AF83` (`$2F82`) requests event `$14` for the loose launch. Native ball
 states now issue those same event IDs. Event `$0A` uses the already recovered
-DDAP v19 `gameplay.audio` stream from switched bank 1, and every asset-pack
+DDAP v20 `gameplay.audio` stream from switched bank 1, and every asset-pack
 build exports the exact native playback path as `build/ball-bounce-0a.wav` for
 audible and waveform inspection. No ROM audio or WAV is committed.
 
@@ -1787,7 +1805,7 @@ height script reaches the collision helper; successful contact stores the
 user as owner and `$A68A-$A68C` requests `$20`. The controlled FCEUX contact at
 frame 2766 records event `$20` for object `$02`. Bank-1 streams `$87DD` and
 `$866B` supply the thirteen-frame descending pulse and initial noise transient.
-DDAP v19 carries both sequences as `gameplay.audio.cpu.block` and
+DDAP v20 carries both sequences as `gameplay.audio.cpu.block` and
 `gameplay.audio.user.block`; Win32 maps events `$10/$20` to generated PCM, and
 the gameplay regression compares every packed event exactly. These two fully
 evidenced helpers raise comprehensive recursive coverage to **60.4% (45
@@ -1813,4 +1831,4 @@ The current implementation percentage and its reproducible scoring rules are mai
 - Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
 - Determine the full successful B timing window around the proven original-frame-2502 user jump.
 - Model the remaining `$001D/$0056` contest gates and ordinary-shot
-  rim-contact eligibility branches; DDAP v19 now carries block SFX `$10/$20`.
+  rim-contact eligibility branches; DDAP v20 carries block SFX `$10/$20`.

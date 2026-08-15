@@ -54,6 +54,27 @@
         "tests/dd_gameplay_cpu_test.c user contest contact and landing ownership",
         "tools/Capture-NativeUserBlock.ps1"
       ]
+    },
+    {
+      "name": "free_throw_formation_dispatch_and_release",
+      "status": "verified",
+      "routines": ["bank0:8594", "bank0:85BE", "bank0:860A", "bank0:8682"],
+      "evidence": [
+        "Headless Ghidra instruction export `$852F-$89AF` and exact tables `$85C7/$86AF`",
+        "FCEUX `phase3-free-throw-pc` natural CPU foul trace through both-attempt states `$42-$49`",
+        "FCEUX `phase3-user-free-throw-input2` controlled state-$45 entry proving aim oscillation, B-bit launch, height-script apex, and result continuation"
+      ],
+      "native_symbols": [
+        "dd_initialize_free_throw_formation",
+        "dd_begin_free_throw_shot",
+        "dd_release_free_throw",
+        "dd_step_free_throw",
+        "dd_restore_after_free_throws"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c free-throw formation, CPU aim, user B launch, and one-point score suite",
+        "tools/Capture-NativeFreeThrow.ps1"
+      ]
     }
   ]
 }

@@ -20,6 +20,7 @@ local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
 local inject_contact_clock_gate = tonumber(os.getenv("DD_INJECT_CONTACT_CLOCK_GATE") or "-1")
+local inject_user_free_throw_frame = tonumber(os.getenv("DD_INJECT_USER_FREE_THROW_FRAME") or "-1")
 local inject_basket_frame = tonumber(os.getenv("DD_INJECT_BASKET_FRAME") or "-1")
 local inject_basket_result = tonumber(os.getenv("DD_INJECT_BASKET_RESULT") or "1")
 local inject_basket_counter = tonumber(os.getenv("DD_INJECT_BASKET_COUNTER") or "0")
@@ -126,6 +127,8 @@ local exceptional_calls = assert(io.open(join_path(capture_root, "gameplay-excep
 exceptional_calls:write("frame,current,clock_gate,ball_state,input,current_target,current_facing,defender,defender_state,defender_target,defender_facing\n")
 local shot_animation = assert(io.open(join_path(capture_root, "gameplay-shot-animation.csv"), "w"))
 shot_animation:write("frame,pc,current_object,player_state,facing,metasprite,animation_phase,player_height,script_low,script_high,script_value,release_gate,ball_state,ball_owner,carrier,ball_x,ball_depth,ball_height,outcome\n")
+local free_throw_calls = assert(io.open(join_path(capture_root, "gameplay-free-throw-calls.csv"), "w"))
+free_throw_calls:write("frame,pc,current_object,player_state,ball_state,owner,carrier,phase_counter,shot_timer,dead_timer,dead_phase,role,target,facing,input,coarse_timer,aim,aim_direction\n")
 local counts = {formation = {}, toss_jump = {}, possession_award = {}, live = {}}
 local bank_counts = {}
 local previous_ball_state = -1
@@ -201,6 +204,29 @@ memory.registerexecute(0x9431, 1, function(address, size, value)
             phase_for_frame(frame)))
     end
 end)
+for _, address in ipairs({
+    0x852F, 0x8534, 0x85EF, 0x8603, 0x860A, 0x862A, 0x8636,
+    0x8682, 0x8694, 0x86C3, 0x872F, 0x8774, 0x87C0, 0x87F2,
+    0x87F7, 0x8832, 0x884F, 0x8887, 0x88BE, 0x88CD, 0x88DE,
+    0x8902, 0x891C, 0x894C, 0x8957, 0x8974, 0x897A, 0x897F
+}) do
+    memory.registerexecute(address, 1, function(address, size, value)
+        local frame = emu.framecount()
+        if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
+            local object = memory.readbyte(0x004B)
+            free_throw_calls:write(string.format(
+                "%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X%02X,%02X,%02X,%02X,%02X\n",
+                frame, address, object, memory.readbyte(0x0340 + object),
+                memory.readbyte(0x0340), memory.readbyte(0x005B), memory.readbyte(0x0048),
+                memory.readbyte(0x0066), memory.readbyte(0x0067),
+                memory.readbyte(0x0064), memory.readbyte(0x0065),
+                memory.readbyte(0x0690 + object), memory.readbyte(0x05C0 + object),
+                memory.readbyte(0x05B0 + object), memory.readbyte(0x0350 + object),
+                memory.readbyte(0x0680 + object), memory.readbyte(0x06B1),
+                memory.readbyte(0x033C), memory.readbyte(0x051C)))
+        end
+    end)
+end
 local function record_collision_call(address, size, value)
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
@@ -654,32 +680,55 @@ while emu.framecount() < final_frame do
         -- through $A44B possession transfer; zero plus equal facing makes
         -- $A347 take its whistle/dead-ball jump to $9645 instead.
         local player = 0x03
+        local owner = 0x07
         memory.writebyte(0x0340, 0x01)
-        memory.writebyte(0x005B, 0x07)
-        memory.writebyte(0x0048, 0x07)
+        memory.writebyte(0x005B, owner)
+        memory.writebyte(0x0048, owner)
         memory.writebyte(0x0050, 0x08)
-        memory.writebyte(0x0068, 0x03)
+        memory.writebyte(0x0068, player)
         memory.writebyte(0x0360, 0x00)
         memory.writebyte(0x0370, 0x80)
         memory.writebyte(0x03C0, 0x58)
         memory.writebyte(0x0410, 0x10)
-        memory.writebyte(0x0360 + 0x07, 0x00)
-        memory.writebyte(0x0370 + 0x07, 0x80)
-        memory.writebyte(0x03C0 + 0x07, 0x58)
-        memory.writebyte(0x0410 + 0x07, 0x10)
-        memory.writebyte(0x0340 + 0x07, 0x3B)
+        memory.writebyte(0x0360 + owner, 0x00)
+        memory.writebyte(0x0370 + owner, 0x80)
+        memory.writebyte(0x03C0 + owner, 0x58)
+        memory.writebyte(0x0410 + owner, 0x10)
+        memory.writebyte(0x0340 + owner, 0x3B)
         memory.writebyte(0x0340 + player, 0x3B)
-        memory.writebyte(0x0350 + player, memory.readbyte(0x0350 + 0x07))
+        memory.writebyte(0x0350 + player, memory.readbyte(0x0350 + owner))
         memory.writebyte(0x0360 + player, 0x00)
         memory.writebyte(0x0370 + player, 0x80)
         memory.writebyte(0x03C0 + player, 0x58)
         memory.writebyte(0x0410 + player, 0x10)
-        memory.writebyte(0x0580 + player, 0x07)
+        memory.writebyte(0x0580 + player, owner)
         memory.writebyte(0x0690 + player, 0x01)
         memory.writebyte(0x06A0 + player, 0x00)
         if inject_contact_clock_gate >= 0 then
             memory.writebyte(0x0025, inject_contact_clock_gate)
         end
+    end
+    if next_frame == inject_user_free_throw_frame then
+        -- Controlled entry immediately before the original `$872F` ready
+        -- handler. All subsequent readiness, aim oscillation, user input,
+        -- height-script release, make/miss, and continuation code is original.
+        memory.writebyte(0x0340, 0x00)
+        memory.writebyte(0x005B, 0x02)
+        memory.writebyte(0x0048, 0x02)
+        memory.writebyte(0x0056, 0x00)
+        memory.writebyte(0x0050, 0x00)
+        memory.writebyte(0x0066, 0x00)
+        memory.writebyte(0x0067, 0x00)
+        memory.writebyte(0x002C, 0x00)
+        for slot = 0x02, 0x0B do
+            memory.writebyte(0x0340 + slot, 0x44)
+            memory.writebyte(0x0690 + slot, (slot - 0x02) % 5)
+        end
+        memory.writebyte(0x0340 + 0x02, 0x45)
+        memory.writebyte(0x0360 + 0x02, 0x00)
+        memory.writebyte(0x0370 + 0x02, 0x92)
+        memory.writebyte(0x03C0 + 0x02, 0x58)
+        memory.writebyte(0x0410 + 0x02, 0x10)
     end
     if next_frame == inject_basket_frame then
         -- Controlled $AE25->$B377 classifier probe.  $AE25 increments $04F0
@@ -874,6 +923,7 @@ shot_kind_calls:close()
 sfx_calls:close()
 exceptional_calls:close()
 shot_animation:close()
+free_throw_calls:close()
 local count_file = assert(io.open(join_path(capture_root, "tipoff-pc-counts.csv"), "w"))
 count_file:write("phase,address,count\n")
 for phase, phase_counts in pairs(counts) do

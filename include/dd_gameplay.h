@@ -92,6 +92,7 @@ typedef enum DDPlayerAction {
     DD_PLAYER_INBOUNDER = 0x41,
     DD_PLAYER_FREE_THROW_SHOOTER = 0x42,
     DD_PLAYER_FREE_THROW_FORMATION = 0x43,
+    DD_PLAYER_FREE_THROW_SPOT = 0x44,
     DD_PLAYER_FREE_THROW_READY = 0x45,
     DD_PLAYER_FREE_THROW_SET = 0x46,
     DD_PLAYER_FREE_THROW_GATHER = 0x47,
@@ -209,6 +210,13 @@ typedef struct DDGameplayState {
     uint8_t foul_offender;
     uint8_t match_clock_pulse;
     uint16_t free_throw_age;
+    uint16_t free_throw_coarse_age;
+    uint8_t free_throw_initialized;
+    uint8_t free_throw_attempts;
+    uint8_t free_throw_timer;
+    uint8_t free_throw_dead_timer;
+    uint8_t free_throw_aim;
+    int8_t free_throw_aim_direction;
     uint16_t game_set_age;
     int clock_expired;
     int return_to_title;

@@ -204,6 +204,8 @@ int main(int argc, char **argv) {
     DDGameplayState contest_state;
     DDGameplayState held_shot_state;
     DDGameplayState free_throw_state;
+    DDGameplayState free_throw_rearm_state;
+    DDGameplayState free_throw_timeout_state;
     DDGameplayState period_state;
     DDGameplayState net_state;
     const DDTipoffAssetsHeader *assets;
@@ -247,7 +249,7 @@ int main(int argc, char **argv) {
           pack.cpu_block_audio[1].channel == 3u &&
           pack.cpu_block_audio[4].frame == 2u &&
           pack.cpu_block_audio[4].period == 336u,
-          "DDAP v19 exposes controlled `$10` CPU block streams `$87A4/$87AD`");
+          "DDAP v20 exposes controlled `$10` CPU block streams `$87A4/$87AD`");
     check(pack.tipoff_meta.user_block_audio_frames == 13u &&
           pack.user_block_audio_count == 15u &&
           pack.user_block_audio[0].period == 416u &&
@@ -255,7 +257,7 @@ int main(int argc, char **argv) {
           pack.user_block_audio[2].period == 356u &&
           pack.user_block_audio[14].frame == 12u &&
           pack.user_block_audio[14].volume == 0u,
-          "DDAP v19 exposes controlled `$20` user block streams `$87DD/$866B`");
+          "DDAP v20 exposes controlled `$20` user block streams `$87DD/$866B`");
     check(pack.tipoff_meta.three_call_audio_frames == 189u && pack.three_call_audio_count == 3u &&
           pack.three_call_audio[0].period == 256u && pack.three_call_audio[0].reserved == 1u &&
           pack.three_call_audio[1].frame == 95u && pack.three_call_audio[1].period == 163u &&
@@ -270,7 +272,7 @@ int main(int argc, char **argv) {
           pack.score_audio[0].channel == 0u && pack.score_audio[16].frame == 15u &&
           pack.score_audio[16].period == 213u && pack.score_audio[16].channel == 2u &&
           pack.score_audio[103].frame == 436u && pack.score_audio[103].volume == 0u,
-          "DDAP v19 exposes the isolated $18 then $1F/$22 made-basket score cue");
+          "DDAP v20 exposes the isolated $18 then $1F/$22 made-basket score cue");
     check((uint8_t)assets->height_scripts[10] == 0x80u &&
           assets->height_scripts[11] == 5 &&
           (uint8_t)assets->height_scripts[24] == 0x81u,
@@ -302,6 +304,14 @@ int main(int argc, char **argv) {
           assets->rebound_formation[20] == 0xBBu &&
           assets->rebound_formation[21] == DD_PLAYER_REBOUND_CHASE,
           "asset pack exposes $8503/$8507's two-direction rebound formation tables");
+    check(assets->free_throw_formation[0] == 0xB6u &&
+          assets->free_throw_formation[1] == DD_PLAYER_FREE_THROW_SHOOTER &&
+          assets->free_throw_formation[20] == 0xA9u &&
+          assets->free_throw_formation[21] == DD_PLAYER_FREE_THROW_SHOOTER &&
+          assets->free_throw_facing[3] == 0x01u &&
+          assets->free_throw_facing[10] == 0x04u &&
+          assets->free_throw_facing[18] == 0x04u,
+          "DDAP v20 exposes `$85C7/$86AF` free-throw formation and facing tables");
 
     memset(&jump_state, 0, sizeof(jump_state));
     check(dd_gameplay_advance_to(&pack, &jump_state, 300u, 0u),
@@ -1540,30 +1550,60 @@ int main(int argc, char **argv) {
           dispatch_state.audio_event_serial != 0u,
           "$A1D9->$C141 queues exact whistle event $2C before common inbound setup");
     dispatch_state = free_throw_state;
-    for (player = 0u; player < 194u; ++player) {
-        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
-              "advance traced free-throw dead-ball formation");
+    {
+        int saw_award = 0;
+        int saw_ready = 0;
+        for (player = 0u; player < 2000u &&
+             dispatch_state.players[5].action != DD_PLAYER_FREE_THROW_SET; ++player) {
+            check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+                  "advance Ghidra-derived free-throw formation dispatcher");
+            if (dispatch_state.ball.action == DD_BALL_DRIBBLE &&
+                dispatch_state.ball.owner == 5u) saw_award = 1;
+            if (dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_READY) saw_ready = 1;
+        }
+        check(saw_award,
+              "$85EF reaches the ball and awards state $01 to the role-zero shooter");
+        check(saw_ready && dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_SET &&
+              dispatch_state.ball.action == DD_BALL_AWARDED,
+              "$862A/$872F reaches shooter $45 then waits for every `$44` formation slot");
+        check(dispatch_state.players[0].action == DD_PLAYER_FREE_THROW_SPOT &&
+              dispatch_state.players[9].action == DD_PLAYER_FREE_THROW_SPOT,
+              "all nine non-shooters finish the `$86AF` formation before the aim gate");
     }
-    check(dispatch_state.free_throw_age == 194u &&
-          dispatch_state.ball.action == DD_BALL_DRIBBLE &&
-          dispatch_state.ball.owner == 5u,
-          "free throw reproduces frame 2802's $0B->$01 shooter award");
-    for (player = 194u; player < 214u; ++player) {
+    for (player = 0u; player < 400u &&
+         dispatch_state.players[5].action != DD_PLAYER_FREE_THROW_GATHER; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
-              "advance free throw to ready state");
-    }
-    check(dispatch_state.ball.action == DD_BALL_AWARDED &&
-          dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_READY &&
-          dispatch_state.players[5].court_x == 0x009200,
-          "free throw reproduces frame 2822's ball $00 and shooter state $45");
-    for (player = 214u; player < 348u; ++player) {
-        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
-              "advance free throw to gather state");
+              "advance CPU `$87C0` timer/aim decision");
     }
     check(dispatch_state.ball.action == DD_BALL_SHOT_GATHER &&
           dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_GATHER &&
-          dispatch_state.shot_value == 1u,
-          "free throw reproduces frame 2956's shooter $47/ball $04 one-point gather");
+          dispatch_state.shot_value == 1u &&
+          dispatch_state.free_throw_aim >= 0x50u && dispatch_state.free_throw_aim <= 0x60u,
+          "$87C0->$884F enters shooter $47/ball $04 with a one-point oscillating aim");
+    free_throw_rearm_state = dispatch_state;
+    free_throw_rearm_state.players[5].action = DD_PLAYER_FREE_THROW_FOLLOW;
+    free_throw_rearm_state.ball.action = DD_BALL_REBOUND;
+    free_throw_rearm_state.ball.velocity_height = 0u;
+    for (player = 0u; player < 4u &&
+         free_throw_rearm_state.players[5].action != DD_PLAYER_FREE_THROW_RECOVER; ++player) {
+        check(dd_gameplay_step(&pack, &free_throw_rearm_state, 0u),
+              "finish first free-throw result into `$49`");
+    }
+    check(free_throw_rearm_state.free_throw_attempts == 1u &&
+          free_throw_rearm_state.players[5].action == DD_PLAYER_FREE_THROW_RECOVER &&
+          free_throw_rearm_state.free_throw_timer == 0x50u,
+          "$88DE increments the first result and installs `$49/$0067=$50`");
+    for (player = 0u; player < 200u &&
+         free_throw_rearm_state.players[5].action != DD_PLAYER_FREE_THROW_SET; ++player) {
+        check(dd_gameplay_step(&pack, &free_throw_rearm_state, 0u),
+              "count `$894C` toward second free throw");
+    }
+    check(free_throw_rearm_state.players[5].action == DD_PLAYER_FREE_THROW_SET &&
+          free_throw_rearm_state.ball.action == DD_BALL_AWARDED &&
+          free_throw_rearm_state.ball.owner == 5u &&
+          free_throw_rearm_state.free_throw_attempts == 1u,
+          "$894C/$897A-$899E` reattaches the ball at `$20` and starts attempt two");
+    dispatch_state.players[5].action = DD_PLAYER_FREE_THROW_FOLLOW;
     dispatch_state.ball.action = DD_BALL_AIRBORNE;
     dispatch_state.ball.action_age = 0u;
     dispatch_state.ball.court_x = 0x004900;
@@ -1585,6 +1625,44 @@ int main(int argc, char **argv) {
     }
     check(dispatch_state.score[1] == 1u,
           "$AEDE counter $08 awards one point while the foul shot is active");
+
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_FREE_THROW;
+    dispatch_state.foul_shooter = 0u;
+    dispatch_state.foul_offender = 5u;
+    dispatch_state.possession_direction = 1u;
+    dispatch_state.ball.action = DD_BALL_DEAD;
+    dispatch_state.ball.court_x = dispatch_state.players[0].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[0].court_depth;
+    dispatch_state.free_throw_initialized = 0u;
+    for (player = 0u; player < 2000u &&
+         dispatch_state.players[0].action != DD_PLAYER_FREE_THROW_SET; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance controlled user free throw to `$46`");
+    }
+    check(dispatch_state.players[0].action == DD_PLAYER_FREE_THROW_SET,
+          "user free throw reaches the original oscillating `$46` input state");
+    free_throw_timeout_state = dispatch_state;
+    free_throw_timeout_state.free_throw_coarse_age = 5u * 64u - 1u;
+    check(dd_gameplay_step(&pack, &free_throw_timeout_state, 0u) &&
+          free_throw_timeout_state.phase == DD_GAMEPLAY_INBOUND &&
+          free_throw_timeout_state.inbound_reason == 0x12u &&
+          free_throw_timeout_state.audio_event == 0x2Cu,
+          "$8806-$882A` five-tick free-throw timeout publishes reason `$12` and whistle `$2C`");
+    for (player = 0u; player < 8u; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "hold user free throw without B");
+    }
+    check(dispatch_state.players[0].action == DD_PLAYER_FREE_THROW_SET &&
+          dispatch_state.ball.action == DD_BALL_AWARDED,
+          "$87FF waits indefinitely for controller bit `$40` while the aim oscillates");
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "press B in user free-throw aim state");
+    check(dd_gameplay_step(&pack, &dispatch_state, DD_INPUT_B),
+          "reach the user's scheduled free-throw dispatch");
+    check(dispatch_state.players[0].action == DD_PLAYER_FREE_THROW_GATHER &&
+          dispatch_state.ball.action == DD_BALL_SHOT_GATHER,
+          "$87FF->$884F launches the user free throw on B press");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;

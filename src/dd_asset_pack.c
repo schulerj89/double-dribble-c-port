@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 19u
+#define DD_PACK_VERSION 20u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -785,6 +785,8 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
     const size_t net_animation_tiles = dd_bank_file_offset(0u, 0x9922u);
     const size_t rebound_target_phase = dd_bank_file_offset(0u, 0x8503u);
     const size_t rebound_formation = dd_bank_file_offset(0u, 0x8507u);
+    const size_t free_throw_formation = dd_bank_file_offset(0u, 0x85C7u);
+    const size_t free_throw_facing = dd_bank_file_offset(0u, 0x86AFu);
     const size_t cpu_role_targets = 16u + 7u * 0x4000u + (0xD745u - 0xC000u);
     const size_t cpu_spacing_targets = dd_bank_file_offset(0u, 0x8452u);
     const size_t cpu_region_targets = dd_bank_file_offset(0u, 0xAC78u);
@@ -800,6 +802,8 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
         net_animation_tiles + sizeof(header->net_animation_tiles) > rom_size ||
         rebound_target_phase + sizeof(header->rebound_target_phase) > rom_size ||
         rebound_formation + sizeof(header->rebound_formation) > rom_size ||
+        free_throw_formation + sizeof(header->free_throw_formation) > rom_size ||
+        free_throw_facing + sizeof(header->free_throw_facing) > rom_size ||
         cpu_role_targets + sizeof(header->cpu_role_targets) > rom_size ||
         cpu_spacing_targets + sizeof(header->cpu_spacing_targets) > rom_size ||
         cpu_region_targets + sizeof(header->cpu_region_targets) > rom_size ||
@@ -817,6 +821,10 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
            sizeof(header->rebound_target_phase));
     memcpy(header->rebound_formation, rom + rebound_formation,
            sizeof(header->rebound_formation));
+    memcpy(header->free_throw_formation, rom + free_throw_formation,
+           sizeof(header->free_throw_formation));
+    memcpy(header->free_throw_facing, rom + free_throw_facing,
+           sizeof(header->free_throw_facing));
     memcpy(header->cpu_role_targets, rom + cpu_role_targets, sizeof(header->cpu_role_targets));
     memcpy(header->cpu_spacing_targets, rom + cpu_spacing_targets, sizeof(header->cpu_spacing_targets));
     memcpy(header->cpu_region_targets, rom + cpu_region_targets, sizeof(header->cpu_region_targets));
@@ -1802,7 +1810,7 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v19: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 8 shot poses, 6 four-tile net frames, 20 rebound entries, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, %zu whistle events, %zu CPU-block events, %zu user-block events, %zu three-call events, %zu three-score events, %zu basket-score events, and %zu DMC bytes.\n",
+    printf("Valid DDAP v20: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 8 shot poses, 6 four-tile net frames, 20 rebound entries, 60 free-throw bytes, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, %zu whistle events, %zu CPU-block events, %zu user-block events, %zu three-call events, %zu three-score events, %zu basket-score events, and %zu DMC bytes.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
            pack.select_music_count, pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count,
            pack.config_music_count,
