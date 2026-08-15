@@ -241,6 +241,21 @@ int main(int argc, char **argv) {
           pack.whistle_audio[4].period == 52u && pack.whistle_audio[5].channel == 3u &&
           pack.whistle_audio[5].period == 6u && pack.whistle_audio[5].volume == 3u,
           "asset pack exposes exact $2C pulse/noise whistle playback data");
+    check(pack.tipoff_meta.cpu_block_audio_frames == 4u &&
+          pack.cpu_block_audio_count == 8u &&
+          pack.cpu_block_audio[0].period == 384u &&
+          pack.cpu_block_audio[1].channel == 3u &&
+          pack.cpu_block_audio[4].frame == 2u &&
+          pack.cpu_block_audio[4].period == 336u,
+          "DDAP v19 exposes controlled `$10` CPU block streams `$87A4/$87AD`");
+    check(pack.tipoff_meta.user_block_audio_frames == 13u &&
+          pack.user_block_audio_count == 15u &&
+          pack.user_block_audio[0].period == 416u &&
+          pack.user_block_audio[1].channel == 3u &&
+          pack.user_block_audio[2].period == 356u &&
+          pack.user_block_audio[14].frame == 12u &&
+          pack.user_block_audio[14].volume == 0u,
+          "DDAP v19 exposes controlled `$20` user block streams `$87DD/$866B`");
     check(pack.tipoff_meta.three_call_audio_frames == 189u && pack.three_call_audio_count == 3u &&
           pack.three_call_audio[0].period == 256u && pack.three_call_audio[0].reserved == 1u &&
           pack.three_call_audio[1].frame == 95u && pack.three_call_audio[1].period == 163u &&
@@ -255,7 +270,7 @@ int main(int argc, char **argv) {
           pack.score_audio[0].channel == 0u && pack.score_audio[16].frame == 15u &&
           pack.score_audio[16].period == 213u && pack.score_audio[16].channel == 2u &&
           pack.score_audio[103].frame == 436u && pack.score_audio[103].volume == 0u,
-          "DDAP v18 exposes the isolated $18 then $1F/$22 made-basket score cue");
+          "DDAP v19 exposes the isolated $18 then $1F/$22 made-basket score cue");
     check((uint8_t)assets->height_scripts[10] == 0x80u &&
           assets->height_scripts[11] == 5 &&
           (uint8_t)assets->height_scripts[24] == 0x81u,
@@ -981,8 +996,10 @@ int main(int argc, char **argv) {
     dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 0xFFu &&
-          dispatch_state.ball.action == DD_BALL_AWARDED,
-          "$8B12 block contact takes an owned airborne shot without transferring early");
+          dispatch_state.ball.action == DD_BALL_AWARDED &&
+          dispatch_state.audio_event == 0x10u &&
+          dispatch_state.audio_event_serial != 0u,
+          "$8B12 block contact takes an owned airborne shot and requests `$10` without transferring early");
     for (player = 0u; player < 26u; ++player) {
         run_cpu_dispatch(&pack, &dispatch_state, 5u);
     }

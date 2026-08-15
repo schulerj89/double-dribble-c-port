@@ -17,6 +17,8 @@ int dd_build_whistle_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size
 int dd_build_three_call_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 int dd_build_three_score_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 int dd_build_score_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
+int dd_build_cpu_block_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
+int dd_build_user_block_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);
 int dd_build_three_basket_score_audio_wav(const DDAssetPack *pack, uint8_t **wav_data,
                                           size_t *wav_size);
 int dd_build_tipoff_dmc_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size);

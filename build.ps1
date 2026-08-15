@@ -28,6 +28,8 @@ $cpuTests = Join-Path $buildDir 'double_dribble_cpu_tests.exe'
 $resource = Join-Path $objDir 'double_dribble.res'
 $assetPack = Join-Path $buildDir 'double-dribble.assetpack'
 $whistleWav = Join-Path $buildDir 'whistle-2c.wav'
+$cpuBlockWav = Join-Path $buildDir 'cpu-block-10.wav'
+$userBlockWav = Join-Path $buildDir 'user-block-20.wav'
 $threeCallWav = Join-Path $buildDir 'three-call-09.wav'
 $threeScoreWav = Join-Path $buildDir 'three-score-25.wav'
 $scoreWav = Join-Path $buildDir 'basket-score-18-1f-22.wav'
@@ -75,6 +77,14 @@ if ($LASTEXITCODE -ne 0) {
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $whistleWav -PathType Leaf)) {
     throw 'Whistle WAV synthesis failed.'
 }
+& $cli --dump-cpu-block-wav $assetPack $cpuBlockWav
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $cpuBlockWav -PathType Leaf)) {
+    throw 'CPU-block $10 WAV synthesis failed.'
+}
+& $cli --dump-user-block-wav $assetPack $userBlockWav
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $userBlockWav -PathType Leaf)) {
+    throw 'User-block $20 WAV synthesis failed.'
+}
 & $cli --dump-three-call-wav $assetPack $threeCallWav
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $threeCallWav -PathType Leaf)) {
     throw 'Three-point call WAV synthesis failed.'
@@ -103,6 +113,8 @@ Write-Host "  Game:      $game"
 Write-Host "  CPU tests: $cpuTests"
 Write-Host "  Assetpack: $assetPack"
 Write-Host "  Whistle:   $whistleWav"
+Write-Host "  CPU block: $cpuBlockWav"
+Write-Host "  User block:$userBlockWav"
 Write-Host "  3PT call:  $threeCallWav"
 Write-Host "  3PT score: $threeScoreWav"
 Write-Host "  Basket:    $scoreWav"

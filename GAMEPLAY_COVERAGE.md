@@ -8,7 +8,9 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 **Match-rules completeness: 80.8%**
 
-The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, both CPU and user shot-contest paths, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher spine now have native paths, while exact presentation/global contest gates, dynamic block-SFX playback, clock cadence, and free-throw formation movement remain incomplete.
+**Comprehensive recursive-routine coverage: 60.4% (45 Verified, 171 Partial, 0 Missing; 7 NES mechanisms excluded)**
+
+The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, both CPU and user shot-contest paths, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher spine now have native paths. Block SFX `$10/$20` are now recovered and pack-backed; exact presentation/global contest gates, clock cadence, and free-throw formation movement remain incomplete.
 
 Coverage statuses have fixed values:
 
@@ -218,7 +220,7 @@ uses the same pose table in state `$27`. `$A516-$A520` keeps ball `$04`
 attached while controller bit `$40` remains held; clearing B reaches
 `$A522->$B189` and releases to ball state
 `$05`; `$AE25->$B377` produces result `$01` for a make or results `$02-$04`
-for `$08->$09` miss/rebound handling. DDAP v18 stores the eight recovered pose
+for `$08->$09` miss/rebound handling. DDAP v19 stores the eight recovered pose
 indices, six four-tile net frames, and `$8503/$8507` post-basket formation
 data. Controlled original moving/make/miss traces and shipping-loop native
 tests prove momentum, both shooter pose paths, and both outcomes. Metasprite
@@ -362,11 +364,11 @@ release stores shot kind 0/1 for two/three points and preserves kind 2 for a
 one-point free throw. The score trace enters state `$06` with counter `$0C`,
 writes both score copies only on `$09->$08`, lowers height for `$05-$00`, and
 enters rebound `$07` on underflow. The same counter selects net phase 2 on the
-make, phase 1 at `$08`, and phase 0 on underflow; DDAP v18's exact 24-byte
+make, phase 1 at `$08`, and phase 0 on underflow; DDAP v19's exact 24-byte
 table supplies three four-tile frames for each basket side. Controlled
 inside/outside and net-phase traces cover the boundary in both directions, and
 native checks prove deferred one-, two-, and three-point awards plus the
-`2->1->0` net sequence. DDAP v18 also retains the recovered `$09` line-call
+`2->1->0` net sequence. DDAP v19 also retains the recovered `$09` line-call
 and `$25` three-point scoring cues, plus the complete clean-make `$18` and
 underflow `$1F/$22` cue from bank-1 `$87B6/$87CA/$886D/$8922`. The renderer derives the same blank-leading
 two decimal HUD tiles and pack-backed net phases from native score state.
@@ -422,6 +424,6 @@ When updating this ledger:
 ## Highest-value next coverage work
 
 1. Translate the free-throw formation states `$42-$4A`, starting with `$8594/$85BE/$860A/$8682`.
-2. Close user/CPU contest gates `$001D/$0056`, pack-backed block SFX `$10/$20`, and remaining rim-contact eligibility branches.
+2. Close remaining user/CPU contest gates `$001D/$0056` and ordinary rim-contact eligibility branches; DDAP v19 now plays the recovered `$10/$20` block cues.
 3. Match the clock's presentation-state call gaps.
 4. Complete free-throw formation movement and the remaining foul eligibility branches.

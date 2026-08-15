@@ -234,6 +234,20 @@ int dd_build_whistle_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size
                               wav_data, wav_size);
 }
 
+int dd_build_cpu_block_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->cpu_block_audio, pack->cpu_block_audio_count,
+                              pack->tipoff_meta.cpu_block_audio_frames, 0u, 0u, 0u,
+                              wav_data, wav_size);
+}
+
+int dd_build_user_block_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
+    if (pack == NULL) return 0;
+    return dd_build_music_wav(pack->user_block_audio, pack->user_block_audio_count,
+                              pack->tipoff_meta.user_block_audio_frames, 0u, 0u, 0u,
+                              wav_data, wav_size);
+}
+
 int dd_build_three_call_audio_wav(const DDAssetPack *pack, uint8_t **wav_data, size_t *wav_size) {
     if (pack == NULL) return 0;
     return dd_build_music_wav(pack->three_call_audio, pack->three_call_audio_count,

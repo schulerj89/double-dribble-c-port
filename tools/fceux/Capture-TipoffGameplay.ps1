@@ -27,6 +27,7 @@ param(
     [ValidateRange(0, 2)]
     [int]$BasketShotKind = 0,
     [int]$BlockFrame = -1,
+    [int]$UserBlockFrame = -1,
     [int]$InboundRuleFrame = -1,
     [ValidateRange(0, 4)]
     [int]$InboundRuleCase = 0,
@@ -74,6 +75,7 @@ $env:DD_INJECT_BASKET_RESULT = $BasketResult.ToString([Globalization.CultureInfo
 $env:DD_INJECT_BASKET_COUNTER = $BasketCounter.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_SHOT_KIND = $BasketShotKind.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BLOCK_FRAME = $BlockFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_BLOCK_FRAME = $UserBlockFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_INBOUND_RULE_FRAME = $InboundRuleFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_INBOUND_RULE_CASE = $InboundRuleCase.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_EXCEPTIONAL_REASON_FRAME = $ExceptionalReasonFrame.ToString([Globalization.CultureInfo]::InvariantCulture)

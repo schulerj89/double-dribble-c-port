@@ -1970,6 +1970,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 state->ball.receiver = DD_NO_OWNER;
                 state->ball.action = DD_BALL_AWARDED;
                 state->ball.action_age = 0u;
+                dd_request_audio_event(state, 0x10u);
             }
             if (dd_step_player_height_script(assets, player)) {
                 if (state->ball.owner == player_index) {

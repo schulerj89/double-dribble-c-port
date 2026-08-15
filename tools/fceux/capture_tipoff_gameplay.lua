@@ -25,6 +25,7 @@ local inject_basket_result = tonumber(os.getenv("DD_INJECT_BASKET_RESULT") or "1
 local inject_basket_counter = tonumber(os.getenv("DD_INJECT_BASKET_COUNTER") or "0")
 local inject_basket_shot_kind = tonumber(os.getenv("DD_INJECT_BASKET_SHOT_KIND") or "0")
 local inject_block_frame = tonumber(os.getenv("DD_INJECT_BLOCK_FRAME") or "-1")
+local inject_user_block_frame = tonumber(os.getenv("DD_INJECT_USER_BLOCK_FRAME") or "-1")
 local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME") or "-1")
 local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
 local inject_loose_launch_frame = tonumber(os.getenv("DD_INJECT_LOOSE_LAUNCH_FRAME") or "-1")
@@ -610,6 +611,21 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0370, shifted_x % 0x100)
         memory.writebyte(0x0410, (memory.readbyte(0x0410 + defender) + 0x08) % 0x100)
         memory.writebyte(0x0420, memory.readbyte(0x0420 + defender))
+    end
+    if next_frame == inject_user_block_frame then
+        -- Controlled user `$A638->$A6C3` proof. Preserve the natural state
+        -- `$11` jump and airborne CPU shot, changing only ball X/height so
+        -- the original shifted 4x4 boxes accept contact and request `$20`.
+        local defender = 0x02
+        local shifted_x = memory.readbyte(0x0360 + defender) * 0x100 +
+            memory.readbyte(0x0370 + defender) + 0x06
+        if shifted_x >= 0x10000 then shifted_x = shifted_x - 0x10000 end
+        memory.writebyte(0x0360, math.floor(shifted_x / 0x100))
+        memory.writebyte(0x0370, shifted_x % 0x100)
+        memory.writebyte(0x0410, (memory.readbyte(0x0410 + defender) + 0x08) % 0x100)
+        memory.writebyte(0x0420, memory.readbyte(0x0420 + defender))
+        memory.writebyte(0x0056, 0x00)
+        memory.writebyte(0x005A, 0x00)
     end
     if next_frame == inject_rim_frame then
         -- Controlled reverse-engineering probe for bank-0 $B473.  This is

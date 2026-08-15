@@ -35,6 +35,25 @@
       ],
       "native_symbols": ["dd_step_ball"],
       "regression_tests": ["tests/dd_gameplay_cpu_test.c ball dispatcher suite"]
+    },
+    {
+      "name": "user_contest_apex_and_contact_helpers",
+      "status": "verified",
+      "routines": ["bank0:A638", "bank0:A6C3"],
+      "evidence": [
+        "Ghidra `$A638->$A6C3`: zero height-script byte gates the original 4-by-4 shifted contact volume; `$A68A` requests SFX `$20` on success",
+        "FCEUX `phase1-user-block-audio`: frame 2766 executes the eligible contact and records gameplay audio event `$20`"
+      ],
+      "native_symbols": [
+        "dd_user_contest_eligible",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_jump_ball_contact"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c user contest contact and landing ownership",
+        "tools/Capture-NativeUserBlock.ps1"
+      ]
     }
   ]
 }

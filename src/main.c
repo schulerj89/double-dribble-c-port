@@ -39,6 +39,8 @@ static void dd_usage(void) {
     puts("  --dump-gameplay-wav <input.assetpack> <output.wav>");
     puts("  --dump-ball-bounce-wav <input.assetpack> <output.wav>");
     puts("  --dump-whistle-wav <input.assetpack> <output.wav>");
+    puts("  --dump-cpu-block-wav <input.assetpack> <output.wav>");
+    puts("  --dump-user-block-wav <input.assetpack> <output.wav>");
     puts("  --dump-three-call-wav <input.assetpack> <output.wav>");
     puts("  --dump-three-score-wav <input.assetpack> <output.wav>");
 }
@@ -161,6 +163,8 @@ int main(int argc, char **argv) {
                       strcmp(argv[1], "--dump-gameplay-wav") == 0 ||
                       strcmp(argv[1], "--dump-ball-bounce-wav") == 0 ||
                       strcmp(argv[1], "--dump-whistle-wav") == 0 ||
+                      strcmp(argv[1], "--dump-cpu-block-wav") == 0 ||
+                      strcmp(argv[1], "--dump-user-block-wav") == 0 ||
                       strcmp(argv[1], "--dump-three-call-wav") == 0 ||
                       strcmp(argv[1], "--dump-three-score-wav") == 0 ||
                       strcmp(argv[1], "--dump-score-wav") == 0)) {
@@ -175,6 +179,10 @@ int main(int argc, char **argv) {
             ok = dd_build_tipoff_dmc_wav(&pack, &wav, &size);
         } else if (strcmp(argv[1], "--dump-whistle-wav") == 0) {
             ok = dd_build_whistle_audio_wav(&pack, &wav, &size);
+        } else if (strcmp(argv[1], "--dump-cpu-block-wav") == 0) {
+            ok = dd_build_cpu_block_audio_wav(&pack, &wav, &size);
+        } else if (strcmp(argv[1], "--dump-user-block-wav") == 0) {
+            ok = dd_build_user_block_audio_wav(&pack, &wav, &size);
         } else if (strcmp(argv[1], "--dump-three-call-wav") == 0) {
             ok = dd_build_three_call_audio_wav(&pack, &wav, &size);
         } else if (strcmp(argv[1], "--dump-three-score-wav") == 0) {

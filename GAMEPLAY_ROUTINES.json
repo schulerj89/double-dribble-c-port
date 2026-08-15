@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 60.0,
+    "comprehensive_percent": 60.4,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 43,
-    "partial_count": 173,
+    "verified_count": 45,
+    "partial_count": 171,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -2449,12 +2449,22 @@
         "A44B"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A638"
+        "Ghidra recursive node bank0:A638",
+        "Ghidra `$A638->$A6C3`: zero height-script byte gates the original 4-by-4 shifted contact volume; `$A68A` requests SFX `$20` on success",
+        "FCEUX `phase1-user-block-audio`: frame 2766 executes the eligible contact and records gameplay audio event `$20`"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_contest_eligible",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_jump_ball_contact"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c user contest contact and landing ownership",
+        "tools/Capture-NativeUserBlock.ps1"
+      ]
     },
     {
       "bank": "bank0",
@@ -2467,12 +2477,22 @@
         "A6F4"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A6C3"
+        "Ghidra recursive node bank0:A6C3",
+        "Ghidra `$A638->$A6C3`: zero height-script byte gates the original 4-by-4 shifted contact volume; `$A68A` requests SFX `$20` on success",
+        "FCEUX `phase1-user-block-audio`: frame 2766 executes the eligible contact and records gameplay audio event `$20`"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_contest_eligible",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_jump_ball_contact"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c user contest contact and landing ownership",
+        "tools/Capture-NativeUserBlock.ps1"
+      ]
     },
     {
       "bank": "bank0",

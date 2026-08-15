@@ -36,6 +36,10 @@ static uint8_t *g_gameplay_wav;
 static size_t g_gameplay_wav_size;
 static uint8_t *g_whistle_wav;
 static size_t g_whistle_wav_size;
+static uint8_t *g_cpu_block_wav;
+static size_t g_cpu_block_wav_size;
+static uint8_t *g_user_block_wav;
+static size_t g_user_block_wav_size;
 static uint8_t *g_three_call_wav;
 static size_t g_three_call_wav_size;
 static uint8_t *g_three_score_wav;
@@ -211,6 +215,12 @@ static void dd_update_gameplay_audio(void) {
         if (g_gameplay.audio_event == 0x2Cu && g_whistle_wav != NULL) {
             sfx_wav = g_whistle_wav;
             sfx_frames = g_pack.tipoff_meta.whistle_audio_frames;
+        } else if (g_gameplay.audio_event == 0x10u && g_cpu_block_wav != NULL) {
+            sfx_wav = g_cpu_block_wav;
+            sfx_frames = g_pack.tipoff_meta.cpu_block_audio_frames;
+        } else if (g_gameplay.audio_event == 0x20u && g_user_block_wav != NULL) {
+            sfx_wav = g_user_block_wav;
+            sfx_frames = g_pack.tipoff_meta.user_block_audio_frames;
         } else if (g_gameplay.audio_event == 0x09u && g_three_call_wav != NULL) {
             sfx_wav = g_three_call_wav;
             sfx_frames = g_pack.tipoff_meta.three_call_audio_frames;
@@ -389,6 +399,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         !dd_build_end_music_wav(&g_pack, &g_end_wav, &g_end_wav_size) ||
         !dd_build_gameplay_audio_wav(&g_pack, &g_gameplay_wav, &g_gameplay_wav_size) ||
         !dd_build_whistle_audio_wav(&g_pack, &g_whistle_wav, &g_whistle_wav_size) ||
+        !dd_build_cpu_block_audio_wav(&g_pack, &g_cpu_block_wav, &g_cpu_block_wav_size) ||
+        !dd_build_user_block_audio_wav(&g_pack, &g_user_block_wav, &g_user_block_wav_size) ||
         !dd_build_three_call_audio_wav(&g_pack, &g_three_call_wav, &g_three_call_wav_size) ||
         !dd_build_three_score_audio_wav(&g_pack, &g_three_score_wav, &g_three_score_wav_size) ||
         !dd_build_score_audio_wav(&g_pack, &g_score_wav, &g_score_wav_size) ||
@@ -405,6 +417,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
         free(g_tipoff_wav);
         free(g_gameplay_wav);
         free(g_whistle_wav);
+        free(g_cpu_block_wav);
+        free(g_user_block_wav);
         free(g_three_call_wav);
         free(g_three_score_wav);
         free(g_score_wav);
@@ -447,6 +461,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE previous, PWSTR command_line, 
     free(g_tipoff_wav);
     free(g_gameplay_wav);
     free(g_whistle_wav);
+    free(g_cpu_block_wav);
+    free(g_user_block_wav);
     free(g_three_call_wav);
     free(g_three_score_wav);
     free(g_score_wav);

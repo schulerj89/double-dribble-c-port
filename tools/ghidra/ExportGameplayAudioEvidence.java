@@ -77,6 +77,9 @@ public class ExportGameplayAudioEvidence extends GhidraScript {
                 report.println();
             }
             dumpBytes(report, 0x8653L, 0x40, "live/dribble channel stream data");
+            dumpBytes(report, 0x866BL, 0x20, "request $20 user-block noise stream");
+            dumpBytes(report, 0x87A4L, 0x12, "request $10 CPU-block pulse/noise streams");
+            dumpBytes(report, 0x87DDL, 0x18, "request $20 user-block pulse stream");
             dumpBytes(report, 0x87B6L, 0x30, "made-basket request $18 streams");
             dumpBytes(report, 0x886DL, 0x30, "post-score request $1F stream");
             dumpBytes(report, 0x8922L, 0x40, "post-score request $22 streams");
