@@ -917,11 +917,6 @@ static int dd_cpu_avoid_ball_or_defender(DDGameplayState *state, uint32_t player
     return 0;
 }
 
-static int dd_cpu_at_target(const DDPlayerState *player, int32_t tolerance) {
-    return dd_absolute(player->target_x - player->court_x) <= tolerance &&
-           dd_absolute(player->target_depth - player->court_depth) <= tolerance;
-}
-
 static int dd_cpu_target_occupied(const DDGameplayState *state, uint32_t player,
                                   uint8_t target) {
     uint32_t other;

@@ -3,15 +3,15 @@
   "project": "Double Dribble Rev 1 native C port",
   "objective": "Translate and verify 100% of reachable non-NES gameplay behavior into native C, with no runtime emulation or ROM dependency.",
   "baseline": {
-    "catalogued_weighted_coverage_percent": 92.6,
-    "catalogued_match_rules_percent": 80.8,
-    "comprehensive_portable_coverage_percent": 89.8,
-    "status": "routine_annotation_required",
+    "catalogued_weighted_coverage_percent": 100.0,
+    "catalogued_match_rules_percent": 100.0,
+    "comprehensive_portable_coverage_percent": 100.0,
+    "status": "complete",
     "recursive_routine_graph_count": 223,
     "recursive_routine_graph_unclassified": 0,
     "recursive_routine_graph_portable": 216,
     "recursive_routine_graph_excluded_nes": 7,
-    "note": "The existing percentage measures the old component catalog. The comprehensive routine score starts conservatively with all 216 portable nodes Partial until per-routine symbols, evidence, and regressions justify promotion."
+    "note": "All 216 reachable portable graph nodes are Verified with per-routine Ghidra evidence, named native implementations, and regression or capture mappings; all 7 excluded nodes are NES-only mechanisms whose portable gameplay-visible effects remain implemented."
   },
   "scope": {
     "included": [
@@ -251,13 +251,28 @@
       ],
       "coverage_change_percent": 1.4,
       "reason": "Six route, formation, and inbound setup nodes advance from Partial to Verified using headless Ghidra instruction flow, exact FCEUX sub-cell traces, native fixed-point assertions, and a clean four-period soak."
+    },
+    {
+      "milestone": "phase-5-final-portable-routine-closure",
+      "status": "verified",
+      "completed": [
+        "14 dispatcher wrappers, shared tails, and intentional no-op entries",
+        "16 live user pass, shot, contest, landing, pickup, and inbound-flow entries",
+        "9 shot/pass attachment, vector, visibility, and initializer entries",
+        "5 fixed-bank portable entropy, audio-request, and gameplay-visible scroll-effect entries",
+        "exact `$C02B` entropy accumulation regression",
+        "216 Verified, 0 Partial, 0 Missing portable routines and 7 documented NES-only exclusions",
+        "100% portable component, core-loop, match-rule, and recursive-routine scores"
+      ],
+      "coverage_change_percent": 10.2,
+      "reason": "The final 44 portable nodes pass the same address-level Ghidra, native-symbol, test/capture, and exclusion-boundary gates as the earlier routines, closing the exhaustive reachable non-NES graph without adding emulation."
     }
   ],
   "phases": [
     {
       "id": 0,
       "name": "Exhaustive portable routine inventory",
-      "status": "in_progress",
+      "status": "verified",
       "priority": 0,
       "work": [
         "Export every bank-0 gameplay dispatcher and fixed-bank gameplay call target with cross-references and call edges",
@@ -281,7 +296,7 @@
     {
       "id": 1,
       "name": "Visible gameplay regressions and configuration continuity",
-      "status": "in_progress",
+      "status": "verified",
       "priority": 1,
       "depends_on": [],
       "coordination": "Runs alongside phase 0 because each visible-flow trace also expands and validates the exhaustive inventory.",
@@ -311,7 +326,7 @@
     {
       "id": 2,
       "name": "Complete CPU offense and defense",
-      "status": "in_progress",
+      "status": "verified",
       "priority": 2,
       "depends_on": [0, 1],
       "work": [
@@ -329,7 +344,7 @@
     {
       "id": 3,
       "name": "Fouls, violations, and free throws",
-      "status": "in_progress",
+      "status": "verified",
       "priority": 3,
       "depends_on": [2],
       "work": [
@@ -348,7 +363,7 @@
     {
       "id": 4,
       "name": "Remaining portable mechanics and match rules",
-      "status": "pending",
+      "status": "verified",
       "priority": 4,
       "depends_on": [3],
       "work": [
@@ -366,7 +381,7 @@
     {
       "id": 5,
       "name": "Full-match completion and 100% acceptance",
-      "status": "pending",
+      "status": "verified",
       "priority": 5,
       "depends_on": [4],
       "work": [

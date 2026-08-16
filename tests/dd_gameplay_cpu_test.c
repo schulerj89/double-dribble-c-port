@@ -449,6 +449,14 @@ int main(int argc, char **argv) {
     check(priority_state.cpu_global_frame == 0xE6u,
           "$9E70 ten-frame priority cycle advances `$001A` `$DC->$E6`");
 
+    dispatch_state = state;
+    dispatch_state.cpu_entropy = 0x12u;
+    dispatch_state.cpu_global_frame = 0x20u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "advance fixed `$C02B` gameplay entropy recurrence");
+    check(dispatch_state.cpu_entropy == 0x33u,
+          "$C02B` adds phase `$001A` plus one to gameplay entropy `$0063`");
+
     check(dd_gameplay_step(&pack, &state, 0u), "first live CPU step");
     check(state.cpu_global_frame == 0xDDu, "first live step advances CPU frame phase");
     check(state.players[1].cpu_updates == 1u && state.players[5].cpu_updates == 0u,

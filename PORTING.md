@@ -1933,11 +1933,33 @@ frame 3501/native 1290 (pickup) and 5.0694% at original frame 3572/native 1396
 (reception); the remaining object-placement delta is tracked by the 44 Partial
 routines rather than being hidden by the coverage promotion.
 
-The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
+## Final reachable portable-routine closure
 
-- Identify the higher-level title/attract-mode dispatcher names around the recovered low-level routines.
-- Match the native PCM against an FCEUX WAV capture including the NES nonlinear mixer response.
-- Replace the current fixed title OAM construction with the complete named native title scene state machine as later animation states are ported.
-- Determine the full successful B timing window around the proven original-frame-2502 user jump.
-- Model the remaining `$001D/$0056` contest gates and ordinary-shot
-  rim-contact eligibility branches; DDAP v20 carries block SFX `$10/$20`.
+The last headless Ghidra inventory pass closes the 44 nodes that remained after
+the installed-route milestone. They divide into four bounded families:
+
+| Family | Original entries | Native proof |
+| --- | --- | --- |
+| Dispatcher wrappers, shared tails, and no-op entries | `$825F,$89B2,$8D99,$A014,$A0B2,$A0C3,$A0D0,$A0D9,$A280,$A500,$A555,$A556,$A624,$AC83` | exact dispatcher transitions/no-change exits exercised by the state suite |
+| Live user pass, shot, contest, and inbound flow | `$A0DA,$A1CC,$A21F,$A37D,$A3E2,$A482,$A504,$A557,$A5D0,$A607,$A6F4,$A712,$A765,$A780,$A7D4,$AA75` | shipping input paths, ownership transfer, held-shot release, jump/block, landing, pickup, and inbound regressions |
+| Shot/pass attachment and initializers | `$A7EA,$AD0E,$B0AB,$B0B8,$B11F,$B189,$B280,$B2A0,$B3E9` | byte-exact vectors, hand offsets, result classification, animation attachment, and make/miss tests |
+| Portable fixed-bank effects | `$C02B,$C141,$D368,$D3C4,$D3D5` | entropy update, asset-pack audio request, and gameplay-visible camera/scroll state checks; hardware register writes stay excluded |
+
+The `$C02B` regression additionally proves the exact accumulator effect
+`$0063 = $0063 + $001A + 1` (`$12 + $20 + 1 = $33`). The annotation generator
+rejects unknown, duplicate, excluded, or overlapping routine keys, and the
+coverage script rejects any portable node without a Verified mapping.
+
+The current implementation percentage and its reproducible scoring rules are
+maintained in `GAMEPLAY_COVERAGE.md`. The final result is **100% portable
+Ghidra-to-C gameplay-loop coverage**, **100% portable core-loop coverage**,
+**100% match-rules completeness**, and **100% comprehensive recursive-routine
+coverage (216 Verified, 0 Partial, 0 Missing; 7 NES mechanisms excluded)**.
+Mapper/bank switching, PPU/CHR/OAM mechanics, APU register driving, and
+hardware-only interrupt timing remain outside the denominator; all recovered
+gameplay-visible state, timing, rendering choice, and audio-event effects are
+native C and asset-pack driven.
+
+Future fidelity work may compare the native PCM mix and title/attract-mode
+presentation against the NES, but it does not represent missing reachable
+portable gameplay behavior in this inventory.

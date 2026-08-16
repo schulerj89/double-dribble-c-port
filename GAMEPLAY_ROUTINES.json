@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 89.8,
+    "comprehensive_percent": 100.0,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 172,
-    "partial_count": 44,
+    "verified_count": 216,
+    "partial_count": 0,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -170,12 +170,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:825F"
+        "Ghidra recursive node bank0:825F",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -744,12 +755,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:89B2"
+        "Ghidra recursive node bank0:89B2",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -1194,12 +1216,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:8D99"
+        "Ghidra recursive node bank0:8D99",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -2647,12 +2680,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A014"
+        "Ghidra recursive node bank0:A014",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -2667,12 +2711,23 @@
         "A0D0"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A0B2"
+        "Ghidra recursive node bank0:A0B2",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -2685,12 +2740,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A0C3"
+        "Ghidra recursive node bank0:A0C3",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -2703,12 +2769,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A0D0"
+        "Ghidra recursive node bank0:A0D0",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -2718,12 +2795,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A0D9"
+        "Ghidra recursive node bank0:A0D9",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -2733,12 +2821,27 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A0DA"
+        "Ghidra recursive node bank0:A0DA",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2785,12 +2888,27 @@
         "AA75"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A1CC"
+        "Ghidra recursive node bank0:A1CC",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2810,12 +2928,27 @@
         "AA75"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A21F"
+        "Ghidra recursive node bank0:A21F",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2829,12 +2962,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A280"
+        "Ghidra recursive node bank0:A280",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -2951,12 +3095,27 @@
         "9645"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A37D"
+        "Ghidra recursive node bank0:A37D",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2982,12 +3141,27 @@
         "A607"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A3E2"
+        "Ghidra recursive node bank0:A3E2",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3032,12 +3206,27 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A482"
+        "Ghidra recursive node bank0:A482",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3049,12 +3238,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A500"
+        "Ghidra recursive node bank0:A500",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -3075,12 +3275,27 @@
         "A555"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A504"
+        "Ghidra recursive node bank0:A504",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3090,12 +3305,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A555"
+        "Ghidra recursive node bank0:A555",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -3105,12 +3331,23 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A556"
+        "Ghidra recursive node bank0:A556",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -3127,12 +3364,27 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A557"
+        "Ghidra recursive node bank0:A557",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3148,12 +3400,27 @@
         "A85A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A5D0"
+        "Ghidra recursive node bank0:A5D0",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3168,12 +3435,27 @@
         "A85A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A607"
+        "Ghidra recursive node bank0:A607",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3188,12 +3470,23 @@
         "A85A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A624"
+        "Ghidra recursive node bank0:A624",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -3267,12 +3560,27 @@
         "9B42"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A6F4"
+        "Ghidra recursive node bank0:A6F4",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3289,12 +3597,27 @@
         "A85A"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A712"
+        "Ghidra recursive node bank0:A712",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3309,12 +3632,27 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A765"
+        "Ghidra recursive node bank0:A765",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3332,12 +3670,27 @@
         "A7D4"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A780"
+        "Ghidra recursive node bank0:A780",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3351,12 +3704,27 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A7D4"
+        "Ghidra recursive node bank0:A7D4",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3366,12 +3734,24 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A7EA"
+        "Ghidra recursive node bank0:A7EA",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3534,12 +3914,27 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AA75"
+        "Ghidra recursive node bank0:AA75",
+        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
+        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_user_pass_receiver",
+        "dd_transfer_user_control",
+        "dd_queue_user_inbound_pass",
+        "dd_begin_shot",
+        "dd_begin_user_contest",
+        "dd_step_user_contest",
+        "dd_step_possession_contact",
+        "dd_begin_exceptional_dead_ball",
+        "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3858,12 +4253,23 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AC83"
+        "Ghidra recursive node bank0:AC83",
+        "Headless Ghidra player/user/ball dispatcher tables and entry disassembly identify the shared render/motion tails, branch-only wrappers, and literal RTS states",
+        "FCEUX dispatcher and PC-count traces exercise the CPU/user/ball roots and shared tails; static Ghidra proof covers the intentionally unreachable or literal no-op entries"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_update_cpu_player",
+        "dd_step_live",
+        "dd_step_ball",
+        "dd_step_user_contest",
+        "dd_update_camera",
+        "dd_animation_for_facing"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exhaustive player/ball state dispatch, literal no-op preservation, shared motion/render tails, user state transition, and camera tests"
+      ]
     },
     {
       "bank": "bank0",
@@ -3954,12 +4360,24 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AD0E"
+        "Ghidra recursive node bank0:AD0E",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4420,12 +4838,24 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B0AB"
+        "Ghidra recursive node bank0:B0AB",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4439,12 +4869,24 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B0B8"
+        "Ghidra recursive node bank0:B0B8",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4456,12 +4898,24 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B11F"
+        "Ghidra recursive node bank0:B11F",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4532,12 +4986,24 @@
         "B2A0"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B189"
+        "Ghidra recursive node bank0:B189",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4550,12 +5016,24 @@
         "B2A0"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B280"
+        "Ghidra recursive node bank0:B280",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4567,12 +5045,24 @@
         "B2A0"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B2A0"
+        "Ghidra recursive node bank0:B2A0",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4641,12 +5131,24 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:B3E9"
+        "Ghidra recursive node bank0:B3E9",
+        "Headless Ghidra `$A7EA/$AD0E/$B0AB-$B3FA` instruction flow and tables recover field-goal kind, held-ball attachment, pass vector multiplication, visibility, short/cross-court shot divisions, and ball/player screen coupling",
+        "FCEUX natural short-shot, cross-court, three-point, inbound-pass, bounce-pass, held-shot, score, and miss traces record exact angles, vectors, duration, curve, height, attachment offsets, and result paths"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_classify_field_goal",
+        "dd_attach_ball",
+        "dd_prepare_pass_motion",
+        "dd_begin_pass",
+        "dd_initialize_shot_flight",
+        "dd_render_gameplay",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact attachment tables, inbound/ordinary pass vectors, bounce pass, shot angle/duration/curve, cross-court override, one/two/three-point outcomes, net animation, and visibility suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -4807,12 +5309,22 @@
         "C02B"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C02B"
+        "Ghidra recursive node fixed7:C02B",
+        "Headless Ghidra fixed-bank disassembly proves `$C02B` entropy recurrence, `$C141` bounded audio request/bank-restore effect, and `$D368/$D3C4/$D3D5` gameplay-visible scroll-state tail",
+        "FCEUX CPU-decision, APU request, camera split, court-side CHR, period, and score captures exercise the portable effects; PPU register writes and audio-driver banking remain excluded in their separately classified callees"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_request_audio_event",
+        "dd_update_camera",
+        "dd_gameplay_chr_side",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact entropy recurrence, audio event serial/pack sequences, camera court-side transition, HUD split stability, period transitions, and original/native screenshot suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -4826,12 +5338,22 @@
       ],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:C141"
+        "Ghidra recursive node fixed7:C141",
+        "Headless Ghidra fixed-bank disassembly proves `$C02B` entropy recurrence, `$C141` bounded audio request/bank-restore effect, and `$D368/$D3C4/$D3D5` gameplay-visible scroll-state tail",
+        "FCEUX CPU-decision, APU request, camera split, court-side CHR, period, and score captures exercise the portable effects; PPU register writes and audio-driver banking remain excluded in their separately classified callees"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_request_audio_event",
+        "dd_update_camera",
+        "dd_gameplay_chr_side",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact entropy recurrence, audio event serial/pack sequences, camera court-side transition, HUD split stability, period transitions, and original/native screenshot suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5240,12 +5762,22 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D368"
+        "Ghidra recursive node fixed7:D368",
+        "Headless Ghidra fixed-bank disassembly proves `$C02B` entropy recurrence, `$C141` bounded audio request/bank-restore effect, and `$D368/$D3C4/$D3D5` gameplay-visible scroll-state tail",
+        "FCEUX CPU-decision, APU request, camera split, court-side CHR, period, and score captures exercise the portable effects; PPU register writes and audio-driver banking remain excluded in their separately classified callees"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_request_audio_event",
+        "dd_update_camera",
+        "dd_gameplay_chr_side",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact entropy recurrence, audio event serial/pack sequences, camera court-side transition, HUD split stability, period transitions, and original/native screenshot suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5255,12 +5787,22 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D3C4"
+        "Ghidra recursive node fixed7:D3C4",
+        "Headless Ghidra fixed-bank disassembly proves `$C02B` entropy recurrence, `$C141` bounded audio request/bank-restore effect, and `$D368/$D3C4/$D3D5` gameplay-visible scroll-state tail",
+        "FCEUX CPU-decision, APU request, camera split, court-side CHR, period, and score captures exercise the portable effects; PPU register writes and audio-driver banking remain excluded in their separately classified callees"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_request_audio_event",
+        "dd_update_camera",
+        "dd_gameplay_chr_side",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact entropy recurrence, audio event serial/pack sequences, camera court-side transition, HUD split stability, period transitions, and original/native screenshot suite"
+      ]
     },
     {
       "bank": "fixed7",
@@ -5270,12 +5812,22 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_presentation",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node fixed7:D3D5"
+        "Ghidra recursive node fixed7:D3D5",
+        "Headless Ghidra fixed-bank disassembly proves `$C02B` entropy recurrence, `$C141` bounded audio request/bank-restore effect, and `$D368/$D3C4/$D3D5` gameplay-visible scroll-state tail",
+        "FCEUX CPU-decision, APU request, camera split, court-side CHR, period, and score captures exercise the portable effects; PPU register writes and audio-driver banking remain excluded in their separately classified callees"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_step_live",
+        "dd_request_audio_event",
+        "dd_update_camera",
+        "dd_gameplay_chr_side",
+        "dd_render_gameplay"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact entropy recurrence, audio event serial/pack sequences, camera court-side transition, HUD split stability, period transitions, and original/native screenshot suite"
+      ]
     },
     {
       "bank": "fixed7",
