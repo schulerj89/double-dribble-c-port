@@ -69,6 +69,273 @@ static void prepare_cpu_policy(const DDAssetPack *pack, DDGameplayState *state,
     set_packed_position(&state->players[0], 0x42u);
 }
 
+static int prepare_level_state(const DDAssetPack *pack, DDGameplayState *state,
+                               uint8_t level) {
+    memset(state, 0, sizeof(*state));
+    return dd_gameplay_configure(pack, state, 0u, 0u, level) &&
+        dd_gameplay_advance_to(pack, state, 356u, 0u);
+}
+
+static void prepare_contact_fixture(const DDAssetPack *pack,
+                                    DDGameplayState *state, uint8_t level,
+                                    uint32_t defender, uint32_t owner) {
+    uint32_t player;
+    check(prepare_level_state(pack, state, level),
+          "prepare configured LEVEL contact fixture");
+    state->phase = DD_GAMEPLAY_LIVE;
+    state->controlled_player = owner < 5u ? (uint8_t)owner : 0u;
+    state->carrier = (uint8_t)owner;
+    state->last_touch_player = (uint8_t)owner;
+    state->possession_direction = defender >= 5u ? 1u : 0u;
+    state->contact_lock_timer = 0u;
+    state->score_contact_gate = 0u;
+    state->possession_foul_timer = 0xFFu;
+    state->ball.action = DD_BALL_DRIBBLE;
+    state->ball.owner = (uint8_t)owner;
+    state->ball.receiver = 0xFFu;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        state->players[player].action = DD_PLAYER_ROUTE_WAIT;
+        state->players[player].contact_age = 0u;
+        state->players[player].velocity_x = 0;
+        state->players[player].velocity_depth = 0;
+    }
+    state->players[defender].action = DD_PLAYER_LIVE_SET;
+    state->players[defender].role = defender < 5u ? 1u : 0u;
+    state->players[defender].paired_player = (uint8_t)owner;
+    state->players[owner].paired_player = (uint8_t)defender;
+    state->players[owner].court_x = state->players[defender].court_x;
+    state->players[owner].court_depth = state->players[defender].court_depth;
+    state->players[owner].height = state->players[defender].height;
+    state->ball.court_x = state->players[defender].court_x;
+    state->ball.court_depth = state->players[defender].court_depth;
+    state->ball.height = state->players[defender].height + 0x0800;
+}
+
+static void check_level_gameplay(const DDAssetPack *pack) {
+    static const uint8_t contact_limit[3] = {0x14u, 0x0Cu, 0x06u};
+    static const uint8_t tracking_limit[3] = {0x40u, 0x28u, 0x1Au};
+    static const uint8_t gameplay_level[3] = {0u, 4u, 8u};
+    DDGameplayState state;
+    DDGameplayState copy;
+    uint32_t level;
+    uint32_t side;
+
+    for (level = 0u; level < 3u; ++level) {
+        check(prepare_level_state(pack, &state, (uint8_t)level) &&
+              state.match_level_index == level &&
+              state.gameplay_level == gameplay_level[level] &&
+              state.possession_contact_limit == contact_limit[level] &&
+              state.paired_tracking_limit == tracking_limit[level],
+              "$A593 installs immutable selection, mutable `$07E8`, `$0068`, and `$006C`");
+        for (side = 0u; side < 2u; ++side) {
+            uint32_t defender = side == 0u ? 5u : 1u;
+            uint32_t owner = side == 0u ? 0u : 5u;
+            prepare_contact_fixture(pack, &state, (uint8_t)level, defender, owner);
+            state.players[defender].contact_age =
+                (uint8_t)(contact_limit[level] - 2u);
+            run_cpu_dispatch(pack, &state, defender);
+            check(state.ball.owner == owner &&
+                  state.players[defender].contact_age == contact_limit[level] - 1u,
+                  "configured contact remains below `$0068` one scheduled update early");
+            run_cpu_dispatch(pack, &state, defender);
+            check(state.ball.owner == defender &&
+                  state.players[defender].contact_age == 0u,
+                  "configured contact resolves on the exact `$0068` scheduled update");
+        }
+
+        /* `$8A57` consumes the second LEVEL table. Keep state `$22` in
+           contact with offensive role zero and prove the exact `$006C`
+           transition, including the ninth packed-coordinate bit. */
+        check(prepare_level_state(pack, &state, (uint8_t)level),
+              "prepare configured LEVEL paired-tracking fixture");
+        state.phase = DD_GAMEPLAY_INBOUND;
+        state.possession_direction = 1u;
+        state.score_contact_gate = 1u;
+        state.carrier = 0xFFu;
+        state.ball.action = DD_BALL_DEAD;
+        state.ball.owner = 0xFFu;
+        state.players[0].role = 0u;
+        state.players[0].action = DD_PLAYER_ROUTE_WAIT;
+        state.players[0].court_x = 0x00A800;
+        state.players[0].court_depth = 0x008800;
+        state.players[5].court_x = state.players[0].court_x;
+        state.players[5].court_depth = state.players[0].court_depth;
+        state.players[5].velocity_x = 0;
+        state.players[5].velocity_depth = 0;
+        state.players[5].action = DD_PLAYER_LIVE_PAIRED_DEFENDER;
+        state.players[5].paired_player = 0u;
+        state.players[5].tracked_zone = 0x0Au;
+        state.players[5].tracking_age = (uint8_t)(tracking_limit[level] - 2u);
+        run_cpu_dispatch(pack, &state, 5u);
+        check(state.players[5].action == DD_PLAYER_LIVE_PAIRED_DEFENDER &&
+              state.players[5].tracking_age == tracking_limit[level] - 1u,
+              "paired tracking remains in `$22` one scheduled update below `$006C`");
+        run_cpu_dispatch(pack, &state, 5u);
+        check(state.players[5].action == DD_PLAYER_LIVE_FOLLOW_TARGET &&
+              state.players[5].target_zone == 0x0Au &&
+              state.players[5].target_depth >= 0x8000,
+              "`$8A57-$8A97` copies both packed target bytes at exact `$006C`");
+    }
+
+    prepare_contact_fixture(pack, &state, 0u, 5u, 0u);
+    state.players[5].contact_age = 7u;
+    state.contact_lock_timer = 0xFFu;
+    run_cpu_dispatch(pack, &state, 5u);
+    check(state.players[5].contact_age == 7u && state.ball.owner == 0u,
+          "`$91A6` preserves `$06A0` while `$001D` is nonzero");
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 1u;
+    run_cpu_dispatch(pack, &state, 5u);
+    check(state.players[5].contact_age == 7u && state.ball.owner == 0u,
+          "`$91A6` preserves `$06A0` while `$0056` is nonzero");
+
+    prepare_contact_fixture(pack, &state, 0u, 1u, 5u);
+    state.players[1].contact_age = 7u;
+    state.contact_lock_timer = 0xFFu;
+    run_cpu_dispatch(pack, &state, 1u);
+    check(state.players[1].contact_age == 7u && state.ball.owner == 5u,
+          "`$9FA3` preserves `$06A0` while `$001D` is nonzero");
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 1u;
+    run_cpu_dispatch(pack, &state, 1u);
+    check(state.players[1].contact_age == 7u && state.ball.owner == 5u,
+          "`$9FA3` preserves `$06A0` while `$0056` is nonzero");
+
+    prepare_contact_fixture(pack, &state, 0u, 1u, 5u);
+    state.players[1].role = 0u;
+    state.players[1].contact_age = 7u;
+    run_cpu_dispatch(pack, &state, 1u);
+    check(state.players[1].contact_age == 7u,
+          "`$9FA3` role-zero early return preserves its contact counter");
+    state.players[1].role = 1u;
+    state.players[1].action = DD_PLAYER_LIVE_USER_CARRIER;
+    run_cpu_dispatch(pack, &state, 1u);
+    check(state.players[1].contact_age == 0u,
+          "`$9FA3` current-player state `$02` clears its contact counter");
+
+    for (side = 0u; side < 2u; ++side) {
+        uint32_t defender = side == 0u ? 5u : 1u;
+        uint32_t owner = side == 0u ? 0u : 5u;
+        prepare_contact_fixture(pack, &state, 0u, defender, owner);
+        state.possession_direction ^= 1u;
+        state.players[defender].contact_age = 7u;
+        run_cpu_dispatch(pack, &state, defender);
+        check(state.players[defender].contact_age == 0u,
+              "wrong `$0050` direction clears `$06A0` in both contact mirrors");
+
+        prepare_contact_fixture(pack, &state, 0u, defender, owner);
+        state.players[defender].paired_player =
+            (uint8_t)(owner == 0u ? 1u : 6u);
+        state.players[defender].contact_age = 7u;
+        run_cpu_dispatch(pack, &state, defender);
+        check(state.players[defender].contact_age == 0u,
+              "low-LEVEL pair failure clears `$06A0` in both contact mirrors");
+
+        prepare_contact_fixture(pack, &state, 0u, defender, owner);
+        state.ball.court_x = state.players[defender].court_x + 0x0A00;
+        state.players[owner].court_x = state.ball.court_x;
+        state.players[defender].contact_age = 7u;
+        run_cpu_dispatch(pack, &state, defender);
+        check(state.players[defender].contact_age == 0u,
+              "`$B435` miss clears `$06A0` in both contact mirrors");
+    }
+
+    /* LEVEL pair matrix: 5 always requires the pair, 6/7 waive it only for
+       negative `$001A`, and 8 waives it in both phase halves. */
+    for (level = 5u; level <= 8u; ++level) {
+        uint32_t negative;
+        for (negative = 0u; negative < 2u; ++negative) {
+            int bypass = level >= 8u ||
+                ((level == 6u || level == 7u) && negative != 0u);
+            prepare_contact_fixture(pack, &state, 0u, 5u, 0u);
+            state.gameplay_level = (uint8_t)level;
+            state.cpu_global_frame = negative != 0u ? 0x90u : 0x10u;
+            state.players[5].paired_player = 1u;
+            state.players[5].contact_age =
+                (uint8_t)(state.possession_contact_limit - 1u);
+            run_cpu_dispatch(pack, &state, 5u);
+            check((state.ball.owner == 5u) == bypass,
+                  "`$91A6` matches LEVEL 5/6/7/8 signed-phase pair matrix");
+        }
+    }
+
+    prepare_contact_fixture(pack, &state, 1u, 5u, 0u);
+    state.players[5].paired_player = 1u;
+    state.players[5].contact_age =
+        (uint8_t)(state.possession_contact_limit - 1u);
+    run_cpu_dispatch(pack, &state, 5u);
+    check(state.gameplay_level == 4u && state.ball.owner == 0u,
+          "middle menu LEVEL enters gameplay as 4 and still requires its pair");
+    prepare_contact_fixture(pack, &state, 2u, 5u, 0u);
+    state.players[5].paired_player = 1u;
+    state.players[5].contact_age =
+        (uint8_t)(state.possession_contact_limit - 1u);
+    run_cpu_dispatch(pack, &state, 5u);
+    check(state.gameplay_level == 8u && state.ball.owner == 5u,
+          "highest menu LEVEL enters gameplay as 8 and waives its pair");
+
+    prepare_contact_fixture(pack, &state, 0u, 5u, 0u);
+    state.gameplay_level = 6u;
+    state.cpu_global_frame = 0x90u;
+    state.players[5].paired_player = 1u;
+    state.ball.action = DD_BALL_PASS;
+    state.ball.owner = 0xFFu;
+    state.ball.receiver = 0xFFu;
+    state.players[5].contact_age = 0u;
+    run_cpu_dispatch(pack, &state, 5u);
+    check(state.ball.owner == 5u,
+          "LEVEL 6 pass state `$02` resolves immediately after `$B435`");
+    prepare_contact_fixture(pack, &state, 0u, 1u, 5u);
+    state.gameplay_level = 6u;
+    state.cpu_global_frame = 0x90u;
+    state.players[1].paired_player = 6u;
+    state.ball.action = DD_BALL_PASS;
+    state.ball.owner = 0xFFu;
+    state.ball.receiver = 0xFFu;
+    state.players[1].contact_age = 0u;
+    run_cpu_dispatch(pack, &state, 1u);
+    check(state.ball.owner == 1u,
+          "mirrored LEVEL 6 pass state `$02` resolves immediately after `$B435`");
+
+    prepare_contact_fixture(pack, &state, 0u, 5u, 0u);
+    state.players[5].contact_age = 0xFFu;
+    run_cpu_dispatch(pack, &state, 5u);
+    check(state.ball.owner == 0u && state.players[5].contact_age == 0u,
+          "`INC $06A0` retains byte-wrap behavior instead of saturating");
+
+    check(prepare_level_state(pack, &state, 0u),
+          "prepare `$8A57` reset/wrong-pair fixtures");
+    state.phase = DD_GAMEPLAY_INBOUND;
+    state.possession_direction = 1u;
+    state.score_contact_gate = 1u;
+    state.carrier = 0xFFu;
+    state.ball.action = DD_BALL_DEAD;
+    state.ball.owner = 0xFFu;
+    state.players[0].role = 0u;
+    state.players[0].action = DD_PLAYER_ROUTE_WAIT;
+    set_packed_position(&state.players[0], 0x8Au);
+    state.players[5].court_x = state.players[0].court_x;
+    state.players[5].court_depth = state.players[0].court_depth;
+    state.players[5].velocity_x = 0;
+    state.players[5].velocity_depth = 0;
+    state.players[5].action = DD_PLAYER_LIVE_PAIRED_DEFENDER;
+    state.players[5].paired_player = 0u;
+    state.players[5].tracked_zone = 0x89u;
+    state.players[5].tracking_age = 55u;
+    run_cpu_dispatch(pack, &state, 5u);
+    check(state.players[5].tracking_age == 0u &&
+          state.players[5].tracked_zone == 0x8Au,
+          "changed `$05B0` resets `$0600` through `$FF->$00`");
+    copy = state;
+    copy.players[5].paired_player = 1u;
+    copy.players[1].court_x = copy.players[5].court_x;
+    copy.players[1].court_depth = copy.players[5].court_depth;
+    copy.players[5].tracking_age = 7u;
+    run_cpu_dispatch(pack, &copy, 5u);
+    check(copy.players[5].tracking_age == 7u,
+          "`$8A57` does not advance `$0600` for the wrong paired object");
+}
+
 static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
     const uint32_t width = pack->tipoff_meta.width;
     const uint32_t height = pack->tipoff_meta.height;
@@ -310,7 +577,10 @@ static void check_long_run_native_match(const DDAssetPack *pack) {
     }
     check(valid, "long-run native match preserves bounds, ownership, and CPU progress");
     check(state.return_to_title && state.period == 4u &&
-          state.phase == DD_GAMEPLAY_GAME_SET,
+          state.phase == DD_GAMEPLAY_GAME_SET &&
+          state.gameplay_level == 1u &&
+          state.possession_contact_limit == 0x10u &&
+          state.paired_tracking_limit == 0x31u,
           "four one-minute periods reach GAME SET and return-to-title without a stuck state");
     check(passes != 0u && shots != 0u && inbounds != 0u,
           "long-run CPU match exercises pass, shot, and inbound decisions");
@@ -410,6 +680,7 @@ int main(int argc, char **argv) {
     assets = (const DDTipoffAssetsHeader *)pack.tipoff_assets;
     check_unlimited_native_gameplay_sprites(&pack);
     check_team_palette_continuity(&pack);
+    check_level_gameplay(&pack);
     check_long_run_native_match(&pack);
     check_user_offense_cpu_defense(&pack);
     check(assets->cpu_role_targets[6] == 0xD5u && assets->cpu_role_targets[7] == 0x5Au &&
@@ -663,8 +934,9 @@ int main(int argc, char **argv) {
           state.ball.velocity_height == 0x0200,
           "$B189 short shot matches the frame-2749 $B29C/$B376 vector, duration, and arc");
     check(dd_gameplay_advance_to(&pack, &state, 569u, 0u), "advance to scoring result");
-    check(state.live_frame == 213u && state.ball.action == DD_BALL_SCORE,
-          "live 213 reaches original score/rim state $06");
+    check(state.live_frame == 213u && state.ball.action == DD_BALL_SCORE &&
+          state.score_contact_gate == 2u,
+          "`$AE25` reaches score state `$06` with flipped-direction `$0056=02`");
     check(state.score[1] == 0u && state.score[0] == 0u,
           "entering score state $06 does not award points before $AEDE counter $08");
     check(dd_gameplay_advance_to(&pack, &state, 573u, 0u),
@@ -706,13 +978,15 @@ int main(int argc, char **argv) {
               "$8E71/$8EBF latch reached packed axes and complete inbound without shuffling");
     }
     check(dd_gameplay_advance_to(&pack, &state, 743u, 0u), "advance to loose-ball recovery");
-    check(state.live_frame == 387u && state.ball.action == DD_BALL_DRIBBLE && state.carrier == 0u,
-          "live 387 reproduces the observed user-side recovery");
+    check(state.live_frame == 387u && state.ball.action == DD_BALL_DRIBBLE &&
+          state.carrier == 0u && state.score_contact_gate == 2u,
+          "rebound-return possession retains `$AE25`'s `$0056=02` gate");
     check(dd_gameplay_advance_to(&pack, &state, 803u, 0u), "advance to out-of-bounds ball");
     check(state.live_frame == 447u && state.ball.action == DD_BALL_AWARDED &&
           state.ball.owner == 0u && state.carrier == 0u &&
+          state.score_contact_gate == 0u &&
           state.players[0].action == DD_PLAYER_LIVE_USER_INBOUND,
-          "live 447 preserves the recovered ball for user inbound state $0D");
+          "`$8F50` clears `$0056` before user inbound state `$0D`");
     inbound_pass_state = state;
     check(dd_gameplay_step(&pack, &inbound_pass_state,
                            DD_INPUT_A | DD_INPUT_RIGHT),
@@ -1516,10 +1790,14 @@ int main(int argc, char **argv) {
     dispatch_state.ball.court_x = dispatch_state.players[5].court_x;
     dispatch_state.ball.court_depth = dispatch_state.players[5].court_depth;
     dispatch_state.ball.height = dispatch_state.players[5].height + 0x0800;
+    dispatch_state.contact_lock_timer = 0xFFu;
+    dispatch_state.score_contact_gate = 0xFFu;
+    dispatch_state.players[5].paired_player = 1u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.ball.owner == 5u && dispatch_state.carrier == 5u &&
-          dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER,
-          "player state $29 uses immediate $91FB/$B435 contact to run the $9208 possession transfer");
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER &&
+          dispatch_state.score_contact_gate == 0u,
+          "`$91FB->$9208` ignores seeded gates then clears `$0056` at `$927C`");
 
     dispatch_state = dispatch_base;
     dispatch_state.players[9].action = DD_PLAYER_LIVE_SHOOTER_RESET;
@@ -1560,8 +1838,8 @@ int main(int argc, char **argv) {
     dispatch_state.cpu_global_frame = 1u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.ball.owner == 0u &&
-          dispatch_state.players[5].contact_age == 0u,
-          "$91A6` clears contact accumulation while `$001D` remains nonzero");
+          dispatch_state.players[5].contact_age == 19u,
+          "$91A6` preserves contact accumulation while `$001D` remains nonzero");
     dispatch_state.contact_lock_timer = 0u;
     dispatch_state.possession_foul_timer = 1u;
     dispatch_state.players[5].contact_age = 19u;
@@ -1996,6 +2274,7 @@ int main(int argc, char **argv) {
     check(dispatch_state.phase == DD_GAMEPLAY_FREE_THROW &&
           dispatch_state.foul_shooter == 5u && dispatch_state.foul_offender == 1u &&
           dispatch_state.inbound_reason == 0x1Au && dispatch_state.dead_ball_latch == 0xFFu &&
+          dispatch_state.score_contact_gate == 0xFFu &&
           dispatch_state.audio_event == 0x30u && dispatch_state.audio_event_serial != 0u &&
           dispatch_state.ball.action == DD_BALL_DEAD &&
           dispatch_state.players[5].action == DD_PLAYER_FREE_THROW_SHOOTER &&
@@ -2019,6 +2298,7 @@ int main(int argc, char **argv) {
     check(dispatch_state.phase == DD_GAMEPLAY_FREE_THROW &&
           dispatch_state.foul_shooter == 5u && dispatch_state.foul_offender == 0u &&
           dispatch_state.inbound_reason == 0x17u && dispatch_state.dead_ball_latch == 0xFFu &&
+          dispatch_state.score_contact_gate == 0xFFu &&
           dispatch_state.ball.action == DD_BALL_DEAD && dispatch_state.carrier == 0xFFu &&
           dispatch_state.players[5].animation == 0x29u &&
           dispatch_state.possession_direction == 0u,
@@ -2197,6 +2477,9 @@ int main(int argc, char **argv) {
     dispatch_state.ball.court_x = dispatch_state.players[1].court_x + 0x0A00;
     dispatch_state.ball.court_depth = dispatch_state.players[1].court_depth;
     dispatch_state.ball.height = dispatch_state.players[1].height + 0x0800;
+    dispatch_state.contact_lock_timer = 0u;
+    dispatch_state.score_contact_gate = 0u;
+    dispatch_state.players[1].paired_player = 5u;
     dispatch_state.players[1].contact_age = 19u;
     run_cpu_dispatch(&pack, &dispatch_state, 1u);
     check(dispatch_state.ball.owner == 5u && dispatch_state.players[1].contact_age == 0u,
@@ -3055,6 +3338,7 @@ int main(int argc, char **argv) {
     check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
           dispatch_state.inbound_reason == 0x16u &&
           dispatch_state.possession_direction == 0u &&
+          dispatch_state.score_contact_gate == 0xFFu &&
           dispatch_state.players[5].action == DD_PLAYER_INBOUNDER,
           "$9635->$9651 awards OOB to the opponent of the last-touch team");
     check(dispatch_state.rule_message_age == 0u,
@@ -3082,6 +3366,7 @@ int main(int argc, char **argv) {
     check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
           dispatch_state.possession_direction == 1u &&
           dispatch_state.inbound_variant == 3u &&
+          dispatch_state.score_contact_gate == 0xFFu &&
           dispatch_state.players[0].action == DD_PLAYER_INBOUNDER,
           "$9635->$9651 awards CPU-last-touch OOB to the 1P role-zero object");
     {
@@ -3111,7 +3396,8 @@ int main(int argc, char **argv) {
             previous_depth = dispatch_state.players[0].court_depth;
         }
         check(player < 400u && route_reversals == 0u &&
-              dispatch_state.phase == DD_GAMEPLAY_LIVE,
+              dispatch_state.phase == DD_GAMEPLAY_LIVE &&
+              dispatch_state.score_contact_gate == 0u,
               "user-awarded `$41` reaches live `$30->$0D` without route-axis shuffling");
     }
     check(dispatch_state.controlled_player < 5u &&
@@ -3429,8 +3715,11 @@ int main(int argc, char **argv) {
     check(dd_gameplay_step(&pack, &period_state, 0u),
           "step fourth-period frame after 00:00");
     check(period_state.phase == DD_GAMEPLAY_GAME_SET &&
-          period_state.game_set_age == 0u && !period_state.return_to_title,
-          "fourth-period expiration enters GAME SET instead of a fifth tip formation");
+          period_state.game_set_age == 0u && !period_state.return_to_title &&
+          period_state.gameplay_level == 1u &&
+          period_state.possession_contact_limit == 0x10u &&
+          period_state.paired_tracking_limit == 0x31u,
+          "`$9408` advances mutable LEVEL and `$9419/$9425` before GAME SET");
     for (player = 0u; player < 258u; ++player) {
         check(dd_gameplay_step(&pack, &period_state, 0u),
               "advance GAME SET hold to original blue frame");

@@ -21,6 +21,16 @@ param(
     [string]$PhysicsBoundary = 'none',
     [int]$ContactFrame = -1,
     [int]$ContactClockGate = -1,
+    [ValidateRange(-1, 255)]
+    [int]$ContactLevel = -1,
+    [ValidateRange(-1, 255)]
+    [int]$ContactLimit = -1,
+    [ValidateRange(-1, 255)]
+    [int]$ContactPhase = -1,
+    [ValidateRange(-1, 255)]
+    [int]$ContactBallState = -1,
+    [ValidateSet('owner', 'wrong')]
+    [string]$ContactPair = 'owner',
     [int]$UserFreeThrowFrame = -1,
     [int]$BasketFrame = -1,
     [ValidateRange(1, 4)]
@@ -76,6 +86,11 @@ $env:DD_INJECT_PHYSICS_BOUNDARY = $PhysicsBoundary
 $env:DD_ENABLE_PC_COUNTS = if ($DisablePcCounts) { '0' } else { '1' }
 $env:DD_INJECT_CONTACT_FRAME = $ContactFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_CONTACT_CLOCK_GATE = $ContactClockGate.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CONTACT_LEVEL = $ContactLevel.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CONTACT_LIMIT = $ContactLimit.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CONTACT_PHASE = $ContactPhase.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CONTACT_BALL_STATE = $ContactBallState.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CONTACT_PAIR = $ContactPair
 $env:DD_INJECT_USER_FREE_THROW_FRAME = $UserFreeThrowFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_FRAME = $BasketFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_RESULT = $BasketResult.ToString([Globalization.CultureInfo]::InvariantCulture)

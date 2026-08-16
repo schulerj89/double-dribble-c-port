@@ -212,10 +212,13 @@
         "`$A347` ordinary return and exceptional `$30/$1A` foul branch",
         "distinct `$9208` blocker and `$A44B` ordinary pickup role resets",
         "`$9395` `$20` contact lock and entropy-seeded foul countdown",
+        "`$A593/$A631` menu-to-gameplay LEVEL 0/4/8 handoff with exact `$0068/$006C` tables",
+        "`$91A6/$9FA3` LEVEL pair matrix, `$0056` preserve gate, byte counter, and state-`$02` shortcut",
+        "`$8A57-$8A97` paired-role tracking stability and extended target installation",
         "5 comprehensive routine nodes promoted to Verified"
       ],
       "coverage_change_percent": 1.2,
-      "reason": "Five possession/contact nodes advance from Partial to Verified using headless Ghidra control flow, existing controlled and natural FCEUX contact/block traces, and native gate, lane, audio, role-swap, team-state, and foul regressions."
+      "reason": "The bounded contact/tracking LEVEL slice is Verified using headless Ghidra control flow, a non-injected settings handoff, controlled original 20/12/6 contact traces, and native LEVEL, tracking, gate, lane, audio, role-swap, team-state, and foul regressions; broader user live-dribble steal and `$883A-$884F` CPU free-throw LEVEL policy remain separately Partial."
     },
     {
       "milestone": "phase-4d-two-team-priority-scheduler",

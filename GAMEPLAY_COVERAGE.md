@@ -25,8 +25,12 @@ mapper/APU-register/PPU mechanisms remain explicitly outside the portable
 denominator.
 
 The targeted fixed-bank CPU region-two chain is routine-verified. Broader CPU
-possession/contact behavior remains Partial because selected LEVEL is stored
-but not yet consumed by the `$91A6/$9FA3` gameplay thresholds.
+possession/contact behavior remains Partial because ordinary live-dribble user
+steal root `$A3E2->$A42D` is still absent. The bounded LEVEL slice is now
+translated: `$A593` installs `$0068/$006C`, `$A631` maps visible choices to
+mutable gameplay LEVEL 0/4/8, `$91A6` and `$9FA3`
+consume its contact rules, and `$8A57` consumes the paired-tracking
+threshold.
 A deterministic four-period no-input match now requires CPU passes, shots, and
 inbounds, rejects orphan dribbles/out-of-bounds players, detects a stationary
 CPU carrier beyond 640 frames, and reaches GAME SET/return-to-title.
@@ -38,8 +42,9 @@ latch while preserving the original owner-clear, camera-carrier, and velocity
 reflection side effects.
 
 Mapped possession arbitration `$91A6/$91FB/$9208/$A347/$A44B` has substantial
-native coverage, but its LEVEL-dependent thresholds remain Partial.
-Native state now preserves the original `$20` contact lock, entropy-seeded foul
+native coverage, including its LEVEL-dependent thresholds. Native state now
+preserves the original `$20` contact lock, exact `$0056` score-return gate,
+mutable `$07E8`, entropy-seeded foul
 countdown, paired-player and role gates, `$10` ordinary-contact cue, `$30/$1A`
 exceptional foul, role-zero swaps, and the distinct blocker versus ordinary
 pickup team resets.
@@ -350,10 +355,15 @@ releases state `$02`; this closes the stationary orphan-ball failure in both
 ordinary CPU passing and CPU inbound.
 
 The independent commit-gate audit explicitly limits that result to this branch;
-it does not certify all CPU behavior. The next unresolved root is LEVEL-driven
-contact/possession logic: configuration `$A593-$A5BD` feeds `$0068/$006C`, then
-bank-0 `$91A6-$91FB` and mirrored `$9FA3-$9FEF` consume LEVEL `$07E8` together
-with `$001D/$0056`, paired-player eligibility, and a level-specific threshold.
+it does not certify all CPU behavior. The formerly unresolved LEVEL chain is now
+a bounded Verified slice: configuration `$A593-$A5BD` feeds `$0068/$006C`,
+bank-0 `$91A6-$91FB` and mirrored `$9FA3-$A011` consume mutable LEVEL `$07E8`
+with exact `$001D/$0056` preserve exits and the level-6/7/8 pair matrix, and
+`$8A57-$8A97` consumes `$006C` before entering player state `$21`. The broader
+possession category remains Partial for the separately listed `$A3E2` steal gap.
+This does not claim every LEVEL consumer: CPU free-throw release
+`$883A-$884F` still needs its `<9`/signed-phase/aim matrix translated and
+remains inside the separately Partial free-throw/match-rule area.
 
 The inbound entry is Verified. Ghidra `$A780/$A129/$A21F/$A482` and natural
 FCEUX frames 3004-3051 prove directional receiver selection, held-ball

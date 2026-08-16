@@ -130,6 +130,8 @@ typedef struct DDPlayerState {
     uint8_t hold_timer;
     uint8_t paired_timer;
     uint8_t paired_player;
+    uint8_t tracked_zone;
+    uint8_t tracking_age;
 } DDPlayerState;
 
 typedef struct DDBallState {
@@ -179,6 +181,7 @@ typedef struct DDGameplayState {
     uint16_t rule_message_age;
     uint16_t rebound_formation_pending;
     uint8_t dead_ball_latch;
+    uint8_t score_contact_gate;
     uint8_t audio_event;
     uint32_t audio_event_serial;
     uint8_t backcourt_latched;
@@ -200,6 +203,7 @@ typedef struct DDGameplayState {
     uint8_t match_time_bcd;
     uint8_t match_team_index;
     uint8_t match_level_index;
+    uint8_t gameplay_level;
     uint8_t last_shooter;
     uint8_t shot_value;
     uint8_t net_animation_phase;
@@ -215,6 +219,7 @@ typedef struct DDGameplayState {
     uint8_t contact_lock_timer;
     uint8_t possession_foul_timer;
     uint8_t possession_contact_limit;
+    uint8_t paired_tracking_limit;
     uint16_t free_throw_age;
     uint16_t free_throw_coarse_age;
     uint8_t free_throw_initialized;

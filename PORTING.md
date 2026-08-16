@@ -736,6 +736,72 @@ object order, resets all ten heights to `$10`, and preserves ownership, court
 direction, control, and contact-counter side effects without emulating
 instructions.
 
+The contact/tracking LEVEL dependency is now translated rather than merely
+stored. Bank-1
+`$A593-$A5B7` keeps the selected setting, `$A631` shifts it left twice before
+the gameplay handoff, and the configuration installs
+`$0068={14,0C,06}` plus `$006C={40,28,1A}`. The native state keeps the immutable
+menu selection separately from mutable gameplay LEVEL values 0/4/8. Final-match
+`$9408-$9418` advances that mutable byte and loads the exact twelve-entry
+progression tables at `$9419/$9425`:
+
+| Mutable LEVEL | `$0068` contact | `$006C` tracking |
+| ---: | ---: | ---: |
+| 0, 4, 8 (menu 0, 1, 2) | `$14`, `$0C`, `$06` | `$40`, `$28`, `$1A` |
+| 1-11 progression | `$10,$0E,$0C,$0C,$0A,$08,$07,$07,$06,$05,$03` | `$31,$2D,$27,$25,$23,$1F,$1B,$17,$13,$10,$0D` |
+
+`$91A6` and mirrored `$9FA3` return without touching `$06A0` while `$001D` or
+score-return gate `$0056` is nonzero; direction, pair, action, or `$B435`
+failures take the clear tail. Below LEVEL 6 the defender must match the paired
+owner. LEVEL 6/7 waive that requirement only while signed phase `$001A` is
+negative, and LEVEL 8+ waive it unconditionally. LEVEL 6+ also resolves ball
+state `$02` immediately after collision rather than incrementing `$06A0`.
+Counters retain byte-wrap `INC` behavior. `$91FB` remains a separate immediate
+collision path with none of those gates. Successful user `$A44B` and CPU
+`$9208` transfers clear `$0056` at their distinct `$A460/$927C` stores; shared
+`$9395` does not own that side effect.
+The made-basket route deliberately retains `$AE25`'s gate through rebound
+return: natural original writes show `$0056=02` at frame 2770 and the later
+`$8F50` clear at frame 3004, corresponding to native scene frames 569 and 803.
+
+The adjacent `$006C` consumer is player state `$22` at `$8A57-$8A97`. It finds
+the offensive role-zero object, requires the current pair to reference it,
+caches low packed coordinate `$05B0` in `$05F0`, and advances byte age `$0600`.
+A changed packed cell resets age through `$FF->$00`; a stable cell reaching
+`$006C` copies both packed bytes to `$05D0/$05E0`, calls the route installer,
+and enters `$21`. Native fields `tracked_zone` and `tracking_age` model those
+bytes independently of the unrelated `$0480` paired latch.
+
+Fresh controlled original traces under ignored capture directories prove the
+contact counts. `original-level-0-contact`, `original-level-4-contact`, and
+`original-level-8-contact` reach `$A009` only after counters `$13`, `$0B`, and
+`$05`, respectively, with `$07E8` equal to 0/4/8 and `$0068/$006C` equal to
+`14/40`, `0C/28`, and `06/1A`.
+`original-level-6-pair-bypass` seeds negative `$001A`, a wrong pair, and ball
+state `$02`; the original reaches `$A009` immediately with `$06A0=00`. The Lua
+probe logs PCs `$91A6/$91F3/$9200/$9FA3/$9FFC/$A009/$8A57/$8A7D/$8A90` and all
+relevant RAM gates to `gameplay-level-contact.csv`. Native regressions cover
+both mirrors, preserve/clear exits, the 5/6/7/8 matrix, immediate state `$02`,
+byte wrap, `$91FB` independence, all three `$006C` thresholds, changed-cell
+reset, wrong-pair rejection, ninth packed bit, and GAME SET progression.
+The non-injected `original-level-1-shipping-live` capture closes the menu
+handoff itself: `$A593->$A5B7` changes `$07E8 00->01` and installs `0C/28` at
+frame 2248; END reaches `$A631` with 01 and `$A637` with 04 at frame 2544.
+The first live `$91A6` calls at frame 2815 and `$9FA3` calls at frame 2816 still
+read `04/0C/28`. The evidence CSV includes the active bank and uses separate
+bank-0 and bank-1 hook allowlists so same-address routines cannot be conflated.
+Rev-1 file provenance (including the 16-byte iNES header) is bank 1
+`$A593->$65A3`, `$A631->$6641`, `$A637->$6647`, `$A5B8->$65C8`,
+`$A5BB->$65CB`; bank 0
+`$8A57->$0A67`, `$91A6->$11B6`, `$927C->$128C`, `$9FA3->$1FB3`,
+`$A460->$2470`, `$9408->$1418`,
+`$9419->$1429`, and `$9425->$1435`.
+
+This bounded claim does not cover every gameplay consumer of `$07E8`.
+Bank-0 `$883A-$884F` still controls CPU free-throw release with LEVEL `<9`
+versus `>=9`, signed `$001A`, and aim `$033C==$60`; that native policy remains
+Partial and is the next LEVEL audit root.
+
 `$91FB` is the immediate-contact companion used by shooter recovery. Its
 ordinary path requests `$10` and falls into `$9208`, as does a successful CPU
 block landing at `$8B44`. This is not `$A44B`: `$9208` swaps the winner into

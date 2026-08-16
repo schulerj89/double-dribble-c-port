@@ -21,6 +21,11 @@ local enable_pc_counts = os.getenv("DD_ENABLE_PC_COUNTS") ~= "0"
 local inject_rim_frame = tonumber(os.getenv("DD_INJECT_RIM_FRAME") or "-1")
 local inject_contact_frame = tonumber(os.getenv("DD_INJECT_CONTACT_FRAME") or "-1")
 local inject_contact_clock_gate = tonumber(os.getenv("DD_INJECT_CONTACT_CLOCK_GATE") or "-1")
+local inject_contact_level = tonumber(os.getenv("DD_INJECT_CONTACT_LEVEL") or "-1")
+local inject_contact_limit = tonumber(os.getenv("DD_INJECT_CONTACT_LIMIT") or "-1")
+local inject_contact_phase = tonumber(os.getenv("DD_INJECT_CONTACT_PHASE") or "-1")
+local inject_contact_ball_state = tonumber(os.getenv("DD_INJECT_CONTACT_BALL_STATE") or "-1")
+local inject_contact_pair = os.getenv("DD_INJECT_CONTACT_PAIR") or "owner"
 local inject_user_free_throw_frame = tonumber(os.getenv("DD_INJECT_USER_FREE_THROW_FRAME") or "-1")
 local inject_basket_frame = tonumber(os.getenv("DD_INJECT_BASKET_FRAME") or "-1")
 local inject_basket_result = tonumber(os.getenv("DD_INJECT_BASKET_RESULT") or "1")
@@ -109,6 +114,8 @@ local clock_calls = assert(io.open(join_path(capture_root, "gameplay-clock-calls
 clock_calls:write("frame,clock_minutes,clock_seconds,ball_state,phase\n")
 local collision_calls = assert(io.open(join_path(capture_root, "gameplay-collision-calls.csv"), "w"))
 collision_calls:write("frame,pc,current_object,ball_state,x_high,x_low,depth,height,rim_latch,outcome,owner,carrier,contact_timer,contact_limit,clock_gate,current_facing,owner_facing\n")
+local level_contact = assert(io.open(join_path(capture_root, "gameplay-level-contact.csv"), "w"))
+level_contact:write("frame,bank,pc,current_object,level,contact_limit,tracking_limit,contact_lock,score_gate,direction,global_phase,pair,controlled,owner,role,ball_state,player_state,contact_counter,tracked_zone,tracking_age\n")
 local score_calls = assert(io.open(join_path(capture_root, "gameplay-score-calls.csv"), "w"))
 score_calls:write("frame,counter,ball_state,score_copy_a,score_copy_b,height,scoring_side,shot_kind\n")
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
@@ -251,6 +258,39 @@ memory.registerexecute(0xB473, 1, record_collision_call)
 memory.registerexecute(0xB435, 1, record_collision_call)
 memory.registerexecute(0xA347, 1, record_collision_call)
 memory.registerexecute(0xA44B, 1, record_collision_call)
+local function record_level_contact(address, size, value)
+    local frame = emu.framecount()
+    local bank = current_switch_bank()
+    local bank0_root = address == 0x91A6 or address == 0x91F3 or
+        address == 0x9200 or address == 0x9FA3 or address == 0x9FFC or
+        address == 0xA009 or address == 0x8A57 or address == 0x8A7D or
+        address == 0x8A90
+    local bank1_root = address == 0xA593 or address == 0xA5B7 or
+        address == 0xA631 or address == 0xA637 or address == 0xAC04 or
+        address == 0xAC1F or address == 0xAC25 or address == 0xAC2E
+    if frame >= trace_start and frame <= trace_end and
+       ((bank == 0 and bank0_root) or (bank == 1 and bank1_root)) then
+        local object = memory.readbyte(0x004B)
+        level_contact:write(string.format(
+            "%d,%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X\n",
+            frame, bank, address, object, memory.readbyte(0x07E8),
+            memory.readbyte(0x0068), memory.readbyte(0x006C),
+            memory.readbyte(0x001D), memory.readbyte(0x0056),
+            memory.readbyte(0x0050), memory.readbyte(0x001A),
+            memory.readbyte(0x0580 + object), memory.readbyte(0x0046),
+            memory.readbyte(0x005B), memory.readbyte(0x0690 + object),
+            memory.readbyte(0x0340), memory.readbyte(0x0340 + object),
+            memory.readbyte(0x06A0 + object), memory.readbyte(0x05F0 + object),
+            memory.readbyte(0x0600 + object)))
+    end
+end
+for _, address in ipairs({
+    0x91A6, 0x91F3, 0x9200, 0x9FA3, 0x9FFC, 0xA009,
+    0x8A57, 0x8A7D, 0x8A90, 0xA593, 0xA5B7, 0xA631, 0xA637,
+    0xAC04, 0xAC1F, 0xAC25, 0xAC2E
+}) do
+    memory.registerexecute(address, 1, record_level_contact)
+end
 memory.registerexecute(0xAEDE, 1, function(address, size, value)
     local frame = emu.framecount()
     if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
@@ -588,6 +628,7 @@ memory.registerexecute(0xA37D, 1, function(address, size, value)
 end)
 
 local capture_frames = {
+    [2080]=true,[2104]=true,[2106]=true,[2108]=true,[2110]=true,[2112]=true,[2114]=true,
     [2320]=true,[2340]=true,[2360]=true,[2380]=true,[2400]=true,[2420]=true,[2440]=true,
     [2460]=true,[2480]=true,[2500]=true,[2519]=true,[2520]=true,[2530]=true,[2531]=true,
     [2540]=true,[2550]=true,[2557]=true,[2560]=true,[2570]=true,[2580]=true,[2590]=true,
@@ -790,11 +831,23 @@ while emu.framecount() < final_frame do
         -- $A347 take its whistle/dead-ball jump to $9645 instead.
         local player = 0x03
         local owner = 0x07
-        memory.writebyte(0x0340, 0x01)
+        memory.writebyte(0x0340,
+            inject_contact_ball_state >= 0 and inject_contact_ball_state or 0x01)
         memory.writebyte(0x005B, owner)
         memory.writebyte(0x0048, owner)
         memory.writebyte(0x0050, 0x08)
-        memory.writebyte(0x0068, player)
+        memory.writebyte(0x0068,
+            inject_contact_limit >= 0 and inject_contact_limit or player)
+        if inject_contact_level >= 0 then
+            memory.writebyte(0x07E8, inject_contact_level)
+            if inject_contact_level == 0 then memory.writebyte(0x006C, 0x40)
+            elseif inject_contact_level == 4 then memory.writebyte(0x006C, 0x28)
+            elseif inject_contact_level == 8 then memory.writebyte(0x006C, 0x1A)
+            end
+        end
+        if inject_contact_phase >= 0 then
+            memory.writebyte(0x001A, inject_contact_phase)
+        end
         memory.writebyte(0x0360, 0x00)
         memory.writebyte(0x0370, 0x80)
         memory.writebyte(0x03C0, 0x58)
@@ -810,7 +863,8 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0370 + player, 0x80)
         memory.writebyte(0x03C0 + player, 0x58)
         memory.writebyte(0x0410 + player, 0x10)
-        memory.writebyte(0x0580 + player, owner)
+        memory.writebyte(0x0580 + player,
+            inject_contact_pair == "wrong" and (owner + 1) or owner)
         memory.writebyte(0x0690 + player, 0x01)
         memory.writebyte(0x06A0 + player, 0x00)
         if inject_contact_clock_gate >= 0 then
@@ -1022,6 +1076,7 @@ states:close()
 dispatch:close()
 clock_calls:close()
 collision_calls:close()
+level_contact:close()
 score_calls:close()
 cpu_decisions:close()
 cpu_region2:close()
