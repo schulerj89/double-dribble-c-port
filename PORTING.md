@@ -1189,6 +1189,7 @@ the bank-0 helpers `$8BF8/$AC2A/$AC5C/$AC64`. The recovered mapping is:
 | --- | --- | --- |
 | fixed `$D759-$D771` | force a shot below five seconds or at coarse possession tick `$18` | `dd_cpu_decide_possession` urgent-shot gates |
 | fixed `$D772-$D81F` | classify the mirrored packed region, select a phase/height route through `$D8B9/$D8D5`, decrement `$04F0`, and try a pass | `dd_cpu_policy_target`, `decision_timer`, and the at-target branch |
+| fixed `$D77B-$D7C5` | compare `$D99A->$8C36`'s projected high byte with role zero and the paired player; reject through `$D857`, otherwise install the sole center target `$85`/mirrored `$9A` | `cpu_projection_high` plus the region-two branch in `dd_cpu_decide_possession` |
 | fixed `$D820-$D854` | region-four obstacle response and region-six/entropy-band lane target | `dd_cpu_avoid_ball_or_defender` and `dd_cpu_set_lane_target` |
 | fixed `$D862-$D8B6` | moving-carrier lookahead, phase `$80/$C0` pass gates, region-four/five shots, and priority refresh tail | moving branch of `dd_cpu_decide_possession` |
 | fixed `$D8F1-$D92E` | decrement two-decision pass cooldown and reject an ineligible receiver | `cpu_pass_cooldown` and `dd_cpu_try_region_pass` |
@@ -1209,8 +1210,26 @@ live-pass reception. A deterministic regression starts at age six, dispatches
 the seventh turn, and requires re-entry into the policy without an airborne
 half-court shot.
 
+The region-two follow corrected an earlier audit premise: rev-1 does **not**
+cycle through `$85/$86/$87`. `$D77B-$D7AF` initializes `$85`, then loops around
+the same `$D78F` comparisons three times without recomputing the candidate. A
+successful path therefore installs only `$85`, or `$9A` after `$AC64/$AC5C`
+mirroring. The comparisons are also deliberately unusual: `$D795` and `$D7A2`
+compare the high/ninth byte left in scratch `$0031` by `$D99A->$8C36` against
+the packed low bytes of the possession-selected role-zero object and its paired
+player. They do not test general occupancy of candidate `$85`.
+
+The shipping predecessor matters. State `$25` starts at bank-0 `$8B5A` and
+unconditionally calls `$D99A` before `$D978` can enter fixed `$D759`. Native
+route steps four and five now follow that chain. An accepted lookahead stays in
+`$25`, scales the escape vector once through the `$ABCD->$8BF8` equivalent, and
+moves on that dispatch. A clear lookahead leaves `cpu_projection_high` for the
+region-two checks; `$D7C5` rejection enters `$D857`'s normal policy and timer
+path. The move result also uses the original same-dispatch integration tail.
+
 The fixed-bank ROM-file mappings, including the 16-byte iNES header, are
-`$C02B->$1C03B`, `$D759->$1D769`, `$D8B9->$1D8C9`, `$D8D5->$1D8E5`, `$D8F1->$1D901`,
+`$C02B->$1C03B`, `$D759->$1D769`, `$D77B->$1D78B`, `$D7C5->$1D7D5`,
+`$D8B0->$1D8C0`, `$D8B9->$1D8C9`, `$D8D5->$1D8E5`, `$D8F1->$1D901`,
 `$D92F->$1D93F`, `$D94E->$1D95E`, `$D99A->$1D9AA`, and `$DA39->$1DA49`.
 Selected-bank-0 `$9018` maps to `$1028`. The native runtime does not load those
 addresses or execute their bytes; the compact behavior tables and algorithms
@@ -1230,7 +1249,14 @@ lookaheads (one accepted escape and 462 clear/rejected returns):
 acceptance, same-region rejection, cooldown, original delayed pass release,
 mirrored route-table output, lane targeting, region-five shots, clock and
 possession forced shots, decision-timer underflow, and the paired-defender
-avoidance branches. It also runs a complete accelerated four-period match with
+avoidance branches. Its region-two checks cover natural-trace coordinates,
+role-zero and paired rejection, `$D857` fallback, unrelated occupancy, mirrored
+`$9A`, signed projection overflow, and exact raw-to-scaled vectors
+`$FF02/$0019 -> $FEC2/$001F`. A legal-flow regression queues a pass through
+`$D8FA/$9018`, releases it, receives it through `$AD41/$B138/$AD6D` into `$25`,
+then requires the fourteenth scheduled update to reach
+`$D99A->$D759->$D772` without assigning the action or projection field in the
+test. It also runs a complete accelerated four-period match with
 no controller input. Each period uses the original one-minute BCD clock path;
 the test observes CPU pass, shot, and inbound decisions, validates all ten live
 court positions and every dribble owner each frame, fails if a CPU carrier
@@ -1645,6 +1671,20 @@ dispatcher performs `$0D->$05` pass release.  A live rebuilt-window check
 reached the left-baseline user inbound and a single synthesized X tap returned
 the formation to live play (`captures/native-gameplay/inbound-input-latch-live.jpg`).
 
+The later common-inbound regression was a separate native phase bug.  Fixed
+bank `$8EE2->$8F0B` installs player state `$0D`, then selected bank 0 `$A780`
+(bank offset `$2780`, ROM file offset `$2790`) owns the direction+A input,
+`$A129` receiver selection, and `$A21F/$A482` pass handoff.  Variant three
+correctly reached `$0D` after a CPU-last-touch rule award, but the portable
+scene remained `DD_GAMEPLAY_INBOUND`; that scene branch returned through
+`dd_step_inbound` before the native `$A780` handler could run.  The handoff now
+returns to the live dispatcher when `$0D` is installed.  The symmetric rule
+regression is bounded to 400 frames, rejects route-axis reversals, presses
+right+A, and follows the ball through `$AD41->$AD58` reception with ownership
+and user control on the selected teammate.  Confidence is high: the state and
+input chain is direct from the Ghidra export, and the pre-fix test reaches `$0D`
+but cannot select a receiver while the post-fix test completes the entire pass.
+
 The original deliberately starts dribble state `$01` through `$8E88->$AD0E`
 when the inbounder claims the loose scoring ball. Native code retains that
 dribble during `$2F/$30`; `$9018` changes it to attached release state `$00`,
@@ -2003,16 +2043,36 @@ the installed-route milestone. They divide into four bounded families:
 The `$C02B` regression additionally proves the exact accumulator effect
 `$0063 = $0063 + $001A + 1` (`$12 + $20 + 1 = $33`). The annotation generator
 rejects unknown, duplicate, excluded, or overlapping routine keys, and the
-coverage script rejects any portable node without a Verified mapping.
+coverage script rejects inconsistent routine classifications or summary counts.
 
-The current address-mapped inventory and its reproducible scoring rules are
-maintained in `GAMEPLAY_COVERAGE.md`. It reports **100% mapped portable
-Ghidra-to-C routines (216 Verified, 0 Partial, 0 Missing; 7 NES mechanisms
-excluded)**. This is an inventory result, not a claim of complete behavioral
-parity; runtime defects continue to be reconciled against Ghidra and FCEUX and
-receive targeted regressions. Mapper/bank switching, PPU/CHR/OAM mechanics,
-APU register driving, and hardware-only interrupt timing remain outside the
+The current address inventory and its reproducible scoring rules are maintained
+in `GAMEPLAY_COVERAGE.md`. The manifest currently catalogs 216 portable
+routines, but independent review found omitted gameplay roots, so its discovery
+denominator remains open. The within-manifest verified routine score is **99.8%
+(215 Verified, 1 Partial, 0 Missing; 7 NES mechanisms excluded)**. Mapper/bank switching, PPU/CHR/OAM mechanics, APU
+register driving, and hardware-only interrupt timing remain outside the
 denominator.
+
+### `$A3E2` controlled-steal coverage correction
+
+A branch-level review prompted by the inability to steal during live defense
+invalidates the earlier Verified classification for `$A3E2` (bank 0, bank
+offset `$23E2`, ROM file offset `$23F2`). The original first classifies ball
+states at `$A3EB-$A40A`, then applies the `$001D/$0056` gates. A paired opponent
+in action `$26/$27/$03` takes `$A426->$A607`, the jump-contest path already in
+C. Otherwise `$A42D` calls collision helper `$B435` with radius 3. Contact
+continues through `$A347` for the exceptional foul test and `$A44B` for the
+ordinary possession/role transfer.
+
+The current C helpers only allow normal dribble `$01` to reach the paired
+jump-contest gate; the `$A42D` fallback is limited to loose/rebound ball states.
+There is also no shipping-input regression with the controlled defender beside
+a normally dribbling CPU carrier. `$A3E2`, core user control, and the defensive
+steals/blocks match capability are therefore Partial until that path and its
+foul/gate variants are implemented and dynamically reconciled. With the broader
+CPU-choice capability also held Partial, the resulting catalog-weighted gameplay
+score is **96.7%**, and match rules are **92.3%**. These are catalog scores, not
+claims of whole-game parity while the address denominator remains incomplete.
 
 The live offense freeze reconciliation follows the state gate rather than the
 ball owner alone. During `$2E->$2F`, the rebound winner legitimately owns a

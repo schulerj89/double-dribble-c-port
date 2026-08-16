@@ -43,6 +43,8 @@ param(
     [int]$UserShotX = -1,
     [int]$UserPositionFrame = -1,
     [int]$ScoreAudioFreezeFrame = -1,
+    [ValidateSet('none', 'role0', 'paired', 'mirror')]
+    [string]$CpuRegion2Probe = 'none',
     [switch]$DisablePcCounts,
     [ValidateSet('A', 'B')]
     [string]$JumpButton = 'A'
@@ -89,6 +91,7 @@ $env:DD_USER_SHOT_DEPTH = $UserShotDepth.ToString([Globalization.CultureInfo]::I
 $env:DD_USER_SHOT_X = $UserShotX.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_USER_POSITION_FRAME = $UserPositionFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_SCORE_AUDIO_FREEZE_FRAME = $ScoreAudioFreezeFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_CPU_REGION2_PROBE = $CpuRegion2Probe
 
 $process = Start-Process -FilePath $FceuxPath `
     -ArgumentList @('-nothrottle', '1', '-turbo', '1', '-srendline', '0', '-erendline', '239', '-lua', ('"{0}"' -f $scriptPath), ('"{0}"' -f $RomPath)) `

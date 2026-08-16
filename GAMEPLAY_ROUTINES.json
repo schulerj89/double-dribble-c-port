@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 100.0,
+    "comprehensive_percent": 99.8,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 216,
-    "partial_count": 0,
+    "verified_count": 215,
+    "partial_count": 1,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -3141,11 +3141,11 @@
         "A607"
       ],
       "classification": "portable_logic",
-      "status": "verified",
+      "status": "partial",
       "evidence": [
         "Ghidra recursive node bank0:A3E2",
-        "Headless Ghidra `$A0DA-$A7D4/$AA75` user dispatcher flow covers automatic inbound receiver selection, live input, pass/switch, foul gates, ground pickup, held shot/release, contest, recovery, reception, and made-basket inbound",
-        "FCEUX natural and controlled pass-left/right/up/down, switch, held-shot make/miss, ground pickup, CPU/user block, violation, exceptional foul, and inbound captures execute every gameplay-visible branch family"
+        "Headless Ghidra `$A3E2-$A44B` shows the paired jump-contest path and the ordinary live-dribble fallback `$A42D->$B435->$A347/$A44B`",
+        "FCEUX and native checks cover paired shot/block contests and loose-ball pickup, but the controlled-defender CPU-dribble steal branch is not translated or dynamically verified"
       ],
       "native_symbols": [
         "dd_step_live",
@@ -3160,7 +3160,7 @@
         "dd_begin_common_inbound"
       ],
       "regression_tests": [
-        "tests/dd_gameplay_cpu_test.c directional pass/control, switched defense, held-shot release/violation, make/miss, block contact/landing, loose-ball pickup, exceptional foul, user inbound, and full-match suite"
+        "tests/dd_gameplay_cpu_test.c covers jump contests and loose-ball pickup; a shipping-input CPU-dribble steal regression is still missing"
       ]
     },
     {

@@ -36,7 +36,7 @@ if (Test-Path -LiteralPath $routineManifestPath -PathType Leaf) {
     }
     Write-Host ('  Routine graph    {0} nodes ({1} awaiting classification)' -f
         $routineKeys.Count, $unclassified)
-    Write-Host ('  Mapped routines {0,5:N1}%  (V {1}, P {2}, M {3}, excluded {4})' -f
+    Write-Host ('  Verified routines {0,5:N1}%  (V {1}, P {2}, M {3}, excluded {4})' -f
         $computedComprehensive, $verifiedRoutineCount, $partialRoutineCount,
         $missingRoutineCount, $routineManifest.coverage.excluded_count)
 }
@@ -56,17 +56,17 @@ $components = @(
     },
     [pscustomobject]@{
         Name = 'Core loop'; Weight = 0.25; Expected = 7
-        Verified = @('objects','scheduler','targets','dribble-audio','user-control',
+        Verified = @('objects','scheduler','targets','dribble-audio',
                      'movement-physics','general-collision')
-        Partial = @()
+        Partial = @('user-control')
         Missing = @()
     },
     [pscustomobject]@{
         Name = 'Match rules'; Weight = 0.20; Expected = 13
         Verified = @('tipoff','made-shot','score-hud','misses','periods','user-control',
-                     'inbound','cpu-choice','rebound','possession-transfer',
-                     'clock','steals-blocks','fouls-out-of-bounds')
-        Partial = @()
+                     'inbound','rebound','possession-transfer',
+                     'clock','fouls-out-of-bounds')
+        Partial = @('cpu-choice','steals-blocks')
         Missing = @()
     }
 )
@@ -95,5 +95,5 @@ if ([Math]::Abs($weightTotal - 1.0) -gt 0.000001) {
     throw "Gameplay coverage weights total $weightTotal instead of 1.0."
 }
 
-Write-Host ('Mapped gameplay component inventory: {0:N1}%' -f (100.0 * $weightedCoverage)) -ForegroundColor Green
-Write-Host ('Mapped match-rule inventory:         {0:N1}%' -f (100.0 * $matchCoverage))
+Write-Host ('Behavior-weighted gameplay coverage: {0:N1}%' -f (100.0 * $weightedCoverage)) -ForegroundColor Green
+Write-Host ('Behavior-weighted match-rule coverage: {0:N1}%' -f (100.0 * $matchCoverage))

@@ -383,6 +383,7 @@ int main(int argc, char **argv) {
     DDGameplayState priority_state;
     DDGameplayState jump_state;
     DDGameplayState pass_state;
+    DDGameplayState receipt_state;
     DDGameplayState inbound_pass_state;
     DDGameplayState dispatch_base;
     DDGameplayState dispatch_state;
@@ -857,11 +858,132 @@ int main(int argc, char **argv) {
           "$AC64 mirrors the recovered $4B policy target to $54 for the opposite basket");
 
     prepare_cpu_policy(&pack, &pass_state, 0x54u, 0x6Du);
+    /* Natural original frame 2679 reaches `$D772` from exact 24-bit/16-bit
+       coordinates `$00DA6E/$3C48`, installs `$85`, scales `$FF02/$0019`
+       through `$8BF8` to `$FEC2/$001F`, then `$D98D->$A84C` integrates each
+       axis twice on the same dispatch. */
+    pass_state.players[5].court_x = 0x00DA6E;
+    pass_state.players[5].court_depth = 0x003C48;
+    pass_state.players[5].target_zone = 0x6Du;
+    pass_state.players[5].target_x = pass_state.players[5].court_x;
+    pass_state.players[5].target_depth = pass_state.players[5].court_depth;
+    pass_state.players[5].paired_player = 0u;
+    pass_state.players[0].role = 0u;
+    set_packed_position(&pass_state.players[0], 0xAFu);
+    pass_state.cpu_projection_high = 0u;
     check(dd_gameplay_step(&pack, &pass_state, 0u),
           "run region-two center-lane reservation");
     check(pass_state.players[5].target_zone == 0x85u &&
+          pass_state.players[5].decision_timer == 10u &&
+          (uint16_t)pass_state.players[5].route_velocity_x == 0xFEC2u &&
+          (uint16_t)pass_state.players[5].route_velocity_depth == 0x001Fu &&
+          pass_state.players[5].court_x == 0x00D7F2 &&
+          pass_state.players[5].court_depth == 0x003C86,
+          "$D77B-$D8B3 reserves only $85 and applies exact 5/4 route scaling plus same-dispatch movement");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x54u, 0x6Du);
+    pass_state.players[5].paired_player = 0u;
+    pass_state.players[0].role = 0u;
+    set_packed_position(&pass_state.players[0], 0x85u);
+    pass_state.cpu_projection_high = 0u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "keep $85 when role zero and the pair occupy $85");
+    check(pass_state.players[5].target_zone == 0x85u &&
           pass_state.players[5].decision_timer == 10u,
-          "$D77B-$D7C2 reserves packed center target $85 without consuming the decision timer");
+          "$D795 compares shared projected high byte $0031, not candidate target $85");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x54u, 0x6Du);
+    pass_state.players[5].paired_player = 1u;
+    pass_state.players[0].role = 0u;
+    set_packed_position(&pass_state.players[0], 0x00u);
+    pass_state.players[1].role = 1u;
+    set_packed_position(&pass_state.players[1], 0xAFu);
+    pass_state.cpu_projection_high = 0u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "force $D795 role-zero projected-high rejection");
+    check(pass_state.players[5].target_zone == 0xAAu &&
+          pass_state.players[5].decision_timer == 9u,
+          "$D7C5->$D857 installs the phase-table fallback and decrements $04F0");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x54u, 0x6Du);
+    pass_state.players[5].paired_player = 1u;
+    pass_state.players[0].role = 0u;
+    set_packed_position(&pass_state.players[0], 0xAFu);
+    pass_state.players[1].role = 1u;
+    set_packed_position(&pass_state.players[1], 0x00u);
+    pass_state.cpu_projection_high = 0u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "force $D7A2 paired-player projected-high rejection");
+    check(pass_state.players[5].target_zone == 0xAAu &&
+          pass_state.players[5].decision_timer == 9u,
+          "paired rejection shares `$D857->$D7DE` policy, timer, and scaled route installation");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x54u, 0x6Du);
+    pass_state.players[5].paired_player = 0u;
+    pass_state.players[0].role = 0u;
+    set_packed_position(&pass_state.players[0], 0xAFu);
+    pass_state.players[1].role = 1u;
+    set_packed_position(&pass_state.players[1], 0x85u);
+    pass_state.cpu_projection_high = 0u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "ignore unrelated $85 occupancy in the region-two special branch");
+    check(pass_state.players[5].target_zone == 0x85u,
+          "$D77B does not call the broad native target-occupancy scan");
+
+    prepare_cpu_policy(&pack, &pass_state, 0x54u, 0x72u);
+    pass_state.possession_direction = 1u;
+    pass_state.players[5].paired_player = 0u;
+    pass_state.players[0].role = 0u;
+    set_packed_position(&pass_state.players[0], 0xAFu);
+    pass_state.cpu_projection_high = 0u;
+    check(dd_gameplay_step(&pack, &pass_state, 0u),
+          "run mirrored region-two center-lane reservation");
+    check(pass_state.players[5].target_zone == 0x9Au &&
+          pass_state.players[5].decision_timer == 10u,
+          "$AC64/$AC5C mirrors the sole region-two target from $85 to $9A");
+
+    /* Reach the same branch through shipping gameplay: `$D8FA/$9018`
+       queues and releases a CPU pass, `$AD41->$B138->$AD6D` awards it to
+       the receiver in state `$25`, and its fourteenth scheduled turn must
+       run `$8B5A->$D99A->$D978->$D759->$D772`. */
+    prepare_cpu_policy(&pack, &receipt_state, 0x44u, 0xA5u);
+    receipt_state.players[8].role = 3u;
+    receipt_state.players[8].paired_player = 0u;
+    receipt_state.players[8].facing = 4u;
+    receipt_state.players[8].court_x = 0x00DA6E;
+    receipt_state.players[8].court_depth = 0x003C48;
+    receipt_state.players[8].target_x = receipt_state.players[8].court_x;
+    receipt_state.players[8].target_depth = receipt_state.players[8].court_depth;
+    receipt_state.players[8].target_zone = 0x6Du;
+    receipt_state.players[0].role = 0u;
+    set_packed_position(&receipt_state.players[0], 0xAFu);
+    check(dd_gameplay_step(&pack, &receipt_state, 0u) &&
+          receipt_state.ball.action == DD_BALL_AWARDED &&
+          receipt_state.ball.receiver == 8u,
+          "normal `$D8FA/$9018` gameplay queues the region-two receiver");
+    for (player = 0u; player < 4u; ++player) {
+        run_cpu_dispatch(&pack, &receipt_state, 5u);
+    }
+    for (player = 0u; player < 180u &&
+         (receipt_state.ball.action != DD_BALL_DRIBBLE ||
+          receipt_state.ball.owner != 8u); ++player) {
+        check(dd_gameplay_step(&pack, &receipt_state, 0u),
+              "advance normal CPU pass through `$AD41->$B138->$AD6D`");
+    }
+    check(player < 180u &&
+          receipt_state.players[8].action == DD_PLAYER_LIVE_CARRIER &&
+          receipt_state.players[8].route_step == 5u,
+          "normal CPU pass reception enters state `$25` route five");
+    for (player = 0u; player < 14u &&
+         receipt_state.players[8].action == DD_PLAYER_LIVE_CARRIER; ++player) {
+        run_cpu_dispatch(&pack, &receipt_state, 8u);
+    }
+    check(receipt_state.cpu_projection_high == 0u &&
+          receipt_state.players[8].action == DD_PLAYER_LIVE_CPU_SETUP &&
+          receipt_state.players[8].target_zone == 0x85u &&
+          (uint16_t)receipt_state.players[8].route_velocity_x == 0xFEC2u &&
+          (uint16_t)receipt_state.players[8].route_velocity_depth == 0x001Fu,
+          "normal receipt reproduces `$25->$D99A->$32->$D772->$D8B0` with helper-produced `$0031`");
 
     prepare_cpu_policy(&pack, &pass_state, 0x22u, 0x48u);
     pass_state.cpu_entropy = 0u;
@@ -2962,11 +3084,35 @@ int main(int argc, char **argv) {
           dispatch_state.inbound_variant == 3u &&
           dispatch_state.players[0].action == DD_PLAYER_INBOUNDER,
           "$9635->$9651 awards CPU-last-touch OOB to the 1P role-zero object");
-    for (player = 0u; player < 2400u &&
-         dispatch_state.players[dispatch_state.controlled_player].action !=
-             DD_PLAYER_LIVE_USER_INBOUND; ++player) {
-        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
-              "advance user-awarded common inbound through `$41->$30->$0D`");
+    {
+        int32_t previous_x = dispatch_state.players[0].court_x;
+        int32_t previous_depth = dispatch_state.players[0].court_depth;
+        int32_t prior_x_delta = 0;
+        int32_t prior_depth_delta = 0;
+        uint32_t route_reversals = 0u;
+        for (player = 0u; player < 400u &&
+             dispatch_state.players[dispatch_state.controlled_player].action !=
+                 DD_PLAYER_LIVE_USER_INBOUND; ++player) {
+            int32_t x_delta;
+            int32_t depth_delta;
+            check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+                  "advance user-awarded common inbound through `$41->$30->$0D`");
+            x_delta = dispatch_state.players[0].court_x - previous_x;
+            depth_delta = dispatch_state.players[0].court_depth - previous_depth;
+            if (dispatch_state.players[0].action == DD_PLAYER_INBOUNDER) {
+                if (x_delta != 0 && prior_x_delta != 0 &&
+                    ((x_delta < 0) != (prior_x_delta < 0))) ++route_reversals;
+                if (depth_delta != 0 && prior_depth_delta != 0 &&
+                    ((depth_delta < 0) != (prior_depth_delta < 0))) ++route_reversals;
+                if (x_delta != 0) prior_x_delta = x_delta;
+                if (depth_delta != 0) prior_depth_delta = depth_delta;
+            }
+            previous_x = dispatch_state.players[0].court_x;
+            previous_depth = dispatch_state.players[0].court_depth;
+        }
+        check(player < 400u && route_reversals == 0u &&
+              dispatch_state.phase == DD_GAMEPLAY_LIVE,
+              "user-awarded `$41` reaches live `$30->$0D` without route-axis shuffling");
     }
     check(dispatch_state.controlled_player < 5u &&
           dispatch_state.ball.owner == dispatch_state.controlled_player &&
@@ -2974,6 +3120,26 @@ int main(int argc, char **argv) {
           dispatch_state.players[dispatch_state.controlled_player].action ==
               DD_PLAYER_LIVE_USER_INBOUND,
           "common inbound mode three keeps a 1P award on the user team");
+    inbound_receiver = dispatch_state.controlled_player;
+    check(dd_gameplay_step(&pack, &dispatch_state,
+                           DD_INPUT_RIGHT | DD_INPUT_A),
+          "send direction+A through user common-inbound state `$0D`");
+    check(dispatch_state.ball.receiver < 5u &&
+          dispatch_state.ball.receiver != inbound_receiver,
+          "$A780->$A129->$A21F selects a same-team common-inbound receiver");
+    for (player = 0u; player < 180u &&
+         (dispatch_state.ball.action != DD_BALL_DRIBBLE ||
+          dispatch_state.carrier == inbound_receiver); ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance the user common-inbound pass through `$AD41->$AD58`");
+    }
+    check(player < 180u && dispatch_state.phase == DD_GAMEPLAY_LIVE &&
+          dispatch_state.carrier < 5u &&
+          dispatch_state.carrier == dispatch_state.controlled_player &&
+          dispatch_state.ball.owner == dispatch_state.carrier &&
+          dispatch_state.players[dispatch_state.carrier].action ==
+              DD_PLAYER_LIVE_USER_CARRIER,
+          "user common inbound completes reception with control on the receiver");
 
     /* A made-basket receiver outside the recovered near-rim window must
        return to `$D759` at the traced seven-turn cadence instead of taking the
@@ -2989,13 +3155,81 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER;
     dispatch_state.players[5].route_step = 4u;
     dispatch_state.players[5].action_age = 6u;
-    dispatch_state.players[5].court_x = 0x014000;
-    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[5].court_x = 0x00DA6E;
+    dispatch_state.players[5].court_depth = 0x003C48;
+    dispatch_state.players[5].facing = 4u;
+    dispatch_state.players[5].paired_player = 0u;
+    dispatch_state.players[0].court_x = 0x004800;
+    dispatch_state.players[0].court_depth = 0x003800;
+    dispatch_state.cpu_projection_high = 0x7Fu;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action != DD_PLAYER_LIVE_CARRIER &&
           dispatch_state.players[5].action != DD_PLAYER_LIVE_CARRIER_DECIDE &&
           dispatch_state.ball.action != DD_BALL_AIRBORNE,
           "post-inbound `$25` re-enters `$D759` after seven turns without a half-court shot");
+    check(dispatch_state.cpu_projection_high == 0u &&
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_CPU_SETUP &&
+          dispatch_state.players[5].target_zone == 0x85u &&
+          (uint16_t)dispatch_state.players[5].route_velocity_x == 0xFEC2u &&
+          (uint16_t)dispatch_state.players[5].route_velocity_depth == 0x001Fu,
+          "$8B5A->$D99A->$8C36` produces `$0031` before `$25->$32->$D772->$D8B0`");
+
+    /* Accepted `$D99A` contact bypasses `$D772`, retains state `$25`, and
+       reaches `$8BBF->$ABCD->$8BF8->$D98D` on that same object dispatch. */
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.clock_minutes = 1u;
+    dispatch_state.clock_seconds = 0x30u;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    dispatch_state.players[5].route_step = 4u;
+    dispatch_state.players[5].action_age = 6u;
+    dispatch_state.players[5].court_x = 0x010800;
+    dispatch_state.players[5].court_depth = 0x005800;
+    dispatch_state.players[5].facing = 4u;
+    dispatch_state.players[5].paired_player = 0u;
+    dispatch_state.players[0].court_x = 0x00F800;
+    dispatch_state.players[0].court_depth = 0x005800;
+    pass_release_x = dispatch_state.players[5].court_x;
+    pass_release_depth = dispatch_state.players[5].court_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER &&
+          dispatch_state.players[5].target_zone == 0x70u &&
+          (dispatch_state.players[5].route_velocity_x != 0 ||
+           dispatch_state.players[5].route_velocity_depth != 0) &&
+          dispatch_state.players[5].velocity_x ==
+              dispatch_state.players[5].route_velocity_x &&
+          dispatch_state.players[5].velocity_depth ==
+              dispatch_state.players[5].route_velocity_depth &&
+          (dispatch_state.players[5].court_x != pass_release_x ||
+           dispatch_state.players[5].court_depth != pass_release_depth),
+          "$8B5A accepted avoidance stays in `$25`, scales once, and moves on the same dispatch");
+
+    /* A left-edge projection proves `$0031` is produced by `$8C36` even
+       when the signed packed step crosses the byte boundary. No test writes
+       `cpu_projection_high` for this state. */
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.carrier = 5u;
+    dispatch_state.ball.owner = 5u;
+    dispatch_state.ball.action = DD_BALL_DRIBBLE;
+    dispatch_state.inbound_variant = 1u;
+    dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    dispatch_state.players[5].route_step = 4u;
+    dispatch_state.players[5].court_x = 0x000800;
+    dispatch_state.players[5].court_depth = 0x000800;
+    dispatch_state.players[5].facing = 4u;
+    dispatch_state.players[5].paired_player = 0u;
+    set_packed_position(&dispatch_state.players[0], 0xAFu);
+    dispatch_state.ball.court_x = dispatch_state.players[5].court_x;
+    dispatch_state.ball.court_depth = dispatch_state.players[5].court_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.cpu_projection_high == 0xFFu &&
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_CARRIER,
+          "$8B5A->$D99A->$8C36` retains the signed-overflow high byte without a direct test assignment");
 
     /* `$32` consumes the high phase bit over a window.  Starting after $80
        proves the handler cannot freeze by missing one exact host frame. */

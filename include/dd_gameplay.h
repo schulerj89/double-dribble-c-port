@@ -170,6 +170,7 @@ typedef struct DDGameplayState {
     uint8_t cpu_priority_player;
     uint8_t cpu_pass_cooldown;
     uint8_t cpu_entropy;
+    uint8_t cpu_projection_high;
     uint8_t possession_direction;
     uint8_t possession_count;
     uint8_t last_touch_player;

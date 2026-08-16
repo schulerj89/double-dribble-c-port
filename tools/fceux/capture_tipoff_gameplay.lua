@@ -48,6 +48,7 @@ local user_shot_depth = tonumber(os.getenv("DD_USER_SHOT_DEPTH") or "-1")
 local user_shot_x = tonumber(os.getenv("DD_USER_SHOT_X") or "-1")
 local user_position_frame = tonumber(os.getenv("DD_USER_POSITION_FRAME") or "-1")
 local score_audio_freeze_frame = tonumber(os.getenv("DD_SCORE_AUDIO_FREEZE_FRAME") or "-1")
+local cpu_region2_probe = os.getenv("DD_CPU_REGION2_PROBE") or "none"
 
 local function join_path(left, right)
     local suffix = string.sub(left, -1)
@@ -112,6 +113,8 @@ local score_calls = assert(io.open(join_path(capture_root, "gameplay-score-calls
 score_calls:write("frame,counter,ball_state,score_copy_a,score_copy_b,height,scoring_side,shot_kind\n")
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
+local cpu_region2 = assert(io.open(join_path(capture_root, "gameplay-cpu-region2.csv"), "w"))
+cpu_region2:write("frame,pc,a,x,y,scratch2f,scratch30,scratch31,scratch32,current,state,position,target,role0,role0_position,paired,paired_position,direction,global_phase,decision_timer,velocity_x,velocity_depth,probe\n")
 local physics_calls = assert(io.open(join_path(capture_root, "gameplay-physics-calls.csv"), "w"))
 physics_calls:write("frame,pc,current_object,state,facing,x,velocity_x,depth,velocity_depth,height,vertical_base,elapsed,curve,duration,packed,target,priority,global_phase\n")
 local control_calls = assert(io.open(join_path(capture_root, "gameplay-control-calls.csv"), "w"))
@@ -350,6 +353,81 @@ for _, address in ipairs({
     0xD99A, 0xDA36, 0xDA38
 }) do
     memory.registerexecute(address, 1, record_cpu_decision)
+end
+
+-- Focused fixed-bank `$D77B-$D8B0` evidence. `$9097` selects role zero from
+-- original slots $02-$06 or $07-$0B according to `$0050.3`; it does not scan
+-- `$85/$86/$87`. Optional controlled probes alter only the compared packed
+-- byte at `$D795`, after `$9097` has returned, to force each rejection edge.
+local cpu_region2_injected = false
+local function cpu_region2_mirror(packed)
+    return bit.bor(bit.band(packed, 0xE0), 0x1F - bit.band(packed, 0x1F))
+end
+local function cpu_region2_role_zero()
+    local direction = memory.readbyte(0x0050)
+    local first = bit.band(direction, 0x08) ~= 0 and 0x02 or 0x07
+    for object = first, first + 4 do
+        if memory.readbyte(0x0690 + object) == 0 then return object end
+    end
+    return first
+end
+
+local function record_cpu_region2(address, size, value)
+    local frame = emu.framecount()
+    if frame < trace_start or frame > trace_end or current_switch_bank() ~= 0 then return end
+    local current = memory.readbyte(0x004B)
+    local paired = memory.readbyte(0x0580 + current)
+    local role0 = cpu_region2_role_zero()
+    local scratch31 = memory.readbyte(0x0031)
+    if address == 0xD772 and cpu_region2_probe == "mirror" and
+       not cpu_region2_injected then
+        -- `$D978` has already accepted equality. Mirror both packed bytes and
+        -- set `$0050.6` before `$AC2A`, preserving the same logical region
+        -- while exercising `$AC64/$AC5C`'s opposite-direction output.
+        memory.writebyte(0x0050, bit.bor(memory.readbyte(0x0050), 0x40))
+        memory.writebyte(0x05B0 + current,
+            cpu_region2_mirror(memory.readbyte(0x05B0 + current)))
+        memory.writebyte(0x05D0 + current,
+            cpu_region2_mirror(memory.readbyte(0x05D0 + current)))
+        cpu_region2_injected = true
+    end
+    if address == 0xD795 and not cpu_region2_injected then
+        if cpu_region2_probe == "role0" then
+            memory.writebyte(0x05B0 + role0, scratch31)
+            cpu_region2_injected = true
+        elseif cpu_region2_probe == "paired" then
+            -- The natural opening trace links the carrier directly to the
+            -- same role-zero object. Move only the controlled probe's link
+            -- to its adjacent teammate so the first comparison misses and
+            -- `$D7A2-$D7A7` proves the distinct paired-player rejection.
+            if paired == role0 then
+                paired = role0 == 0x02 and 0x03 or 0x02
+                memory.writebyte(0x0580 + current, paired)
+            end
+            memory.writebyte(0x05B0 + paired, scratch31)
+            cpu_region2_injected = true
+        end
+    end
+    cpu_region2:write(string.format(
+        "%d,%04X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X,%02X%02X,%02X%02X,%02X,%02X%02X,%02X,%02X%02X,%02X,%02X,%02X,%02X%02X,%02X%02X,%s\n",
+        frame, address, memory.getregister("a"), memory.getregister("x"),
+        memory.getregister("y"), memory.readbyte(0x002F), memory.readbyte(0x0030),
+        scratch31, memory.readbyte(0x0032), current,
+        memory.readbyte(0x0340 + current), memory.readbyte(0x05C0 + current),
+        memory.readbyte(0x05B0 + current), memory.readbyte(0x05E0 + current),
+        memory.readbyte(0x05D0 + current), role0, memory.readbyte(0x05C0 + role0),
+        memory.readbyte(0x05B0 + role0), paired, memory.readbyte(0x05C0 + paired),
+        memory.readbyte(0x05B0 + paired), memory.readbyte(0x0050),
+        memory.readbyte(0x001A), memory.readbyte(0x04F0 + current),
+        memory.readbyte(0x0390 + current), memory.readbyte(0x03A0 + current),
+        memory.readbyte(0x03E0 + current), memory.readbyte(0x03F0 + current),
+        cpu_region2_probe))
+end
+for _, address in ipairs({
+    0xD772, 0xD77B, 0xD795, 0xD7A2, 0xD7A9, 0xD7B1, 0xD7C5, 0xD857, 0xD8B0,
+    0x8BF8, 0xD98A, 0xD98D
+}) do
+    memory.registerexecute(address, 1, record_cpu_region2)
 end
 local function record_physics_call(address, size, value)
     local frame = emu.framecount()
@@ -946,6 +1024,7 @@ clock_calls:close()
 collision_calls:close()
 score_calls:close()
 cpu_decisions:close()
+cpu_region2:close()
 physics_calls:close()
 control_calls:close()
 block_calls:close()
