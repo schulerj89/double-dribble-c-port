@@ -771,6 +771,7 @@ static uint8_t dd_cpu_possession_region(const DDGameplayState *state, uint8_t pa
 static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed) {
     player->target_zone = packed;
     dd_unpack_cpu_target(packed, &player->target_x, &player->target_depth);
+    dd_install_cpu_route_vector(player);
 }
 
 /* `$ABCD->$9D2D->$9BB0` expands the installed packed target into the exact
@@ -787,11 +788,60 @@ static void dd_install_cpu_route_vector(DDPlayerState *player) {
     player->facing = player->route_facing;
 }
 
+/* `$8C02` retains the signed high byte's top two bits while shifting the
+   8.8 component right twice, then adds that signed quarter to the original.
+   This is a wrapping 5/4 scale (not the former 3/4 approximation). */
+static int32_t dd_scale_route_component_five_quarters(int32_t component) {
+    uint16_t original = (uint16_t)component;
+    uint16_t quarter = (uint16_t)(original >> 2u);
+    if ((original & 0x8000u) != 0u) quarter |= 0xC000u;
+    return (int16_t)(uint16_t)(original + quarter);
+}
+
+static void dd_scale_route_vector_five_quarters(DDPlayerState *player) {
+    player->route_velocity_x = dd_scale_route_component_five_quarters(
+        player->route_velocity_x);
+    player->route_velocity_depth = dd_scale_route_component_five_quarters(
+        player->route_velocity_depth);
+    player->velocity_x = player->route_velocity_x;
+    player->velocity_depth = player->route_velocity_depth;
+}
+
+static void dd_set_cpu_scaled_target(DDPlayerState *player, uint8_t packed) {
+    dd_set_cpu_target(player, packed);
+    dd_scale_route_vector_five_quarters(player);
+}
+
+/* `$914E` builds `$0490/$04A0/$04B0` contact anchors by aiming the player
+   at the active hoop, expanding that angle through `$9BB0`, shifting the
+   signed vector four times for the controlled object or five for every other
+   object, and adding it to the fixed-point court position. `$90B3` targets
+   this anchor, not the paired player's feet. */
+static void dd_player_collision_anchor(const DDGameplayState *state,
+                                       uint32_t player_index,
+                                       int32_t *anchor_x,
+                                       int32_t *anchor_depth) {
+    const DDPlayerState *player = &state->players[player_index];
+    int32_t hoop_x = state->possession_direction == 0u ? 0x004800 : 0x01B800;
+    int32_t unit_x;
+    int32_t unit_depth;
+    uint32_t shift = player_index == state->controlled_player ? 4u : 5u;
+    dd_target_motion_vector(player->court_x, player->court_depth,
+                            hoop_x, 0x005800, &unit_x, &unit_depth);
+    *anchor_x = (int32_t)(((uint32_t)player->court_x +
+        (uint32_t)((int32_t)(int16_t)(uint16_t)unit_x * (int32_t)(1u << shift))) & 0x00FFFFFFu);
+    *anchor_depth = (int32_t)(((uint32_t)player->court_depth +
+        (uint32_t)((int32_t)(int16_t)(uint16_t)unit_depth * (int32_t)(1u << shift))) & 0x0000FFFFu);
+    *anchor_x &= ~0xFF;
+    *anchor_depth &= ~0xFF;
+}
+
 /* $ABAB consumes the ninth packed-coordinate bit from $05E0.  It extends
    court depth by $80 while the low byte keeps the ordinary packed target. */
 static void dd_set_cpu_extended_target(DDPlayerState *player, uint16_t packed) {
     dd_set_cpu_target(player, (uint8_t)packed);
     player->target_depth += (int32_t)((packed >> 8u) & 1u) << 15u;
+    dd_install_cpu_route_vector(player);
 }
 
 /* $8C5B contains signed 16-bit deltas in the game's packed court space.
@@ -872,18 +922,6 @@ static int dd_cpu_at_target(const DDPlayerState *player, int32_t tolerance) {
            dd_absolute(player->target_depth - player->court_depth) <= tolerance;
 }
 
-/* The native 30 Hz cadence adapter reaches ordinary `$41` targets at the
-   already-traced center tolerance.  Packed edge centers can be outside the
-   legal integrator interval, so those must use `$D978` equality directly. */
-static int dd_inbounder_at_target(const DDPlayerState *player,
-                                  int32_t tolerance) {
-    int target_center_outside = player->target_x < 0x001000 ||
-        player->target_x > 0x01F100 || player->target_depth < 0x000500 ||
-        player->target_depth > 0x009800;
-    return dd_cpu_at_target(player, tolerance) ||
-        (target_center_outside && dd_player_at_extended_target(player));
-}
-
 static int dd_cpu_target_occupied(const DDGameplayState *state, uint32_t player,
                                   uint8_t target) {
     uint32_t other;
@@ -899,14 +937,17 @@ static int dd_cpu_target_occupied(const DDGameplayState *state, uint32_t player,
    two-unit half extents on both portable court axes. */
 static int dd_paired_player_contact(const DDGameplayState *state, uint32_t player) {
     uint32_t opponent;
+    int32_t anchor_x;
+    int32_t anchor_depth;
     if (player >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
     opponent = state->players[player].paired_player;
     if (opponent >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
+    dd_player_collision_anchor(state, opponent, &anchor_x, &anchor_depth);
     return dd_axis_boxes_overlap(state->players[player].court_depth,
-                                 state->players[opponent].court_depth,
+                                 anchor_depth,
                                  0x0200, 0x0200) &&
            dd_axis_boxes_overlap(state->players[player].court_x,
-                                 state->players[opponent].court_x,
+                                 anchor_x,
                                  0x0200, 0x0200);
 }
 
@@ -914,8 +955,6 @@ static void dd_move_cpu_player(DDPlayerState *player, uint32_t player_index,
                                uint32_t live_frame, int32_t speed) {
     int32_t old_x = player->court_x;
     int32_t old_depth = player->court_depth;
-    int32_t desired_x;
-    int32_t desired_depth;
     if (speed == 0 || (player->court_x == player->target_x &&
                        player->court_depth == player->target_depth)) {
         player->velocity_x = 0;
@@ -923,32 +962,16 @@ static void dd_move_cpu_player(DDPlayerState *player, uint32_t player_index,
         player->route_velocity_x = 0;
         player->route_velocity_depth = 0;
     } else {
-        /* $ABCD expands the packed route target, derives an angle with $9D2D,
-           stores $AA98's facing, and installs $9BB0's signed unit vector.
-           Preserve those recovered outputs separately while the native 30 Hz
-           dispatcher adapter retains its already-verified arrival cadence. */
-        uint8_t angle = dd_target_motion_vector(player->court_x, player->court_depth,
-                                                player->target_x, player->target_depth,
-                                                &player->route_velocity_x,
-                                                &player->route_velocity_depth);
-        player->route_facing = dd_facing_from_angle(angle);
-        desired_x = dd_approach(player->court_x, player->target_x, speed);
-        desired_depth = dd_approach(player->court_depth, player->target_depth, speed);
-        /* The packed center for column `$1F` is `$01F8`, beyond `$9CA0`'s
-           legal `$01F1` endpoint.  The original unit-vector walk enters that
-           packed cell before its next rejected integration; the cadence
-           adapter must likewise stop at a legal coordinate inside the cell. */
-        desired_x = dd_clamp(desired_x, 0x001000, 0x01F100);
-        desired_depth = dd_clamp(desired_depth, 0x000500, 0x009800);
-        player->velocity_x = desired_x - player->court_x;
-        player->velocity_depth = desired_depth - player->court_depth;
-        /* `$D98D->$A84C` ultimately reaches the same bounded axis helpers as
-           ball and user motion.  Retain the native cadence adapter's one-step
-           target delta, but never assign a coordinate that `$9CA0/$9CF6`
-           would reject.  This is especially important for packed edge-cell
-           centers used by inbound formations. */
-        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
+        /* Target installation already ran `$ABCD->$9D2D/$9BB0`. `$D98D`
+           consumes that retained signed 8.8 vector through `$A84C`, which
+           calls each bounded axis integrator exactly twice. */
+        if (player->velocity_x == 0 && player->velocity_depth == 0) {
+            dd_install_cpu_route_vector(player);
+        }
         dd_integrate_depth(&player->court_depth, &player->velocity_depth);
+        dd_integrate_depth(&player->court_depth, &player->velocity_depth);
+        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
+        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
         player->facing = dd_facing_from_velocity(player->velocity_x,
                                                  player->velocity_depth,
                                                  player->facing);
@@ -1871,22 +1894,27 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 }
             } else if (player->route_step == 0u) {
                 dd_cpu_avoid_ball_or_defender(state, player_index);
-                dd_set_cpu_target(player, 0x70u);
+                dd_set_cpu_scaled_target(player, 0x70u);
                 player->route_step = 1u;
             } else {
                 dd_cpu_avoid_ball_or_defender(state, player_index);
-                if (player->route_step == 1u && player->action_age >= 12u &&
-                       dd_cpu_at_target(player, speed)) {
-                    dd_set_cpu_target(player, 0x6Cu);
+                if (player->route_step == 1u &&
+                       dd_pack_cpu_position(player) == player->target_zone) {
+                    dd_set_cpu_scaled_target(player, 0x6Cu);
                     player->route_step = 2u;
-                } else if (player->route_step == 2u && player->action_age >= 37u &&
-                       dd_cpu_at_target(player, speed)) {
-                    dd_set_cpu_target(player, 0x85u);
+                } else if (player->route_step == 2u &&
+                       dd_pack_cpu_position(player) == player->target_zone) {
+                    dd_set_cpu_scaled_target(player, 0x85u);
                     player->route_step = 3u;
                     player->action = DD_PLAYER_LIVE_CPU_SETUP;
                     player->action_age = 0u;
                     player->decision_timer = 10u;
                 }
+            }
+            if (state->cpu_priority_player == player_index &&
+                player->route_step != 4u && player->route_step != 5u) {
+                dd_install_cpu_route_vector(player);
+                dd_scale_route_vector_five_quarters(player);
             }
             break;
         case DD_PLAYER_LIVE_CPU_SETUP:
@@ -1899,7 +1927,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                    to strand the carrier in `$32` until the process ended. */
                 dd_cpu_avoid_ball_or_defender(state, player_index);
                 if ((state->cpu_global_frame & 0x80u) != 0u &&
-                    dd_cpu_at_target(player, speed)) {
+                    dd_pack_cpu_position(player) == player->target_zone) {
                     decision = dd_cpu_decide_possession(assets, state, player_index);
                     if (decision == DD_CPU_DECISION_SHOOT) {
                         player->action = DD_PLAYER_LIVE_CARRIER_ROUTE;
@@ -2036,16 +2064,17 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 player->action_age = 0u;
             }
             /* `$8A28->$90B3` follows the mutable `$0580+X` link and aims at
-               that opponent's exact `$0360/$0370/$03C0` position. `$8BF8`
-               then scales both installed 8.8 components by 3/4 before the
-               shared `$D98A->$A84C` double integration. The native cadence
-               adapter therefore advances 1.5 court units per scheduled turn.
+               that opponent's `$914E` projected contact anchor. `$8BF8`
+               then scales both installed 8.8 components by 5/4 before the
+               shared `$D98A->$A84C` double integration.
                The removed 20-unit basket-side offset could never satisfy
                `$9102`'s combined four-unit boxes, so defenders could not
                naturally latch `$20->$22` or be in range to block. */
             speed = 0x0180;
-            player->target_x = state->players[opponent].court_x;
-            player->target_depth = state->players[opponent].court_depth;
+            dd_player_collision_anchor(state, opponent,
+                                       &player->target_x, &player->target_depth);
+            dd_install_cpu_route_vector(player);
+            dd_scale_route_vector_five_quarters(player);
             break;
         }
         case DD_PLAYER_LIVE_FOLLOW_TARGET:
@@ -2125,7 +2154,8 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         case DD_PLAYER_LIVE_CPU:
             speed = state->phase == DD_GAMEPLAY_INBOUND ? 0 : 0x0500;
             if (state->phase != DD_GAMEPLAY_INBOUND &&
-                ((state->cpu_global_frame & 0x70u) == 0u || dd_cpu_at_target(player, speed))) {
+                ((state->cpu_global_frame & 0x70u) == 0u ||
+                 dd_pack_cpu_position(player) == player->target_zone)) {
                 uint32_t target_index = player->role + (player_index >= 5u ? 5u : 0u) +
                     ((state->cpu_global_frame & 0x80u) != 0u ? 10u : 0u);
                 dd_set_cpu_target(player, assets->cpu_role_targets[target_index]);
@@ -2133,7 +2163,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_LIVE_CPU_CUT:
             speed = state->phase == DD_GAMEPLAY_INBOUND ? 0x0234 : 0x0230;
-            if (player->action_age >= 35u && dd_cpu_at_target(player, speed)) {
+            if (dd_pack_cpu_position(player) == player->target_zone) {
                 uint8_t target = assets->cpu_spacing_targets[13u];
                 if (dd_cpu_target_occupied(state, player_index, target)) {
                     target = assets->cpu_spacing_targets[12u];
@@ -2145,7 +2175,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_LIVE_CPU_ROUTE:
             speed = 0x0220;
-            if (dd_cpu_at_target(player, speed)) {
+            if (dd_pack_cpu_position(player) == player->target_zone) {
                 uint8_t region = dd_cpu_possession_region(
                     state, dd_pack_cpu_position(player));
                 uint8_t phase = (uint8_t)((state->cpu_global_frame >> 2u) & 1u);
@@ -2362,13 +2392,21 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             player->velocity_height = 0;
             break;
         case DD_PLAYER_INBOUNDER:
-            /* `$8C6B->$D978` tests the extended packed cell, not distance to
-               `$ABAB`'s expanded center.  On equality it writes owner/carrier,
-               copies player coordinates to the ball, and enters `$30`. */
-            speed = 0x01BC;
-            if (dd_inbounder_at_target(player, speed)) {
-                speed = 0;
+            /* `$8C6B->$D978` tests both bytes of the extended packed cell.
+               Its `$8CA2-$8CE8` correction calls `$ABCD` only for the current
+               `$004D` priority object and retains an unscaled unit vector;
+               `$D98D` then integrates it twice. Original frame 3499 clamps
+               depth at `$98A0`, and the next priority refresh observes packed
+               `$0121`; no center tolerance is involved. */
+            speed = 0;
+            if (state->cpu_priority_player == player_index &&
+                dd_player_at_extended_target(player)) {
                 dd_complete_inbound_pickup(state, player_index);
+            } else {
+                if (state->cpu_priority_player == player_index) {
+                    dd_install_cpu_route_vector(player);
+                }
+                integrate_existing_velocity = 1;
             }
             break;
         default:
@@ -2405,7 +2443,8 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
         player->action_age = 0u;
     }
     if (player->action == DD_PLAYER_INBOUNDER &&
-        dd_inbounder_at_target(player, 0x01BC)) {
+        state->cpu_priority_player == player_index &&
+        dd_player_at_extended_target(player)) {
         dd_complete_inbound_pickup(state, player_index);
     }
 }
@@ -3359,6 +3398,9 @@ static void dd_initialize_free_throw_formation(const DDTipoffAssetsHeader *asset
        current court coordinate before state `$4A` waits on `$0064=$60`. */
     state->players[shooter].target_x = state->ball.court_x;
     state->players[shooter].target_depth = state->ball.court_depth;
+    state->players[shooter].target_zone = dd_pack_cpu_coordinates(
+        state->ball.court_x, state->ball.court_depth);
+    dd_install_cpu_route_vector(&state->players[shooter]);
     state->players[shooter].action = DD_PLAYER_FREE_THROW_WALK;
     state->players[shooter].action_age = 0u;
     state->free_throw_dead_timer = 0x60u;
@@ -3472,7 +3514,7 @@ static void dd_step_free_throw(const DDTipoffAssetsHeader *assets,
                 object->action != DD_PLAYER_FREE_THROW_FORMATION) continue;
             if (object->action_age != UINT16_MAX) ++object->action_age;
             dd_move_cpu_player(object, player, state->live_frame, 0x0200);
-            if (!dd_cpu_at_target(object, 0x0200)) continue;
+            if (dd_pack_cpu_position(object) != object->target_zone) continue;
             if (object->action == DD_PLAYER_FREE_THROW_SHOOTER) {
                 object->action = DD_PLAYER_FREE_THROW_FORMATION;
                 dd_set_cpu_target(object, state->possession_direction == 0u

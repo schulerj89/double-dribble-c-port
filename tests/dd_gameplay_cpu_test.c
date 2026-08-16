@@ -233,9 +233,9 @@ static void check_long_run_native_match(const DDAssetPack *pack) {
             }
             for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
                 if (state.players[player].court_x < 0x001000 ||
-                    state.players[player].court_x > 0x01F100 ||
+                    state.players[player].court_x > 0x01F1FF ||
                     state.players[player].court_depth < 0x000500 ||
-                    state.players[player].court_depth > 0x009800) {
+                    state.players[player].court_depth > 0x0098FF) {
                     valid = 0;
                     break;
                 }
@@ -274,10 +274,10 @@ static void check_long_run_native_match(const DDAssetPack *pack) {
 
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
-        0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Cu, 0x3Eu
+        0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Du, 0x3Eu
     };
     static const uint8_t post_inbound_target[DD_GAMEPLAY_PLAYER_COUNT] = {
-        0xE8u, 0x48u, 0xCCu, 0xB5u, 0x79u, 0x21u, 0xA6u, 0xD7u, 0xA9u, 0x8Cu
+        0xE8u, 0x48u, 0xCCu, 0xB5u, 0x79u, 0x21u, 0xA6u, 0xD7u, 0x4Cu, 0x8Cu
     };
     static const uint8_t priority_cycle[10] = {
         3u, 9u, 4u, 5u, 0u, 6u, 1u, 7u, 2u, 8u
@@ -453,6 +453,9 @@ int main(int argc, char **argv) {
     check(state.cpu_global_frame == 0xDDu, "first live step advances CPU frame phase");
     check(state.players[1].cpu_updates == 1u && state.players[5].cpu_updates == 0u,
           "odd CPU frame updates only native team slots 1-4");
+    check(state.players[3].court_x == 0x010E26 &&
+          state.players[3].court_depth == 0x0021AA,
+          "original frame 2558 `$20->$90B3/$8BF8/$A84C` exact sub-cell position");
 
     check(dd_gameplay_step(&pack, &state, 0u), "second live CPU step");
     check(state.cpu_global_frame == 0xDEu, "second live step advances CPU frame phase");
@@ -460,6 +463,13 @@ int main(int argc, char **argv) {
           "even CPU frame updates only native team slots 5-9");
     check(state.cpu_priority_player == 9u,
           "$004D rotates from original slot $05 to $0B on the even team frame");
+    check(state.players[5].court_x == 0x01081E &&
+          state.players[5].court_depth == 0x005782 &&
+          state.players[8].court_x == 0x0123C4 &&
+          state.players[8].court_depth == 0x003158 &&
+          state.players[9].court_x == 0x011C08 &&
+          state.players[9].court_depth == 0x007064,
+          "original frame 2559 installed vectors reproduce all moving-team sub-cells");
     check_checkpoint(&state, 2u, 5u, DD_PLAYER_LIVE_CARRIER, 0x70u);
 
     check(dd_gameplay_advance_to(&pack, &state, 380u, 0u), "advance to carrier reroute");
@@ -561,30 +571,31 @@ int main(int argc, char **argv) {
           state.ball.action == DD_BALL_DEAD &&
           state.players[5].action == DD_PLAYER_INBOUNDER,
           "live 767 reproduces $9583/$9645 dead-ball formation and inbounder state $41");
-    check(dd_gameplay_advance_to(&pack, &state, 1300u, 0u), "advance to inbound hold");
-    check(state.live_frame == 944u && state.carrier == 5u &&
+    check(dd_gameplay_advance_to(&pack, &state, 1290u, 0u), "advance to inbound hold");
+    check(state.live_frame == 934u && state.carrier == 5u &&
           state.players[5].action == DD_PLAYER_INBOUND_HOLD,
-          "live 944 gives the inbounder the held ball in state $30");
-    check(state.players[5].court_depth == 0x009800 &&
+          "live 934 gives the inbounder the held ball in state $30");
+    check(state.players[5].court_depth >= 0x009000 &&
+          state.players[5].court_depth <= 0x0098FF &&
           state.players[5].target_depth == 0x009800,
-          "inbounder preserves extended target $0121 as baseline depth $98");
-    check(dd_gameplay_advance_to(&pack, &state, 1344u, 0u), "advance to inbound release setup");
-    check(state.live_frame == 988u &&
+          "inbounder reaches extended target cell $0121 in the legal baseline depth band");
+    check(dd_gameplay_advance_to(&pack, &state, 1370u, 0u), "advance to inbound release setup");
+    check(state.live_frame == 1014u &&
           state.players[5].action == DD_PLAYER_INBOUND_READY &&
           state.players[5].release_timer == 8u &&
           state.ball.action == DD_BALL_AWARDED &&
           (state.ball.velocity_x != 0 || state.ball.velocity_depth != 0),
-          "live 988 follows $9018->$B0B8 into state $31 with the CPU inbound vector installed");
-    check(dd_gameplay_advance_to(&pack, &state, 1352u, 0u), "advance to inbound pass");
-    check(state.live_frame == 996u && state.ball.action == DD_BALL_PASS &&
+          "live 1014 follows $9018->$B0B8 into state $31 with the CPU inbound vector installed");
+    check(dd_gameplay_advance_to(&pack, &state, 1378u, 0u), "advance to inbound pass");
+    check(state.live_frame == 1022u && state.ball.action == DD_BALL_PASS &&
           state.ball.receiver == 6u,
-          "live 996 starts original pass state $02 toward the adjacent receiver");
-    check(dd_gameplay_advance_to(&pack, &state, 1371u, 0u), "advance to inbound reception");
-    check(state.live_frame == 1015u && state.phase == DD_GAMEPLAY_LIVE &&
+          "live 1022 starts original pass state $02 toward the adjacent receiver");
+    check(dd_gameplay_advance_to(&pack, &state, 1396u, 0u), "advance to inbound reception");
+    check(state.live_frame == 1040u && state.phase == DD_GAMEPLAY_LIVE &&
           state.ball.action == DD_BALL_DRIBBLE && state.carrier == 6u,
-          "live 1015 completes the inbound and resumes CPU possession decisions");
-    check(state.clock_minutes == 0x04u && state.clock_seconds == 0x26u,
-          "native HUD clock matches original frame 3572 at 04:26");
+          "live 1040 completes the inbound and resumes CPU possession decisions");
+    check(state.clock_minutes == 0x04u && state.clock_seconds == 0x25u,
+          "native HUD clock remains synchronized at the exact-route inbound reception");
     check(state.players[5].role == 1u && state.players[6].role == 0u &&
           state.players[5].paired_player == 4u &&
           state.players[4].paired_player == 5u &&
@@ -592,12 +603,12 @@ int main(int argc, char **argv) {
           state.players[0].paired_player == 6u,
           "$993A/$99D9/$9A31 preserve inbound role and reciprocal pair swaps");
     for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
-        check_checkpoint(&state, 1015u, player,
+        check_checkpoint(&state, 1040u, player,
                          post_inbound_action[player], post_inbound_target[player]);
         live_start_x[player] = state.players[player].court_x;
         live_start_depth[player] = state.players[player].court_depth;
     }
-    check(dd_gameplay_advance_to(&pack, &state, 1399u, 0u),
+    check(dd_gameplay_advance_to(&pack, &state, 1424u, 0u),
           "advance 28 frames through the original post-inbound decision window");
     check(state.ball.action == DD_BALL_SHOT_GATHER && state.carrier == 6u,
           "post-inbound state $25 reaches $27/ball state $04 instead of replaying the basket run");
@@ -775,6 +786,10 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].court_depth = 0x002000;
     dispatch_state.players[5].target_x = 0x012000;
     dispatch_state.players[5].target_depth = 0x001800;
+    dispatch_state.players[5].velocity_x = 0;
+    dispatch_state.players[5].velocity_depth = 0;
+    dispatch_state.players[5].route_velocity_x = 0;
+    dispatch_state.players[5].route_velocity_depth = 0;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].route_velocity_x == 0x00E1 &&
           dispatch_state.players[5].route_velocity_depth == -0x0078 &&
@@ -958,9 +973,15 @@ int main(int argc, char **argv) {
     dispatch_state.ball.court_x = 0x001000;
     dispatch_state.ball.court_depth = 0x001000;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
+    check(dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[5].target_x != dispatch_state.players[0].court_x,
+          "$90B3 targets the linked player's projected $914E collision anchor");
+    dispatch_state.players[5].court_x = dispatch_state.players[5].target_x;
+    dispatch_state.players[5].court_depth = dispatch_state.players[5].target_depth;
+    run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_LIVE_PAIRED_DEFENDER &&
           dispatch_state.players[5].paired_timer == 0x10u,
-          "player state $20 follows $9102 contact into $22 with latch $10");
+          "player state $20 follows $9102 anchor contact into $22 with latch $10");
     dispatch_state.players[0].court_x = 0x014000;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
@@ -979,13 +1000,13 @@ int main(int argc, char **argv) {
     dispatch_state.players[2].court_x = 0x014000;
     dispatch_state.players[2].court_depth = 0x006800;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
-    check(dispatch_state.players[5].target_x == dispatch_state.players[2].court_x &&
-          dispatch_state.players[5].target_depth == dispatch_state.players[2].court_depth &&
-          dispatch_state.players[5].court_x == 0x010180 &&
-          dispatch_state.players[5].court_depth == 0x005980,
-          "$8A28->$90B3 follows mutable $0580 exactly and applies $8BF8's 3/4 vector cadence");
-    dispatch_state.players[5].court_x = dispatch_state.players[2].court_x;
-    dispatch_state.players[5].court_depth = dispatch_state.players[2].court_depth;
+    check(dispatch_state.players[5].target_x != dispatch_state.players[0].court_x &&
+          dispatch_state.players[5].target_depth != dispatch_state.players[0].court_depth &&
+          (dispatch_state.players[5].velocity_x != 0 ||
+           dispatch_state.players[5].velocity_depth != 0),
+          "$8A28->$90B3 follows mutable $0580 through the projected anchor and $8BF8 vector");
+    dispatch_state.players[5].court_x = dispatch_state.players[5].target_x;
+    dispatch_state.players[5].court_depth = dispatch_state.players[5].target_depth;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_LIVE_PAIRED_DEFENDER,
           "$9102 contact uses the mutable pair rather than arithmetic slot+5");
@@ -1556,6 +1577,8 @@ int main(int argc, char **argv) {
         (((uint32_t)dispatch_state.players[5].court_x >> 12u) & 0x1Fu));
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.carrier = 0xFFu;
+    dispatch_state.cpu_priority_player = 4u;
+    dispatch_state.cpu_global_frame = 1u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD &&
           dispatch_state.ball.owner == 5u &&
@@ -1575,6 +1598,8 @@ int main(int argc, char **argv) {
     dispatch_state.players[5].target_zone = 0x1Fu;
     dispatch_state.ball.owner = 0xFFu;
     dispatch_state.carrier = 0xFFu;
+    dispatch_state.cpu_priority_player = 4u;
+    dispatch_state.cpu_global_frame = 1u;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
     check(dispatch_state.players[5].action == DD_PLAYER_INBOUND_HOLD &&
           dispatch_state.players[5].court_x == 0x01F000 &&

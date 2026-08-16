@@ -5,7 +5,7 @@
   "baseline": {
     "catalogued_weighted_coverage_percent": 92.6,
     "catalogued_match_rules_percent": 80.8,
-    "comprehensive_portable_coverage_percent": 88.4,
+    "comprehensive_portable_coverage_percent": 89.8,
     "status": "routine_annotation_required",
     "recursive_routine_graph_count": 223,
     "recursive_routine_graph_unclassified": 0,
@@ -238,6 +238,19 @@
       ],
       "coverage_change_percent": 1.8,
       "reason": "Eight of 216 portable routines advance from Partial to Verified using headless Ghidra control flow, directional pass/switch FCEUX traces, natural animation execution, and native ownership/projection/animation regressions."
+    },
+    {
+      "milestone": "phase-4e-installed-route-and-formation-cadence",
+      "status": "verified",
+      "completed": [
+        "exact `$D98D->$A84C` double integration of retained `$ABCD` vectors",
+        "selective `$8BF8` wrapping 5/4 scaling and `$914E` projected collision anchors",
+        "rotating `$004D` route refresh and extended `$D978` inbound arrival",
+        "legal fractional court endpoints, free-throw ball-position target installation, and four-period progression regression",
+        "6 comprehensive routine nodes promoted to Verified"
+      ],
+      "coverage_change_percent": 1.4,
+      "reason": "Six route, formation, and inbound setup nodes advance from Partial to Verified using headless Ghidra instruction flow, exact FCEUX sub-cell traces, native fixed-point assertions, and a clean four-period soak."
     }
   ],
   "phases": [

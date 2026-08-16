@@ -1812,13 +1812,13 @@ The defensive follow-up corrects a separate native approximation in player
 states `$20/$22`. Ghidra at `$8A16` calls `$9102`, which loads the opponent
 through mutable link `$0580+X`; it never assumes the arithmetic player five
 slots away. When the current rotating object remains separated, `$8A28` calls
-`$90B3` to derive a vector to the linked player's exact 24-bit position,
-`$8BF8` scales both 8.8 components to 3/4, and `$D98A->$A84C` performs the
+`$90B3` to derive a vector to the linked player's `$914E` projected collision
+anchor, `$8BF8` scales both 8.8 components to 5/4, and `$D98A->$A84C` performs the
 shared double integration. The former port used a 20-unit basket-side offset
 and, outside inbound, ignored `$0580`. That target could not enter `$9102`'s
 combined four-unit contact box, leaving defenders unlatched and poorly placed
-for a block. Native state `$20` now follows the mutable opponent exactly at
-the equivalent 1.5-unit scheduled cadence; state `$22` and its release check
+for a block. Native state `$20` now follows the mutable opponent anchor at
+the resulting 2.5-unit scheduled cadence; state `$22` and its release check
 use the same link.
 
 Regression coverage deliberately changes the link from player 5 to player 2,
@@ -1896,6 +1896,42 @@ Reproduce the ignored proof with:
 The build writes ignored `build/cpu-block-10.wav` and
 `build/user-block-20.wav`; generated WAVs, captures, ROM data, and Ghidra
 projects remain outside version control.
+
+## Installed route, formation, and extended-arrival closure
+
+Status: **implemented and routine-verified**. Headless Ghidra resolves the
+movement chain as `$ABCD->$9D2D/$AA98/$9BB0`, optional
+`$8BF8->$8C02`, and `$D98D->$A84C->$9CF6/$9CA0`. `$8C02` performs a
+wrapping arithmetic quarter shift and adds it to the original signed 8.8
+component, so the selected route families use **5/4**, not the former 3/4
+approximation. `$A84C` integrates depth twice and longitudinal position twice;
+legal integer endpoints retain their fractional bytes through `$01F1.FF` and
+`$98.FF`.
+
+State `$20` follows `$8A16->$9102/$90B3`. `$914E` projects the paired
+player toward the active hoop by 16 units for the controlled object or 32 for
+the other objects and stores that collision anchor in `$0490/$04A0/$04B0`.
+The native defender now targets and tests the mutable `$0580` pair's projected
+anchor, installs its `$ABCD` vector, applies `$8BF8`, and consumes it through
+the shared doubled integrator. Exact native regressions reproduce original
+frames 2558/2559, including player positions `$010E26/$21AA`,
+`$01081E/$5782`, `$0123C4/$3158`, and `$011C08/$7064`.
+
+Inbound state `$41` follows its distinct `$8C6B-$8CE8` path: `$D978`
+compares the extended packed bytes, `$ABCD` refreshes only for rotating
+priority object `$004D`, and the vector remains unscaled. The FCEUX trace keeps
+target `$0121`, clamps at depth `$98A0`, and claims the ball only when the
+priority refresh observes the destination cell. Free-throw setup likewise
+copies the ball's fixed-point and packed coordinates through the recovered
+`$85A8-$85B4` target override. Tests now cover this pickup/release/reception
+chain, both free-throw shooters, legal fractional bounds, and a four-period
+soak that reaches GAME SET with CPU passes, shots, and inbounds. Six additional
+recursive routines are Verified, raising comprehensive coverage to **89.8%
+(172 Verified, 44 Partial, 0 Missing; 7 NES mechanisms excluded)**.
+The new ignored original/native captures differ by 4.5061% at original
+frame 3501/native 1290 (pickup) and 5.0694% at original frame 3572/native 1396
+(reception); the remaining object-placement delta is tracked by the 44 Partial
+routines rather than being hidden by the coverage promotion.
 
 The current implementation percentage and its reproducible scoring rules are maintained in `GAMEPLAY_COVERAGE.md`. The current result is **93% portable Ghidra-to-C gameplay-loop coverage** (92.6% unrounded), **80.8% match-rules completeness**, and **100% for the bounded inbound-only inventory**; these are intentionally separate measures. The portable denominator explicitly excludes mapper/bank switching and NES-only PPU/CHR/OAM presentation mechanisms.
 

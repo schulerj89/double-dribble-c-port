@@ -8,7 +8,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 **Match-rules completeness: 80.8%**
 
-**Comprehensive recursive-routine coverage: 88.4% (166 Verified, 50 Partial, 0 Missing; 7 NES mechanisms excluded)**
+**Comprehensive recursive-routine coverage: 89.8% (172 Verified, 44 Partial, 0 Missing; 7 NES mechanisms excluded)**
 
 The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, both CPU and user shot-contest paths, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher now have native paths. Inbound formation/role/arrival helpers, portable score/HUD/net effects, and internal ball physics/contact blocks are now routine-verified. Block SFX `$10/$20` and free-throw tables `$85C7/$86AF` are recovered and pack-backed; exact presentation/global contest gates, clock cadence, and remaining foul eligibility still require closure.
 
@@ -83,9 +83,9 @@ controlled `$EC==$EC` probe records `$21->$20` and `$55->$00`. Original state
 `$41` uses the same packed arrival rule before copying the inbounder's position
 to the ball: natural frame 3501 records position/target/ball `$0121`,
 owner/carrier `$07`, and `$41->$30`. The native state handler preserves that
-data flow while its shared route interpolation uses the cadence-calibrated
-sub-cell target crossing documented under Partial core movement. Both explicit
-state handlers remain V; the movement caveat is counted once in the core loop.
+data flow with the installed `$ABCD` vector, rotating `$004D` refresh, doubled
+`$D98D->$A84C` bounded integrations, and legal fractional endpoint. Both
+explicit state handlers and their shared route/formation helpers are V.
 
 States `$23/$24` now translate `$8AF4->$8B12->$9ABD` instead of using a
 ballistic approximation. `$8AF4->$B503` clears all three motion vectors and

@@ -319,6 +319,27 @@
       "regression_tests": [
         "tests/dd_gameplay_cpu_test.c facing-indexed shot animation, moving run animation, top-edge projection, signed clipping, camera CHR, and unlimited live metasprite suite"
       ]
+    },
+    {
+      "name": "installed_route_formation_and_extended_arrival",
+      "status": "verified",
+      "routines": [
+        "bank0:8491", "bank0:8A57", "bank0:8BB9",
+        "bank0:8BBF", "bank0:92BD", "bank0:9645"
+      ],
+      "evidence": [
+        "Headless Ghidra `$8491/$8A57/$8BB9/$8BBF/$92BD/$9645` flow through `$ABCD`, selective `$8BF8`, `$D978`, `$D98D`, `$90B3`, and `$914E`",
+        "FCEUX physics/dispatch traces prove exact original frames 2558/2559 fixed-point positions, `$004D`-gated route refresh, state `$41` extended `$0121` arrival, rebound/inbound formation installation, and `$98A0` legal fractional endpoint"
+      ],
+      "native_symbols": [
+        "dd_set_cpu_target", "dd_set_cpu_scaled_target",
+        "dd_install_cpu_route_vector", "dd_scale_route_vector_five_quarters",
+        "dd_player_collision_anchor", "dd_update_cpu_player",
+        "dd_initialize_free_throw_formation", "dd_begin_common_inbound"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c exact opening sub-cell vectors, 5/4 route scaling, mutable collision-anchor contact, extended inbound arrival/release/reception, free-throw formation, legal fractional bounds, and four-period soak suite"
+      ]
     }
   ]
 }
