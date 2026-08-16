@@ -370,10 +370,10 @@ static void check_user_offense_cpu_defense(const DDAssetPack *pack) {
 
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
-        0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Du, 0x3Eu
+        0x0Fu, 0x20u, 0x20u, 0x20u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Du, 0x3Eu
     };
     static const uint8_t post_inbound_target[DD_GAMEPLAY_PLAYER_COUNT] = {
-        0xE8u, 0x48u, 0xCCu, 0xB5u, 0x79u, 0x21u, 0xA6u, 0xD7u, 0x4Cu, 0x8Cu
+        0xE8u, 0x48u, 0xCCu, 0xB5u, 0x79u, 0x21u, 0xA6u, 0xD7u, 0x8Cu, 0x4Cu
     };
     static const uint8_t priority_cycle[10] = {
         3u, 9u, 4u, 5u, 0u, 6u, 1u, 7u, 2u, 8u
@@ -535,6 +535,26 @@ int main(int argc, char **argv) {
     check(jump_state.phase == DD_GAMEPLAY_LIVE && jump_state.carrier == 0u &&
           jump_state.ball.action == DD_BALL_DRIBBLE,
           "user jump win reaches movable user possession one frame before the CPU branch");
+    {
+        static const uint16_t jump_start[10] = {
+            285u, 289u, 293u, 297u, 301u,
+            305u, 309u, 313u, 317u, 321u
+        };
+        static const uint8_t user_wins[10] = {
+            0u, 0u, 0u, 0u, 1u, 0u, 1u, 1u, 0u, 1u
+        };
+        uint32_t timing;
+        for (timing = 0u; timing < 10u; ++timing) {
+            memset(&jump_state, 0, sizeof(jump_state));
+            check(dd_gameplay_advance_to(&pack, &jump_state,
+                                         jump_start[timing] - 1u, 0u) &&
+                  dd_gameplay_step(&pack, &jump_state, DD_INPUT_B) &&
+                  dd_gameplay_advance_to(&pack, &jump_state, 356u, 0u),
+                  "$A638 tip timing sweep reaches the live boundary");
+            check((jump_state.tip_winner == 0u) == (user_wins[timing] != 0u),
+                  "$9ABD zero-byte plateau plus $A6C3 contact matches the FCEUX B sweep");
+        }
+    }
 
     memset(&state, 0, sizeof(state));
     check(dd_gameplay_advance_to(&pack, &state, 356u, 0u), "advance to live handoff");
@@ -654,6 +674,36 @@ int main(int argc, char **argv) {
     check(dd_gameplay_advance_to(&pack, &state, 582u, 0u), "advance to rebound state");
     check(state.live_frame == 226u && state.ball.action == DD_BALL_REBOUND,
           "live 226 reaches original rebound state $07");
+    {
+        DDGameplayState smooth_inbound = state;
+        int32_t previous_x = smooth_inbound.players[0].court_x;
+        int32_t previous_depth = smooth_inbound.players[0].court_depth;
+        int32_t prior_x_delta = 0;
+        int32_t prior_depth_delta = 0;
+        uint32_t route_reversals = 0u;
+        uint32_t route_frame;
+        for (route_frame = 0u; route_frame < 400u &&
+             smooth_inbound.players[0].action != DD_PLAYER_LIVE_USER_INBOUND;
+             ++route_frame) {
+            int32_t x_delta;
+            int32_t depth_delta;
+            check(dd_gameplay_step(&pack, &smooth_inbound, 0u),
+                  "advance made-basket rebound route without axis shuffle");
+            x_delta = smooth_inbound.players[0].court_x - previous_x;
+            depth_delta = smooth_inbound.players[0].court_depth - previous_depth;
+            if (x_delta != 0 && prior_x_delta != 0 &&
+                ((x_delta < 0) != (prior_x_delta < 0))) ++route_reversals;
+            if (depth_delta != 0 && prior_depth_delta != 0 &&
+                ((depth_delta < 0) != (prior_depth_delta < 0))) ++route_reversals;
+            if (x_delta != 0) prior_x_delta = x_delta;
+            if (depth_delta != 0) prior_depth_delta = depth_delta;
+            previous_x = smooth_inbound.players[0].court_x;
+            previous_depth = smooth_inbound.players[0].court_depth;
+        }
+        check(route_frame < 400u && route_reversals == 0u &&
+              smooth_inbound.players[0].action == DD_PLAYER_LIVE_USER_INBOUND,
+              "$8E71/$8EBF latch reached packed axes and complete inbound without shuffling");
+    }
     check(dd_gameplay_advance_to(&pack, &state, 743u, 0u), "advance to loose-ball recovery");
     check(state.live_frame == 387u && state.ball.action == DD_BALL_DRIBBLE && state.carrier == 0u,
           "live 387 reproduces the observed user-side recovery");
@@ -697,13 +747,13 @@ int main(int argc, char **argv) {
           state.players[5].court_depth <= 0x0098FF &&
           state.players[5].target_depth == 0x009800,
           "inbounder reaches extended target cell $0121 in the legal baseline depth band");
-    check(dd_gameplay_advance_to(&pack, &state, 1370u, 0u), "advance to inbound release setup");
-    check(state.live_frame == 1014u &&
+    check(dd_gameplay_advance_to(&pack, &state, 1362u, 0u), "advance to inbound release setup");
+    check(state.live_frame == 1006u &&
           state.players[5].action == DD_PLAYER_INBOUND_READY &&
           state.players[5].release_timer == 8u &&
           state.ball.action == DD_BALL_AWARDED &&
           (state.ball.velocity_x != 0 || state.ball.velocity_depth != 0),
-          "live 1014 follows $9018->$B0B8 into state $31 with the CPU inbound vector installed");
+          "live 1006 follows $9018->$B0B8 into state $31 with the CPU inbound vector installed");
     check(dd_gameplay_advance_to(&pack, &state, 1378u, 0u), "advance to inbound pass");
     check(state.live_frame == 1022u && state.ball.action == DD_BALL_PASS &&
           state.ball.receiver == 6u,

@@ -58,6 +58,7 @@ static int g_config_boundary_reached;
 static uint32_t g_tipoff_start_frame;
 static DDGameplayState g_gameplay;
 static uint32_t g_gameplay_input;
+static uint32_t g_gameplay_pressed;
 static int g_tipoff_audio_started;
 static ULONGLONG g_start_tick;
 static int g_started;
@@ -80,6 +81,7 @@ static void dd_reset_to_title(void) {
     g_config_boundary_reached = 0;
     g_tipoff_start_frame = 0u;
     g_gameplay_input = 0u;
+    g_gameplay_pressed = 0u;
     g_tipoff_audio_started = 0;
     g_intro_music_started = 0;
     g_config_music_started = 0;
@@ -140,6 +142,21 @@ static uint32_t dd_elapsed_frames(void) {
     return (uint32_t)(((GetTickCount64() - g_start_tick) * 60u) / 1000u);
 }
 
+/* A Windows key can be pressed and released between two paint-driven game
+   updates.  Keep that rising edge until one native simulation frame consumes
+   it, then use only the held mask for any remaining catch-up frames. */
+static int dd_advance_gameplay_to(uint32_t scene_frame) {
+    if (g_gameplay_pressed != 0u && g_gameplay.scene_frame < scene_frame) {
+        uint32_t first_frame = g_gameplay.scene_frame + 1u;
+        uint32_t first_input = g_gameplay_input | g_gameplay_pressed;
+        if (!dd_gameplay_advance_to(&g_pack, &g_gameplay, first_frame,
+                                    first_input)) return 0;
+        g_gameplay_pressed = 0u;
+    }
+    return dd_gameplay_advance_to(&g_pack, &g_gameplay, scene_frame,
+                                  g_gameplay_input);
+}
+
 static void dd_fill_frame(uint32_t color) {
     size_t count = (size_t)g_pack.meta.width * g_pack.meta.height;
     size_t index;
@@ -181,7 +198,7 @@ static int dd_render_current_frame(void) {
     if (g_config_boundary_reached) {
         uint32_t transition_frame = frame - g_tipoff_start_frame;
         if (transition_frame >= g_pack.tipoff_meta.visible_frame) {
-            if (!dd_gameplay_advance_to(&g_pack, &g_gameplay, transition_frame, g_gameplay_input)) return 0;
+            if (!dd_advance_gameplay_to(transition_frame)) return 0;
             if (g_gameplay.return_to_title) {
                 dd_reset_to_title();
                 return dd_render_title_selection(&g_pack, 0u, 1, g_pixels,
@@ -300,7 +317,9 @@ static LRESULT CALLBACK dd_window_proc(HWND window, UINT message, WPARAM wparam,
             if (wparam == VK_ESCAPE) {
                 DestroyWindow(window);
             } else if (g_config_boundary_reached) {
-                g_gameplay_input |= dd_gameplay_key(wparam);
+                uint32_t input = dd_gameplay_key(wparam);
+                g_gameplay_input |= input;
+                if ((lparam & (1L << 30)) == 0) g_gameplay_pressed |= input;
                 InvalidateRect(window, NULL, FALSE);
             } else if (!g_started && wparam == VK_UP) {
                 g_selection = 0u;

@@ -335,6 +335,18 @@ The first native CPU slice translates these observed handlers:
 
 `Capture-TipoffGameplay.ps1` now accepts an explicit A/B press interval and the Lua trace covers gameplay RAM `$0700-$07DF`, PPU snapshots, and `$2006/$2007` writes. The A/B sweep established that B is the jump button. Pressing B on original frame 2502 (native transition frame 301) changes original player slot 2 from state `$10` to `$11` at bank 0 `$A61F`. The CPU is provisionally selected at frame 2531, then the successful user-contact branch changes `$005B` from original slot 7 to slot 2 at `$A68A` on frame 2532. Native player indices remove the two non-player object slots, so original slots 2 and 7 are native players 0 and 5.
 
+The initial native slice reduced that result to the single provisional condition
+`jump_start == 301`, which made a live win practically impossible and omitted
+the later valid contact.  The translated path now advances `$9ABD`'s `$9B34`
+height-stream pointer on the alternating dispatcher cadence, including the
+two-byte descending turn after sentinel `$81`; `$A662` gates contact on the
+resulting zero byte and `dd_jump_ball_contact` performs `$A6C3`'s 4-by-4 boxes.
+The ten-point original B sweep is now a regression: original starts
+2486/2490/2494/2498/2506/2518 lose, while 2502/2510/2514/2522 win.  The late
+2522 case is not special-cased: its zero plateau and the descending CPU-owned
+ball overlap at original frame 2552, exactly where the FCEUX trace records
+`$005A=03`, `$005B=02`, and SFX `$20` through `$A681/$A68A/$A68C`.
+
 The player dispatcher at bank 0 `$89B2` passes the action index to the fixed-bank indirect jump helper at `$C41C`. Its relevant opening chain is state `$25` at `$8B5A`, state `$26` at `$8D1F`, and state `$27` at `$8D57`. `$8D1F` changes the player to `$27`, selects ball state `$04`, installs the signed height/action data, and clears the flight velocities. `$8D57` continues the decision/shot path and calls the shared movement, collision, and decision helpers.
 
 The ball dispatcher begins at bank 0 `$AC83` and uses the same `$C41C` helper. Its table resolves states `$00-$0A` to `$ACB6`, `$ACD6`, `$AD41`, `$ADF2`, `$AE0C`, `$AE25`, `$AEDE`, `$AF46`, `$AF72`, `$AFDD`, and `$B017`; states `$0B/$0C` take the dead-ball return at `$ACAB`. In the observed opening shot, `$AE0C` is the gather/owner-attachment handler and `$AE25` advances flight and calls the rim, score, world-motion, and rebound helpers including `$B377`, `$B473`, `$9CA0`, `$9CF6`, and `$9B84`.
@@ -1611,6 +1623,27 @@ could therefore miss their packed target and stop at a court bound. The correcte
 C path installs `$9D2D->$9BB0`'s exact vector initially, refreshes only priority
 `$004D`, tests packed arrival before refreshing, and advances facing-specific run
 frames through `$D990->$A896`.
+
+An August 15 regression exposed a native-only shuffle in that same route.  A
+fresh FCEUX trace (`diagnostic-inbound-shuffle-original`) records player `$02`
+entering `$2D` in packed cell `$A5`, reaching target `$A4` at frame 2774,
+entering `$2F` with target `$A1` at frame 2776, and reaching `$30` at frame
+2834.  The C path had replaced `$D978`'s full packed equality in `$8EBF` with
+a longitudinal center crossing; meanwhile the untouched axis could leave its
+already-reached packed component and reverse on the next `$004D->$ABCD`
+refresh.  Native now restores full `$D978` equality and latches each reached
+packed axis while the other finishes.  The made-basket regression follows the
+entire `$2D->$2E->$2F->$30->$0D` path and rejects any X/depth sign reversal.
+
+The Win32 host now also retains each non-repeat gameplay key-down until one
+simulation frame consumes it.  Previously `WM_PAINT` supplied only the current
+held mask to every missed frame; a quick X press/release between paints could
+therefore disappear before user-inbound state `$0D` evaluated its A-button
+rising edge.  The first catch-up frame now receives the latched edge plus the
+held mask, subsequent frames receive only the held mask, and the unchanged C
+dispatcher performs `$0D->$05` pass release.  A live rebuilt-window check
+reached the left-baseline user inbound and a single synthesized X tap returned
+the formation to live play (`captures/native-gameplay/inbound-input-latch-live.jpg`).
 
 The original deliberately starts dribble state `$01` through `$8E88->$AD0E`
 when the inbounder claims the loose scoring ball. Native code retains that

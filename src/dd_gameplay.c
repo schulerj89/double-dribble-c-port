@@ -8,8 +8,6 @@
 #define DD_JUMPER_START_FRAME 302u
 #define DD_AWARD_FRAME 330u
 #define DD_LIVE_FRAME 356u
-#define DD_USER_JUMP_WIN_FRAME 301u
-#define DD_USER_AWARD_FRAME 331u
 #define DD_USER_LIVE_FRAME 355u
 #define DD_FIRST_CLOCK_TICK_FRAME 296u
 #define DD_CLOCK_FRAMES_PER_SECOND 32u
@@ -739,12 +737,20 @@ static int dd_player_at_extended_target(const DDPlayerState *player) {
         dd_pack_extended_coordinates(player->target_x, player->target_depth);
 }
 
-static int dd_player_at_extended_target_depth(const DDPlayerState *player) {
+/* The original `$D978` arrival test is cell-based even though `$ABCD` aims
+   at the center of that cell.  With native world coordinates an axis can
+   enter its destination cell several updates before the other axis; letting
+   the retained vector carry it back out makes the next priority refresh
+   reverse that component and visibly shuffles the player.  Preserve the
+   packed arrival semantics by latching each reached component independently
+   while `$2D/$2F` finish the remaining component. */
+static void dd_latch_reached_route_axes(DDPlayerState *player) {
     uint16_t current = dd_pack_extended_coordinates(player->court_x,
                                                       player->court_depth);
     uint16_t target = dd_pack_extended_coordinates(player->target_x,
                                                      player->target_depth);
-    return ((current ^ target) & 0x01E0u) == 0u;
+    if (((current ^ target) & 0x001Fu) == 0u) player->velocity_x = 0;
+    if (((current ^ target) & 0x01E0u) == 0u) player->velocity_depth = 0;
 }
 
 /* $AC64 mirrors the five-bit packed court column when direction bit $40 is set. */
@@ -1199,6 +1205,29 @@ static int32_t dd_scripted_jump_height(const DDTipoffAssetsHeader *assets,
 
 static int32_t dd_jump_height(const DDTipoffAssetsHeader *assets, uint32_t scene_frame) {
     return dd_scripted_jump_height(assets, scene_frame, DD_JUMPER_START_FRAME);
+}
+
+/* `$9ABD` advances the `$9B34` jump stream on the controlled player's
+   alternating dispatcher visit.  The ascending side advances one byte per
+   visit; after sentinel `$81`, the same visit turns around and the descending
+   side consumes two bytes.  `$A662` permits `$A6C3` contact only when the
+   resulting pointer addresses a zero plateau byte. */
+static int dd_tip_jump_apex_ready(const DDTipoffAssetsHeader *assets,
+                                  uint32_t sequence_frame,
+                                  uint32_t start_frame) {
+    uint32_t visits;
+    int32_t script_index;
+    if (sequence_frame < start_frame ||
+        ((sequence_frame - start_frame) & 1u) != 0u) return 0;
+    visits = (sequence_frame - start_frame) / 2u;
+    if (visits <= 13u) {
+        script_index = 11 + (int32_t)visits;
+    } else {
+        script_index = 23 - (int32_t)((visits - 14u) * 2u);
+    }
+    return script_index >= 0 &&
+        (uint32_t)script_index < sizeof(assets->height_scripts) &&
+        (uint8_t)assets->height_scripts[script_index] == 0u;
 }
 
 static void dd_attach_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *state, uint32_t table) {
@@ -2237,14 +2266,9 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
         case DD_PLAYER_REBOUND_RETURN:
             /* `$8EBF->$D978` tests both packed bytes before `$D98D` integrates
-               the existing vectors twice.  The native cadence adapter retains
-               its traced longitudinal crossing, but now also requires the
-               original extended depth band instead of ignoring that axis. */
+               the existing vectors twice. */
             speed = 0;
-            if (((player->velocity_x < 0 && player->court_x <= player->target_x) ||
-                 (player->velocity_x > 0 && player->court_x >= player->target_x) ||
-                 (player->velocity_x == 0 && player->court_x == player->target_x)) &&
-                dd_player_at_extended_target_depth(player)) {
+            if (dd_player_at_extended_target(player)) {
                 player->action = DD_PLAYER_INBOUND_HOLD;
                 player->action_age = 0u;
                 player->hold_timer = 0x40u;
@@ -2412,6 +2436,10 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
     if (integrate_existing_velocity) {
         /* `$D98D->$A84C` preserves the installed vectors and performs two
            independently bounded integrations on each court axis. */
+        if (player->action == DD_PLAYER_REBOUND_CHASE ||
+            player->action == DD_PLAYER_REBOUND_RETURN) {
+            dd_latch_reached_route_axes(player);
+        }
         dd_integrate_depth(&player->court_depth, &player->velocity_depth);
         dd_integrate_depth(&player->court_depth, &player->velocity_depth);
         dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
@@ -3969,19 +3997,26 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
         state->ball.action = DD_BALL_AWARDED;
         state->ball.held_height_offset = 0x18u;
     }
-    if (sequence_frame == DD_USER_AWARD_FRAME &&
-        state->tip_user_jump_frame == DD_USER_JUMP_WIN_FRAME) {
-        state->carrier = 0u;
-        state->tip_winner = 0u;
-        state->ball.owner = 0u;
-        state->live_start_frame = DD_USER_LIVE_FRAME;
-    }
     if (sequence_frame > DD_AWARD_FRAME && sequence_frame < state->live_start_frame) {
         if (state->tip_user_jump_frame != UINT_MAX) {
             state->players[0].height = dd_scripted_jump_height(
                 assets, sequence_frame, state->tip_user_jump_frame);
         }
         state->players[5].height = dd_jump_height(assets, sequence_frame);
+        if (state->tip_winner != 0u &&
+            state->tip_user_jump_frame != UINT_MAX &&
+            dd_tip_jump_apex_ready(assets, sequence_frame,
+                                   state->tip_user_jump_frame) &&
+            dd_jump_ball_contact(state, 0u)) {
+            /* `$A67D-$A68C`: acquisition mode three, owned ball state zero,
+               controlled slot as winner, and jump-contact SFX `$20`. */
+            state->carrier = 0u;
+            state->tip_winner = 0u;
+            state->ball.owner = 0u;
+            state->ball.action = DD_BALL_AWARDED;
+            state->live_start_frame = DD_USER_LIVE_FRAME;
+            dd_request_audio_event(state, 0x20u);
+        }
         dd_attach_ball(assets, state, 0u);
         state->ball.height = state->players[state->carrier].height + 0x1800;
     }
