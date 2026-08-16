@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 86.6,
+    "comprehensive_percent": 88.4,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 158,
-    "partial_count": 58,
+    "verified_count": 166,
+    "partial_count": 50,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -2670,12 +2670,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A129"
+        "Ghidra recursive node bank0:A129",
+        "Headless Ghidra `$A129-$A1C9` four-direction candidate scoring and later-slot tie rule plus `$A29D-$A346` two-nearest defender selection, no-change exit, role/pair swap, and control transfer",
+        "FCEUX `original-user-pass-{left,right,up,down}` and `original-user-switch-*` traces execute `$A129/$A1C9`, `$A29D/$A314`, successful `$A33D`, and no-change `$A342` exits"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_pass_receiver",
+        "dd_user_switch_candidate",
+        "dd_transfer_user_control",
+        "dd_swap_inbound_role_links"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional receiver, in-flight ownership, reception control, defender switch, role swap, reciprocal pair links, and immediate switched-player block suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2763,12 +2772,21 @@
         "A342"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A29D"
+        "Ghidra recursive node bank0:A29D",
+        "Headless Ghidra `$A129-$A1C9` four-direction candidate scoring and later-slot tie rule plus `$A29D-$A346` two-nearest defender selection, no-change exit, role/pair swap, and control transfer",
+        "FCEUX `original-user-pass-{left,right,up,down}` and `original-user-switch-*` traces execute `$A129/$A1C9`, `$A29D/$A314`, successful `$A33D`, and no-change `$A342` exits"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_pass_receiver",
+        "dd_user_switch_candidate",
+        "dd_transfer_user_control",
+        "dd_swap_inbound_role_links"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional receiver, in-flight ownership, reception control, defender switch, role swap, reciprocal pair links, and immediate switched-player block suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2778,12 +2796,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A33D"
+        "Ghidra recursive node bank0:A33D",
+        "Headless Ghidra `$A129-$A1C9` four-direction candidate scoring and later-slot tie rule plus `$A29D-$A346` two-nearest defender selection, no-change exit, role/pair swap, and control transfer",
+        "FCEUX `original-user-pass-{left,right,up,down}` and `original-user-switch-*` traces execute `$A129/$A1C9`, `$A29D/$A314`, successful `$A33D`, and no-change `$A342` exits"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_pass_receiver",
+        "dd_user_switch_candidate",
+        "dd_transfer_user_control",
+        "dd_swap_inbound_role_links"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional receiver, in-flight ownership, reception control, defender switch, role swap, reciprocal pair links, and immediate switched-player block suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -2793,12 +2820,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A342"
+        "Ghidra recursive node bank0:A342",
+        "Headless Ghidra `$A129-$A1C9` four-direction candidate scoring and later-slot tie rule plus `$A29D-$A346` two-nearest defender selection, no-change exit, role/pair swap, and control transfer",
+        "FCEUX `original-user-pass-{left,right,up,down}` and `original-user-switch-*` traces execute `$A129/$A1C9`, `$A29D/$A314`, successful `$A33D`, and no-change `$A342` exits"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_user_pass_receiver",
+        "dd_user_switch_candidate",
+        "dd_transfer_user_control",
+        "dd_swap_inbound_role_links"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c directional receiver, in-flight ownership, reception control, defender switch, role swap, reciprocal pair links, and immediate switched-player block suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3301,12 +3337,21 @@
       ],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A85A"
+        "Ghidra recursive node bank0:A85A",
+        "Headless Ghidra `$A85A-$A895` court-to-screen projection, camera wrap, and visibility gate; `$A896-$A8E5` state/facing/frame metasprite lookup; `$AA20/$AA4A` signed screen eligibility and camera normalization",
+        "FCEUX natural gameplay executes `$A896` 3,927 times in the bounded scheduler trace and moving-shot/block captures prove facing-specific gather, airborne, run, and landing selections"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_animation_for_facing",
+        "dd_render_gameplay",
+        "dd_gameplay_emit",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c facing-indexed shot animation, moving run animation, top-edge projection, signed clipping, camera CHR, and unlimited live metasprite suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3316,12 +3361,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:A896"
+        "Ghidra recursive node bank0:A896",
+        "Headless Ghidra `$A85A-$A895` court-to-screen projection, camera wrap, and visibility gate; `$A896-$A8E5` state/facing/frame metasprite lookup; `$AA20/$AA4A` signed screen eligibility and camera normalization",
+        "FCEUX natural gameplay executes `$A896` 3,927 times in the bounded scheduler trace and moving-shot/block captures prove facing-specific gather, airborne, run, and landing selections"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_animation_for_facing",
+        "dd_render_gameplay",
+        "dd_gameplay_emit",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c facing-indexed shot animation, moving run animation, top-edge projection, signed clipping, camera CHR, and unlimited live metasprite suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3354,12 +3408,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AA20"
+        "Ghidra recursive node bank0:AA20",
+        "Headless Ghidra `$A85A-$A895` court-to-screen projection, camera wrap, and visibility gate; `$A896-$A8E5` state/facing/frame metasprite lookup; `$AA20/$AA4A` signed screen eligibility and camera normalization",
+        "FCEUX natural gameplay executes `$A896` 3,927 times in the bounded scheduler trace and moving-shot/block captures prove facing-specific gather, airborne, run, and landing selections"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_animation_for_facing",
+        "dd_render_gameplay",
+        "dd_gameplay_emit",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c facing-indexed shot animation, moving run animation, top-edge projection, signed clipping, camera CHR, and unlimited live metasprite suite"
+      ]
     },
     {
       "bank": "bank0",
@@ -3369,12 +3432,21 @@
       "calls": [],
       "tail_calls": [],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
-        "Ghidra recursive node bank0:AA4A"
+        "Ghidra recursive node bank0:AA4A",
+        "Headless Ghidra `$A85A-$A895` court-to-screen projection, camera wrap, and visibility gate; `$A896-$A8E5` state/facing/frame metasprite lookup; `$AA20/$AA4A` signed screen eligibility and camera normalization",
+        "FCEUX natural gameplay executes `$A896` 3,927 times in the bounded scheduler trace and moving-shot/block captures prove facing-specific gather, airborne, run, and landing selections"
       ],
-      "native_symbols": [],
-      "regression_tests": []
+      "native_symbols": [
+        "dd_animation_for_facing",
+        "dd_render_gameplay",
+        "dd_gameplay_emit",
+        "dd_update_camera"
+      ],
+      "regression_tests": [
+        "tests/dd_gameplay_cpu_test.c facing-indexed shot animation, moving run animation, top-edge projection, signed clipping, camera CHR, and unlimited live metasprite suite"
+      ]
     },
     {
       "bank": "bank0",

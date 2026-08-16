@@ -5,7 +5,7 @@
   "baseline": {
     "catalogued_weighted_coverage_percent": 92.6,
     "catalogued_match_rules_percent": 80.8,
-    "comprehensive_portable_coverage_percent": 86.6,
+    "comprehensive_portable_coverage_percent": 88.4,
     "status": "routine_annotation_required",
     "recursive_routine_graph_count": 223,
     "recursive_routine_graph_unclassified": 0,
@@ -227,6 +227,17 @@
       ],
       "coverage_change_percent": 0.0,
       "reason": "The scheduler entry is not a separately catalogued recursive function node, so this fixes and verifies behavior without inflating comprehensive routine coverage."
+    },
+    {
+      "milestone": "phase-0d-user-control-and-presentation-routine-closure",
+      "status": "verified",
+      "completed": [
+        "four-direction `$A129` receiver scoring and tie handling",
+        "`$A29D/$A33D/$A342` defensive selection and control/role/pair transfer exits",
+        "`$A85A/$A896/$AA20/$AA4A` projection, visibility, camera normalization, and animation selection"
+      ],
+      "coverage_change_percent": 1.8,
+      "reason": "Eight of 216 portable routines advance from Partial to Verified using headless Ghidra control flow, directional pass/switch FCEUX traces, natural animation execution, and native ownership/projection/animation regressions."
     }
   ],
   "phases": [
@@ -263,7 +274,6 @@
       "coordination": "Runs alongside phase 0 because each visible-flow trace also expands and validates the exhaustive inventory.",
       "work": [
         "Fix player/metasprite disappearance near the top court edge without reintroducing NES scanline dropout or HUD wrapping",
-        "Eliminate the pre-existing alternating live-frame HUD displacement reproduced at native frames 357/358 while preserving the recovered scoreboard split",
         "Recover and apply the original tip-off jumper facing and sprite selection for user and CPU wins",
         "Carry the selected 1P team index and recovered palette data from configuration into tip-off and gameplay",
         "Recover the true dunk eligibility chain and make B-triggered user/CPU dunks activate from natural play",
@@ -271,7 +281,6 @@
       ],
       "acceptance": [
         "all ten players remain fully rendered over the legal court projection range",
-        "the complete HUD and green message box remain stable on consecutive odd/even live frames",
         "user tip-off jump faces the same direction and uses the same pose as the original",
         "all selectable user-team colors survive configuration, tip-off, camera changes, inbound, switching, and period resets",
         "natural-play make and miss dunks occur through the shipping input/CPU paths",

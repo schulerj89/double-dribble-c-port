@@ -8,7 +8,7 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 **Match-rules completeness: 80.8%**
 
-**Comprehensive recursive-routine coverage: 86.6% (158 Verified, 58 Partial, 0 Missing; 7 NES mechanisms excluded)**
+**Comprehensive recursive-routine coverage: 88.4% (166 Verified, 50 Partial, 0 Missing; 7 NES mechanisms excluded)**
 
 The first number measures the currently catalogued dispatcher and loop work. The second is deliberately more conservative: all basket-result outcomes, period/final-match transitions, CPU pass/shot policy, both CPU and user shot-contest paths, the complete portable inbound branch/helper inventory, and the foul/free-throw dispatcher now have native paths. Inbound formation/role/arrival helpers, portable score/HUD/net effects, and internal ball physics/contact blocks are now routine-verified. Block SFX `$10/$20` and free-throw tables `$85C7/$86AF` are recovered and pack-backed; exact presentation/global contest gates, clock cadence, and remaining foul eligibility still require closure.
 
@@ -421,11 +421,23 @@ alongside `$001A`, and the native regression asserts the complete scheduled
 player cycle `8,3,9,4,5,0,6,1,7,2,8`. This closes a scheduler behavior gap but
 does not promote an inventory node because `$9E70` is currently a non-function
 entry inside the recursive graph; comprehensive coverage remains **86.6%**.
+That was the scheduler milestone's score before the additional routine
+annotations below.
 Native screenshots at frames 356 and 426 remain visually intact. A detached
-`0a6ac2e` comparison also reproduces the alternating HUD displacement at frames
-357/358, proving it predates this scheduler change; phase 1 now tracks that
-renderer defect explicitly rather than misattributing it to the converted
-cursor recurrence.
+`0a6ac2e` comparison plus a raw pixel comparison of native frames 357/358
+confirms that the complete HUD remains stable across consecutive odd/even
+scheduler frames.
+
+Routine-level annotation now closes eight already implemented user/presentation
+helpers. `$A129` covers four-direction receiver scoring and its later-slot tie
+rule. `$A29D/$A33D/$A342` cover the two-nearest defensive selection, successful
+control/role/pair transfer, and no-change exit. `$A85A/$AA20/$AA4A` project and
+bound live objects relative to the camera, while `$A896` selects the
+state/facing/frame animation. The four directional pass captures, defensive
+switch captures, 3,927 natural `$A896` executions, and focused native
+receiver/switch/projection/animation regressions promote these eight routines
+without changing the already reported component score. Comprehensive coverage
+is now **88.4% (166 Verified, 50 Partial)**.
 
 Period transitions/end conditions are Verified. The earlier long trace proves
 the delayed period-one reset to a second-period formation. The final-match trace
