@@ -8,7 +8,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 
-#define DD_PACK_VERSION 20u
+#define DD_PACK_VERSION 21u
 #define DD_ENTRY_PPU 1u
 #define DD_ENTRY_DMC 2u
 #define DD_ENTRY_META 3u
@@ -632,6 +632,161 @@ static uint16_t dd_read_bank_u16(const uint8_t *rom, uint32_t bank, uint32_t cpu
     return (uint16_t)(rom[offset] | ((uint16_t)rom[offset + 1u] << 8));
 }
 
+static uint16_t dd_read_fixed_u16(const uint8_t *rom, uint32_t cpu_address) {
+    size_t offset = 16u + 7u * 0x4000u + (cpu_address - 0xC000u);
+    return (uint16_t)(rom[offset] | ((uint16_t)rom[offset + 1u] << 8));
+}
+
+/* Fixed-bank `$C549` uses an even stream index: `$C5C9[index/2]` selects
+   the switch bank and `$C5FB[index]` supplies the CPU pointer. */
+static int dd_decode_c549_stream(const uint8_t *rom, size_t rom_size,
+                                 uint8_t stream_index, uint8_t ppu[DD_PPU_SIZE]) {
+    size_t fixed_end = 16u + 8u * 0x4000u;
+    size_t bank_offset = 16u + 7u * 0x4000u + (0xC5C9u - 0xC000u) +
+        (stream_index >> 1u);
+    uint16_t address;
+    uint32_t consumed;
+    uint8_t bank;
+    if ((stream_index & 1u) != 0u || bank_offset >= fixed_end || fixed_end > rom_size ||
+        0xC5FBu + (uint32_t)stream_index + 1u > 0xFFFFu) return 0;
+    bank = rom[bank_offset];
+    address = dd_read_fixed_u16(rom, 0xC5FBu + stream_index);
+    return bank < 7u && dd_decode_stream(rom, rom_size, bank, address, ppu, &consumed);
+}
+
+/* Native expansion of the special-finish renderer `$808E->$801A`.  Its
+   `$80/$81` records temporarily follow and return from a shared record
+   stream, which ordinary gameplay metasprites never need. */
+static int dd_expand_dunk_metasprite(const uint8_t *rom, size_t rom_size,
+                                     uint8_t animation, uint8_t base_x,
+                                     uint8_t base_attributes, uint8_t base_y,
+                                     uint8_t oam[256], uint32_t *sprite) {
+    const size_t bank_end = 16u + 3u * 0x4000u;
+    uint16_t address;
+    uint16_t return_address = 0u;
+    size_t position;
+    size_t return_position = 0u;
+    uint8_t attributes = base_attributes;
+    uint32_t emitted = 0u;
+    uint32_t record_count;
+    if (bank_end > rom_size) return 0;
+    /* `$80AE ASL A` is eight-bit: cinematic IDs `$80+` wrap before the
+       pointer-table lookup. */
+    address = dd_read_bank_u16(rom, 2u,
+        0x90C4u + (uint8_t)(animation << 1u));
+    if (address < 0x8000u || address >= 0xC000u) return 0;
+    position = dd_bank_file_offset(2u, address);
+    if (position >= bank_end) return 0;
+    record_count = rom[position++];
+    while (emitted < record_count) {
+        uint8_t lead;
+        uint8_t tile;
+        int8_t y_offset;
+        int8_t x_offset;
+        if (position >= bank_end) return 0;
+        lead = rom[position++];
+        if (lead == 0x80u) {
+            uint16_t target;
+            if (position + 2u > bank_end || return_address != 0u) return 0;
+            target = (uint16_t)(rom[position] | ((uint16_t)rom[position + 1u] << 8));
+            return_address = address;
+            return_position = position + 2u;
+            if (target < 0x8000u || target >= 0xC000u) return 0;
+            address = target;
+            position = dd_bank_file_offset(2u, address);
+            continue;
+        }
+        if (lead == 0x81u) {
+            if (return_address == 0u) return 0;
+            address = return_address;
+            position = return_position;
+            return_address = 0u;
+            continue;
+        }
+        y_offset = (int8_t)lead;
+        y_offset = (int8_t)(y_offset >> 1);
+        if (position >= bank_end) return 0;
+        tile = rom[position++];
+        if ((lead & 1u) == 0u) {
+            if (position >= bank_end) return 0;
+            attributes = (uint8_t)((base_attributes | rom[position++]) & 0xE3u);
+        }
+        if (position >= bank_end) return 0;
+        x_offset = (int8_t)rom[position++];
+        oam[(*sprite & 63u) * 4u] = (uint8_t)(base_y + y_offset);
+        oam[(*sprite & 63u) * 4u + 1u] = tile;
+        oam[(*sprite & 63u) * 4u + 2u] = attributes;
+        oam[(*sprite & 63u) * 4u + 3u] = (uint8_t)(base_x + x_offset);
+        /* `$8123-$8126` advances the byte-sized OAM cursor four times, so
+           an oversized cinematic frame wraps exactly like the original. */
+        *sprite = (*sprite + 1u) & 63u;
+        ++emitted;
+    }
+    return 1;
+}
+
+static int dd_build_dunk_assets(const uint8_t *rom, size_t rom_size,
+                                DDTipoffAssetsHeader *header) {
+    static const uint8_t initial_stream_a[DD_DUNK_VARIANT_COUNT] = {
+        0x16u, 0x1Au, 0x1Eu, 0x16u, 0x1Au, 0x1Eu
+    };
+    static const uint8_t initial_stream_b[DD_DUNK_VARIANT_COUNT] = {
+        0x14u, 0x18u, 0x1Cu, 0x20u, 0x24u, 0x28u
+    };
+    static const uint8_t stage_stream_base[DD_DUNK_VARIANT_COUNT] = {
+        0x40u, 0x4Cu, 0x58u, 0x40u, 0x4Cu, 0x58u
+    };
+    uint8_t ppu[DD_PPU_SIZE];
+    uint32_t variant;
+    for (variant = 0u; variant < DD_DUNK_VARIANT_COUNT; ++variant) {
+        uint16_t object_pointer = dd_read_fixed_u16(rom, 0xD55Au + variant * 2u);
+        uint32_t stage;
+        if (object_pointer < 0x8000u || object_pointer >= 0xC000u) return 0;
+        memset(ppu, 0, sizeof(ppu));
+        /* `$D3D6` changes CHR/name data but not `$3F00`; the live match
+           palette remains installed across the presentation. */
+        if (0x1D2B3u + 16u > rom_size) return 0;
+        memcpy(ppu + 0x3F00u, rom + 0x1C904u, 16u);
+        memcpy(ppu + 0x3F10u, rom + 0x1D2B3u, 16u);
+        if (!dd_decode_c549_stream(rom, rom_size, initial_stream_a[variant], ppu) ||
+            !dd_decode_c549_stream(rom, rom_size, initial_stream_b[variant], ppu)) {
+            fprintf(stderr, "Dunk initial stream decode failed for variant %u.\n", variant);
+            return 0;
+        }
+        for (stage = 0u; stage < DD_DUNK_STAGE_COUNT; ++stage) {
+            size_t object_source = dd_bank_file_offset(2u, object_pointer) + stage * 12u;
+            uint8_t *objects = header->dunk_object[variant][stage];
+            uint8_t *oam = header->dunk_oam[variant][stage];
+            uint32_t object;
+            uint32_t sprite = 0u;
+            if (object_source + 12u > rom_size ||
+                !dd_decode_c549_stream(rom, rom_size,
+                    (uint8_t)(stage_stream_base[variant] + stage * 2u), ppu)) {
+                fprintf(stderr, "Dunk stage stream decode failed for variant %u stage %u.\n",
+                        variant, stage);
+                return 0;
+            }
+            memcpy(header->dunk_ppu[variant][stage], ppu, sizeof(ppu));
+            memcpy(objects, rom + object_source, 12u);
+            memset(oam, 0, 256u);
+            for (object = 0u; object < 64u; ++object) oam[object * 4u] = 0xF4u;
+            for (object = 0u; object < 3u; ++object) {
+                const uint8_t *record = objects + object * 4u;
+                /* `$D52B-$D546` maps each ROM record as Y, animation,
+                   attributes, X into `$033x/$030x/$031x/$032x`. */
+                if (!dd_expand_dunk_metasprite(rom, rom_size, record[1], record[3],
+                                               record[2], record[0], oam, &sprite)) {
+                    fprintf(stderr,
+                            "Dunk metasprite expansion failed for variant %u stage %u object %u animation %02X.\n",
+                            variant, stage, object, record[1]);
+                    return 0;
+                }
+            }
+        }
+    }
+    return 1;
+}
+
 static void dd_write_blob_u16(uint8_t *target, uint16_t value) {
     target[0] = (uint8_t)value;
     target[1] = (uint8_t)(value >> 8);
@@ -777,7 +932,7 @@ static int dd_build_config_assets(const uint8_t *rom, size_t rom_size,
 
 static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
                                   uint8_t **output_data, size_t *output_size) {
-    const size_t capacity = 8192u;
+    const size_t capacity = sizeof(DDTipoffAssetsHeader) + 8192u;
     const size_t bank2_end = 16u + 3u * 0x4000u;
     const size_t held_offsets = dd_bank_file_offset(0u, 0xB07Bu);
     const size_t height_scripts = dd_bank_file_offset(0u, 0x9B29u);
@@ -830,6 +985,10 @@ static int dd_build_tipoff_assets(const uint8_t *rom, size_t rom_size,
     memcpy(header->cpu_region_targets, rom + cpu_region_targets, sizeof(header->cpu_region_targets));
     memcpy(header->court_chr_left, rom + court_chr_left, sizeof(header->court_chr_left));
     memcpy(header->court_chr_right, rom + court_chr_right, sizeof(header->court_chr_right));
+    if (!dd_build_dunk_assets(rom, rom_size, header)) {
+        free(data);
+        return 0;
+    }
     for (index = 0u; index < DD_GAMEPLAY_METASPRITE_COUNT; ++index) {
         uint16_t address = dd_read_bank_u16(rom, 2u, 0x828Du + index * 2u);
         size_t source = dd_bank_file_offset(2u, address);
@@ -1810,7 +1969,7 @@ int dd_asset_pack_inspect(const char *path) {
         fprintf(stderr, "Invalid asset pack: %s\n", path);
         return 0;
     }
-    printf("Valid DDAP v20: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 8 shot poses, 6 four-tile net frames, 20 rebound entries, 60 free-throw bytes, 41 CPU targets, two court CHR streams, %zu END notes, %zu gameplay audio events, %zu whistle events, %zu CPU-block events, %zu user-block events, %zu three-call events, %zu three-score events, %zu basket-score events, and %zu DMC bytes.\n",
+    printf("Valid DDAP v21: %ux%u title, %zu DMC bytes; select has %zu notes, intro has %u updates and %zu music notes; config has %u options and %zu looping music events; tip-off has %u sprites, %u gameplay metasprites, 8 shot poses, 6 four-tile net frames, 20 rebound entries, 60 free-throw bytes, 41 CPU targets, two court CHR streams, 36 decoded dunk presentation frames, %zu END notes, %zu gameplay audio events, %zu whistle events, %zu CPU-block events, %zu user-block events, %zu three-call events, %zu three-score events, %zu basket-score events, and %zu DMC bytes.\n",
            pack.meta.width, pack.meta.height, pack.dmc_size,
            pack.select_music_count, pack.intro_meta.update_count, pack.intro_music_count, pack.config_meta.option_count,
            pack.config_music_count,

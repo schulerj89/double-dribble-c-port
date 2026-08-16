@@ -158,31 +158,75 @@ static void check_unlimited_native_gameplay_sprites(const DDAssetPack *pack) {
 }
 
 static void check_team_palette_continuity(const DDAssetPack *pack) {
+    const uint32_t width = pack->tipoff_meta.width;
+    const uint32_t height = pack->tipoff_meta.height;
     const size_t pixel_count = (size_t)pack->tipoff_meta.width * pack->tipoff_meta.height;
     uint32_t *new_york = (uint32_t *)malloc(pixel_count * sizeof(*new_york));
     uint32_t *los_angeles = (uint32_t *)malloc(pixel_count * sizeof(*los_angeles));
     DDGameplayState first;
     DDGameplayState second;
+    uint32_t user_changed = 0u;
+    uint32_t cpu_changed = 0u;
+    uint32_t x;
+    uint32_t y;
+    uint32_t player;
     int ok = new_york != NULL && los_angeles != NULL;
     memset(&first, 0, sizeof(first));
     memset(&second, 0, sizeof(second));
     if (ok) ok = dd_gameplay_configure(pack, &first, 0u, 0u, 0u) &&
         dd_gameplay_configure(pack, &second, 2u, 3u, 2u);
     if (ok) {
-        first.scene_frame = 144u;
-        second.scene_frame = 144u;
+        first.phase = second.phase = DD_GAMEPLAY_LIVE;
+        first.scene_frame = second.scene_frame = 356u;
+        first.hud_split_y = second.hud_split_y = 64u;
+        first.camera_x = second.camera_x = 0;
+        first.ball.animation = second.ball.animation = 0xFFu;
+        for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+            first.players[player].animation = 0xFFu;
+            second.players[player].animation = 0xFFu;
+        }
+        /* Isolate one 1P object using palettes 0/1 and one CPU object using
+           palettes 2/3.  This catches the former whole-frame false positive,
+           where a team choice changed only the opponent's pixels. */
+        first.players[0].animation = second.players[0].animation = 0x1Cu;
+        first.players[0].attributes = second.players[0].attributes = 0u;
+        first.players[0].court_x = second.players[0].court_x = 0x004000;
+        first.players[0].court_depth = second.players[0].court_depth = 0x004000;
+        first.players[0].height = second.players[0].height = 0x1000;
+        first.players[5].animation = second.players[5].animation = 0xFFu;
+        first.players[5].attributes = second.players[5].attributes = 2u;
+        first.players[5].court_x = second.players[5].court_x = 0x00C000;
+        first.players[5].court_depth = second.players[5].court_depth = 0x004000;
+        first.players[5].height = second.players[5].height = 0x1000;
         ok = dd_render_gameplay(pack, &first, new_york,
-                                pack->tipoff_meta.width, pack->tipoff_meta.height) &&
+                                width, height) &&
             dd_render_gameplay(pack, &second, los_angeles,
-                               pack->tipoff_meta.width, pack->tipoff_meta.height);
+                               width, height);
+        for (y = 96u; ok && y < 220u && y < height; ++y) {
+            for (x = 24u; x < 112u && x < width; ++x) {
+                if (new_york[(size_t)y * width + x] !=
+                    los_angeles[(size_t)y * width + x]) ++user_changed;
+            }
+        }
+        first.players[0].animation = second.players[0].animation = 0xFFu;
+        first.players[5].animation = second.players[5].animation = 0x21u;
+        if (ok) ok = dd_render_gameplay(pack, &first, new_york, width, height) &&
+            dd_render_gameplay(pack, &second, los_angeles, width, height);
+        for (y = 96u; ok && y < 220u && y < height; ++y) {
+            for (x = 152u; x < 240u && x < width; ++x) {
+                if (new_york[(size_t)y * width + x] !=
+                    los_angeles[(size_t)y * width + x]) ++cpu_changed;
+            }
+        }
     }
     check(ok && second.match_time_index == 2u && second.match_time_bcd == 0x20u &&
           second.clock_minutes == 0x20u && second.match_team_index == 3u &&
           second.match_level_index == 2u,
           "configuration time, team, and level persist in native match state");
-    check(ok && memcmp(new_york, los_angeles,
-                       pixel_count * sizeof(*new_york)) != 0,
-          "selected 1P team palette changes the tip-off/gameplay framebuffer");
+    check(ok && user_changed != 0u,
+          "selected `$0482` team color changes the isolated 1P gameplay player");
+    check(ok && cpu_changed == 0u,
+          "fixed `$0483` CPU jersey remains unchanged across 1P team selections");
     free(los_angeles);
     free(new_york);
 }
@@ -272,6 +316,58 @@ static void check_long_run_native_match(const DDAssetPack *pack) {
           "long-run CPU match exercises pass, shot, and inbound decisions");
 }
 
+static void check_user_offense_cpu_defense(const DDAssetPack *pack) {
+    DDGameplayState state;
+    int32_t previous_x[DD_GAMEPLAY_PLAYER_COUNT];
+    int32_t previous_depth[DD_GAMEPLAY_PLAYER_COUNT];
+    uint32_t moved[DD_GAMEPLAY_PLAYER_COUNT] = {0};
+    uint32_t frame;
+    uint32_t player;
+    memset(&state, 0, sizeof(state));
+    check(dd_gameplay_advance_to(pack, &state, 743u, 0u),
+          "reach the rebound-return user-control regression frame");
+    check(state.carrier == state.controlled_player &&
+          state.ball.action == DD_BALL_DRIBBLE &&
+          state.players[state.controlled_player].action != DD_PLAYER_LIVE_USER_CARRIER,
+          "rebound return can own the dribbling ball before live control is restored");
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A | DD_INPUT_B),
+          "press pass and shoot during the rebound-return transition");
+    check(state.ball.action == DD_BALL_DRIBBLE &&
+          state.players[state.controlled_player].action != DD_PLAYER_USER_SHOOT,
+          "non-live rebound ownership rejects premature A/B instead of freezing formation state `$37`");
+
+    memset(&state, 0, sizeof(state));
+    if (!dd_gameplay_advance_to(pack, &state, 803u, 0u)) return;
+    dd_gameplay_step(pack, &state, DD_INPUT_A | DD_INPUT_RIGHT);
+    for (frame = 0u; frame < 180u &&
+         (state.ball.action != DD_BALL_DRIBBLE ||
+          state.carrier != state.controlled_player); ++frame) {
+        dd_gameplay_step(pack, &state, 0u);
+    }
+    check(frame < 180u && state.ball.action == DD_BALL_DRIBBLE,
+          "user inbound pass reaches the selected live carrier");
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        previous_x[player] = state.players[player].court_x;
+        previous_depth[player] = state.players[player].court_depth;
+    }
+    for (frame = 0u; frame < 128u && state.phase == DD_GAMEPLAY_LIVE; ++frame) {
+        uint32_t input = (frame & 0x40u) == 0u ? DD_INPUT_RIGHT : DD_INPUT_LEFT;
+        if ((frame & 0x80u) != 0u) input |= DD_INPUT_DOWN;
+        if (!dd_gameplay_step(pack, &state, input)) break;
+        for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+            if (state.players[player].court_x != previous_x[player] ||
+                state.players[player].court_depth != previous_depth[player]) {
+                ++moved[player];
+            }
+            previous_x[player] = state.players[player].court_x;
+            previous_depth[player] = state.players[player].court_depth;
+        }
+    }
+    check(moved[5] != 0u && moved[6] != 0u && moved[7] != 0u &&
+          moved[8] != 0u && moved[9] != 0u,
+          "all five CPU defenders keep responding while the user offense owns the ball");
+}
+
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
         0x0Fu, 0x20u, 0x20u, 0x22u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Du, 0x3Eu
@@ -314,6 +410,7 @@ int main(int argc, char **argv) {
     check_unlimited_native_gameplay_sprites(&pack);
     check_team_palette_continuity(&pack);
     check_long_run_native_match(&pack);
+    check_user_offense_cpu_defense(&pack);
     check(assets->cpu_role_targets[6] == 0xD5u && assets->cpu_role_targets[7] == 0x5Au &&
           assets->cpu_role_targets[16] == 0x54u && assets->cpu_role_targets[17] == 0xD7u,
           "asset pack exposes the observed role targets at both half-court phases");
@@ -323,6 +420,19 @@ int main(int argc, char **argv) {
           assets->cpu_region_targets[1] == 0xECu &&
           assets->cpu_region_targets[6] == 0x25u,
           "asset pack exposes $AC78's seven route-init region targets");
+    {
+        static const uint8_t first_dunk_objects[12] = {
+            0x50u, 0x10u, 0x00u, 0x00u,
+            0xA0u, 0x11u, 0x00u, 0x00u,
+            0xC0u, 0x12u, 0x00u, 0x00u
+        };
+        check(memcmp(assets->dunk_object[0][0], first_dunk_objects,
+                     sizeof(first_dunk_objects)) == 0,
+              "DDAP carries `$D55A->$919F` variant-zero stage-zero cinematic objects");
+        check(assets->dunk_ppu[0][0][0x204Au] == 0x87u &&
+              assets->dunk_ppu[0][0][0x3F00u] != 0u,
+              "DDAP carries decoded `$D403/$D409/$D501` dunk background and live palette");
+    }
     check(memcmp(assets->court_chr_left, assets->court_chr_right,
                  sizeof(assets->court_chr_left)) != 0,
           "asset pack exposes distinct camera-triggered left and right court CHR streams");
@@ -2784,8 +2894,40 @@ int main(int argc, char **argv) {
     check(dispatch_state.rule_message_age == UINT16_MAX,
           "$94A5 clears the green-box message after forty four-frame gates");
 
+    /* Exercise the opposite award direction as well.  Common inbound mode
+       three is the user-side `$A780` handoff; treating it as the CPU release
+       branch changed control to an opponent even though `$9651` awarded 1P. */
+    dispatch_state = dispatch_base;
+    dispatch_state.phase = DD_GAMEPLAY_LIVE;
+    dispatch_state.possession_direction = 0u;
+    dispatch_state.ball.action = DD_BALL_HIDDEN;
+    dispatch_state.ball.owner = 0xFFu;
+    dispatch_state.ball.court_x = 0x010000;
+    dispatch_state.ball.court_depth = 0x001000;
+    dispatch_state.last_touch_player = 5u;
+    check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+          "call out of bounds after a CPU-side last touch");
+    check(dispatch_state.phase == DD_GAMEPLAY_INBOUND &&
+          dispatch_state.possession_direction == 1u &&
+          dispatch_state.inbound_variant == 3u &&
+          dispatch_state.players[0].action == DD_PLAYER_INBOUNDER,
+          "$9635->$9651 awards CPU-last-touch OOB to the 1P role-zero object");
+    for (player = 0u; player < 2400u &&
+         dispatch_state.players[dispatch_state.controlled_player].action !=
+             DD_PLAYER_LIVE_USER_INBOUND; ++player) {
+        check(dd_gameplay_step(&pack, &dispatch_state, 0u),
+              "advance user-awarded common inbound through `$41->$30->$0D`");
+    }
+    check(dispatch_state.controlled_player < 5u &&
+          dispatch_state.ball.owner == dispatch_state.controlled_player &&
+          dispatch_state.carrier == dispatch_state.controlled_player &&
+          dispatch_state.players[dispatch_state.controlled_player].action ==
+              DD_PLAYER_LIVE_USER_INBOUND,
+          "common inbound mode three keeps a 1P award on the user team");
+
     /* A made-basket receiver outside the recovered near-rim window must
-       return to `$D759` instead of taking the old fixed-delay half-court shot. */
+       return to `$D759` at the traced seven-turn cadence instead of taking the
+       old fixed-delay half-court shot. */
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
     dispatch_state.clock_minutes = 1u;
@@ -2796,13 +2938,14 @@ int main(int argc, char **argv) {
     dispatch_state.possession_direction = 0u;
     dispatch_state.players[5].action = DD_PLAYER_LIVE_CARRIER;
     dispatch_state.players[5].route_step = 4u;
-    dispatch_state.players[5].action_age = 13u;
+    dispatch_state.players[5].action_age = 6u;
     dispatch_state.players[5].court_x = 0x014000;
     dispatch_state.players[5].court_depth = 0x005800;
     run_cpu_dispatch(&pack, &dispatch_state, 5u);
-    check(dispatch_state.ball.action == DD_BALL_DRIBBLE &&
-          dispatch_state.players[5].action != DD_PLAYER_LIVE_CARRIER_DECIDE,
-          "post-inbound `$25` cannot launch a half-court shot after fourteen updates");
+    check(dispatch_state.players[5].action != DD_PLAYER_LIVE_CARRIER &&
+          dispatch_state.players[5].action != DD_PLAYER_LIVE_CARRIER_DECIDE &&
+          dispatch_state.ball.action != DD_BALL_AIRBORNE,
+          "post-inbound `$25` re-enters `$D759` after seven turns without a half-court shot");
 
     /* `$32` consumes the high phase bit over a window.  Starting after $80
        proves the handler cannot freeze by missing one exact host frame. */
@@ -2838,7 +2981,7 @@ int main(int argc, char **argv) {
           dispatch_state.ball.action == DD_BALL_SHOT_GATHER,
           "close-rim B release enters the native bank-2-derived dunk presentation");
     dispatch_state.dunk_outcome = 1u;
-    for (player = 0u; player < 20u && dispatch_state.dunk_active != 0u; ++player) {
+    for (player = 0u; player < 90u && dispatch_state.dunk_active != 0u; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
               "advance dunk make animation to rim contact");
     }
@@ -2846,6 +2989,8 @@ int main(int argc, char **argv) {
           dispatch_state.net_animation_phase == 2u &&
           dispatch_state.audio_event == 0x18u,
           "dunk make enters score/net/audio flow at the rim");
+    check(player == 84u,
+          "`$D40F` preserves all six fourteen-tick cinematic stages before returning");
 
     dispatch_state = dispatch_base;
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
@@ -2867,7 +3012,7 @@ int main(int argc, char **argv) {
     check(dispatch_state.dunk_active != 0u,
           "close-rim miss path activates only at `$B189` release");
     dispatch_state.dunk_outcome = 4u;
-    for (player = 0u; player < 20u && dispatch_state.dunk_active != 0u; ++player) {
+    for (player = 0u; player < 90u && dispatch_state.dunk_active != 0u; ++player) {
         check(dd_gameplay_step(&pack, &dispatch_state, 0u),
               "advance dunk miss animation to rim contact");
     }

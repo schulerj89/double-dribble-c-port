@@ -8,6 +8,8 @@
 #define DD_PPU_SIZE DD_TITLE_PPU_SIZE
 #define DD_GAMEPLAY_METASPRITE_COUNT 42u
 #define DD_COURT_CHR_STREAM_SIZE 672u
+#define DD_DUNK_VARIANT_COUNT 6u
+#define DD_DUNK_STAGE_COUNT 6u
 
 typedef struct DDTitleMeta {
     uint32_t width;
@@ -111,6 +113,12 @@ typedef struct DDTipoffAssetsHeader {
     uint8_t cpu_region_targets[7];
     uint8_t court_chr_left[DD_COURT_CHR_STREAM_SIZE];
     uint8_t court_chr_right[DD_COURT_CHR_STREAM_SIZE];
+    /* `$D3D6-$D409`, `$D501/$D507`, and bank-2 `$808E/$90C4` are decoded
+       while the required ROM is available to the asset-pack builder.  The
+       executable consumes only these native presentation frames. */
+    uint8_t dunk_ppu[DD_DUNK_VARIANT_COUNT][DD_DUNK_STAGE_COUNT][DD_PPU_SIZE];
+    uint8_t dunk_oam[DD_DUNK_VARIANT_COUNT][DD_DUNK_STAGE_COUNT][256];
+    uint8_t dunk_object[DD_DUNK_VARIANT_COUNT][DD_DUNK_STAGE_COUNT][12];
 } DDTipoffAssetsHeader;
 #pragma pack(pop)
 

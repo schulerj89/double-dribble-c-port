@@ -4,13 +4,19 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 ## Current headline
 
-**Portable Ghidra-to-C gameplay-loop coverage: 100%**
+**Address-mapped portable routine inventory: 100%**
 
 **Match-rules completeness: 100%**
 
 **Comprehensive recursive-routine coverage: 100% (216 Verified, 0 Partial, 0 Missing; 7 NES mechanisms excluded)**
 
-The component, match-rule, and exhaustive routine measures now agree. Every one of the 216 reachable portable nodes in the recursive Ghidra graph has an address-level evidence mapping, named native implementation, and deterministic regression or observable capture. Block SFX `$10/$20`, free-throw tables `$85C7/$86AF`, contest gates `$001D/$0056`, clock cadence, foul eligibility, and exceptional dead-ball exits are recovered. Seven mapper/APU-register/PPU mechanisms remain explicitly outside the portable denominator; their gameplay-visible selection and effects are implemented natively.
+These figures measure whether every inventoried routine has a native mapping;
+they are not a percentage claim of end-to-end behavioral or pixel parity. Live
+reconciliation can still expose an incorrect gate, state interaction, timing,
+or presentation path inside a mapped routine. The rebound-return A/B freeze and
+the formerly synthetic dunk presentation are examples found after the routine
+inventory first reached 100%. Seven mapper/APU-register/PPU mechanisms remain
+explicitly outside the portable denominator.
 
 Fixed-bank CPU possession, receiver, pass, shot, region-policy, and avoidance
 routines plus their bank-0 route/region/pair/contact helpers are routine-verified.

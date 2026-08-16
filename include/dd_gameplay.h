@@ -204,6 +204,7 @@ typedef struct DDGameplayState {
     uint8_t net_animation_phase;
     uint8_t net_basket_side;
     uint8_t dunk_active;
+    uint8_t dunk_variant;
     uint8_t dunk_outcome;
     uint8_t dunk_rim_contact;
     uint16_t dunk_age;

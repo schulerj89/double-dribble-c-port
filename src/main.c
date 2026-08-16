@@ -722,7 +722,7 @@ int main(int argc, char **argv) {
             ok = ok && dd_gameplay_step(&pack, &state, 0u) &&
                  state.dunk_active != 0u;
             state.dunk_outcome = make ? 1u : 4u;
-            steps = checkpoint == 0 ? 0u : checkpoint == 1 ? 9u : 20u;
+            steps = checkpoint == 0 ? 0u : checkpoint == 1 ? 42u : 86u;
             for (player = 0u; ok && player < steps &&
                  (checkpoint != 2 || state.dunk_active != 0u); ++player) {
                 ok = dd_gameplay_step(&pack, &state, 0u);

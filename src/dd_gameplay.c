@@ -1520,6 +1520,7 @@ static void dd_begin_shot(const DDTipoffAssetsHeader *assets,
        boundary, so testing the packed cell on button press rejected natural
        running dunks that entered the lane in the air. */
     state->dunk_active = 0u;
+    state->dunk_variant = 0u;
     state->dunk_age = 0u;
     state->dunk_outcome = 0u;
     state->dunk_rim_contact = 0u;
@@ -1842,12 +1843,13 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             speed = 0x0320;
             if (player->route_step == 4u) {
                 DDCPUDecision decision;
-                /* `$AD6D` leaves a received inbound in carrier `$25`; after
-                   its fourteen scheduled turns control returns to fixed
-                   `$D759`.  The old native shortcut unconditionally shot here
-                   and therefore launched from midcourt. */
+                /* `$AD6D` leaves the opening made-basket reception in carrier
+                   `$25`.  The controlled trace enters `$32` thirteen rendered
+                   frames later (seven alternating object turns), then reaches
+                   fixed `$D759`; the old fourteen-turn native wait doubled
+                   that decision latency. */
                 speed = 0;
-                if (player->action_age >= 14u && state->ball.action == DD_BALL_DRIBBLE &&
+                if (player->action_age >= 7u && state->ball.action == DD_BALL_DRIBBLE &&
                     state->carrier == player_index) {
                     player->decision_timer = 10u;
                     /* Reception `$AD6D` has already completed this route; its
@@ -2275,7 +2277,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
                 }
                 if ((state->inbound_variant == 1u &&
                      state->possession_direction != 0u) ||
-                    state->inbound_variant == 2u) {
+                    state->inbound_variant >= 2u) {
                     dd_start_inbound_alternate(state, player_index);
                 } else if (receiver < DD_GAMEPLAY_PLAYER_COUNT) {
                     dd_start_inbound_release(assets, state, player_index, receiver);
@@ -2878,21 +2880,20 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                 DDPlayerState *dunk_player = &state->players[dunker];
                 int32_t hoop_x = state->possession_direction == 0u
                     ? 0x004800 : 0x01B800;
-                int32_t finish_x = hoop_x +
-                    (state->possession_direction == 0u ? 0x0800 : -0x0800);
                 uint16_t age = ball->action_age;
                 state->dunk_age = age;
-                dunk_player->court_x = dd_approach(dunk_player->court_x,
-                                                   finish_x, 0x0200);
-                dunk_player->court_depth = dd_approach(dunk_player->court_depth,
-                                                       0x005800, 0x0100);
-                dunk_player->height = 0x1000 +
-                    (int32_t)(age <= 12u ? age : 12u) * 0x0200;
-                dunk_player->animation = assets->shot_animation[
-                    dunk_player->facing & 7u];
+                /* `$D40F` displays stages 0-5 for fourteen ticks each.
+                   `$D507`/bank-2 `$808E` own the visible players during this
+                   interval, so the court object is deliberately stationary
+                   and hidden by the cinematic renderer. */
                 dd_attach_ball(assets, state, 2u);
-                ball->height = dunk_player->height + 0x1200;
-                if (age >= 18u) {
+                if (age == 70u) {
+                    /* Old stage five requests `$1A` for a make and `$1D`
+                       otherwise before installing the final object frame. */
+                    dd_request_audio_event(state,
+                        state->dunk_outcome == 1u ? 0x1Au : 0x1Du);
+                }
+                if (age >= 84u) {
                     uint8_t outcome = state->dunk_outcome;
                     state->dunk_active = 0u;
                     state->dunk_rim_contact = 0u;
@@ -2955,6 +2956,12 @@ static void dd_step_ball(const DDTipoffAssetsHeader *assets, DDGameplayState *st
                         dd_pack_cpu_position(&state->players[shooter]))) {
                     state->dunk_active = 1u;
                     state->dunk_age = 0u;
+                    {
+                        uint8_t variant = (uint8_t)(state->cpu_entropy & 3u);
+                        if (variant == 3u) variant = 0u;
+                        state->dunk_variant = (uint8_t)(variant +
+                            (shooter >= 5u ? 3u : 0u));
+                    }
                     state->dunk_outcome = (uint8_t)(((state->cpu_entropy +
                         state->possession_count + shooter) & 3u) == 0u ? 4u : 1u);
                     ball->action_age = 0u;
@@ -3663,6 +3670,17 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         state->previous_input = input_mask;
         return;
     }
+    if (state->dunk_active != 0u) {
+        /* The original match dispatcher is replaced by fixed `$D40F` while
+           `$003B` is nonzero. Do not let the ordinary alternating player
+           scheduler mutate routes behind the full-screen presentation. */
+        ++state->cpu_global_frame;
+        dd_step_ball(assets, state, input_mask);
+        dd_update_camera(state);
+        state->live_frame = live_frame;
+        state->previous_input = input_mask;
+        return;
+    }
     if (controlled->action == DD_PLAYER_LIVE_USER_INBOUND) {
         uint32_t receiver = DD_NO_OWNER;
         /* `$06B0/$06B1` advances once per frame; `$A780` turns the ball over
@@ -3840,7 +3858,9 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         state->previous_input = input_mask;
         return;
     }
-    if (state->carrier == state->controlled_player && state->ball.action == DD_BALL_DRIBBLE) {
+    if (state->carrier == state->controlled_player &&
+        state->ball.action == DD_BALL_DRIBBLE &&
+        state->players[state->controlled_player].action == DD_PLAYER_LIVE_USER_CARRIER) {
         if ((pressed & DD_INPUT_B) != 0u) {
             dd_begin_shot(assets, state, state->controlled_player);
         } else if ((pressed & DD_INPUT_A) != 0u) {

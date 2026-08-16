@@ -817,15 +817,25 @@ static void dd_gameplay_patch_team_palette(uint8_t ppu[DD_PPU_SIZE],
                                            const DDGameplayState *state) {
     const DDConfigAssetsHeader *config;
     uint32_t team;
+    uint8_t user_color;
+    uint8_t cpu_color;
     if (pack->config_assets == NULL ||
         pack->config_assets_size < sizeof(DDConfigAssetsHeader)) return;
     config = (const DDConfigAssetsHeader *)pack->config_assets;
     team = state->match_team_index < 4u ? state->match_team_index : 0u;
-    /* Bank-1 configuration writes the selected 1P palette to sprite palette
-       two and the fixed opponent palette to sprite palette three. Gameplay
-       keeps those attribute assignments, so carry the same bytes forward. */
-    memcpy(ppu + 0x3F18u, config->team_sprite_palette + team * 4u, 4u);
-    memcpy(ppu + 0x3F1Cu, config->team_sprite_palette + 4u, 4u);
+    /* Bank-1 `$A54C->$A6BD` writes the selected `$0482` color into both 1P
+       gameplay palettes and fixed `$0483` into the two CPU palettes.  The
+       original object attributes `$0312-$031B` select 0/1 for objects 2-6 and
+       2/3 for objects 7-B; copying whole menu palettes into $3F18/$3F1C made
+       the native selection recolor only the CPU and destroyed its skin/white
+       entries.  Preserve the captured gameplay palette and replace its four
+       jersey-color bytes exactly. */
+    user_color = config->team_sprite_palette[team * 4u + 2u];
+    cpu_color = config->team_sprite_palette[1u * 4u + 2u];
+    ppu[0x3F11u] = user_color;
+    ppu[0x3F15u] = user_color;
+    ppu[0x3F19u] = cpu_color;
+    ppu[0x3F1Du] = cpu_color;
 }
 
 int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
@@ -860,6 +870,18 @@ int dd_render_gameplay(const DDAssetPack *pack, const DDGameplayState *state,
                                         pixels, width, height);
     }
     assets = (const DDTipoffAssetsHeader *)pack->tipoff_assets;
+    if (state->dunk_active != 0u) {
+        uint32_t variant = state->dunk_variant < DD_DUNK_VARIANT_COUNT
+            ? state->dunk_variant : 0u;
+        uint32_t stage = state->dunk_age / 14u;
+        if (stage >= DD_DUNK_STAGE_COUNT) stage = DD_DUNK_STAGE_COUNT - 1u;
+        return dd_render_scene(assets->dunk_ppu[variant][stage], DD_PPU_SIZE,
+                               assets->dunk_oam[variant][stage], 256u,
+                               pack->tipoff_meta.background_pattern_base,
+                               pack->tipoff_meta.nametable_base,
+                               pack->tipoff_meta.ppu_control, 64u,
+                               pixels, width, height);
+    }
     memcpy(ppu, pack->tipoff_ppu, sizeof(ppu));
     dd_gameplay_patch_team_palette(ppu, pack, state);
     dd_gameplay_patch_hud(ppu, state);

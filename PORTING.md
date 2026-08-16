@@ -399,7 +399,7 @@ The longer no-input capture through original frame 4200 disproved the previous n
 
 The remaining formation corruption had three concrete native causes. First, the made-basket return skipped the original `$2D` rebound chase plus the other nine `$36->$37` walkers, so the later inbound began from unrelated live-play coordinates. Second, three ordinary-inbound targets were transcribed incorrectly, and the inbounder's 16-bit `$05D7/$05E7=$21/$01` target was truncated to `$0021`; that put it at depth `$18` instead of the baseline depth `$98`. Third, `dd_step_inbound` moved all ten objects every rendered frame behind fixed ages 177/229 and then teleported every object to a captured frame-3572 table on reception.
 
-The repaired path removes those age gates and the reception teleport. Made-basket return now runs `$2D->$2E->$2F->$30->$0D` alongside the first `$36->$37` formation. The ordinary inbound runs the real alternating scheduler through `$36/$41->$37/$30->$31/$40`, lets ball `$AD41->$B138` contact complete the 19-frame pass, and translates `$AD6D` by assigning carrier `$25`, role-three `$3C`, role-four `$3E`, and the `$842F` route target without changing any player coordinates. State `$25` then holds for fourteen 30 Hz CPU evaluations before the captured shooting decision, while off-ball states continue on their normal cadence.
+The repaired path removes those age gates and the reception teleport. Made-basket return now runs `$2D->$2E->$2F->$30->$0D` alongside the first `$36->$37` formation. The ordinary inbound runs the real alternating scheduler through `$36/$41->$37/$30->$31/$40`, lets ball `$AD41->$B138` contact complete the 19-frame pass, and translates `$AD6D` by assigning carrier `$25`, role-three `$3C`, role-four `$3E`, and the `$842F` route target without changing any player coordinates. A normal live-pass receiver remains in `$25` for fourteen 30 Hz evaluations. The opening made-basket receiver is different: the controlled frame-2666-to-2679 trace gives it seven alternating object turns (13 rendered frames) before `$25->$32`, after which fixed `$D759` runs on frame 2681. Native code now preserves both cadences while off-ball states continue normally.
 
 | ASM/Ghidra evidence | Recovered behavior | Native C |
 | --- | --- | --- |
@@ -545,6 +545,14 @@ bit, derives the opposite role-zero target with signed `$40/$C0`, clamps its
 lane to `$08..$18`, and derives receiving role one with `$62/$BE`. `$ABCD` then
 refreshes native target axes before `$D978/$D98D` performs the existing packed
 arrival walk.
+
+The award direction is also pinned through the final handoff. A CPU last touch
+selects user role zero at `$9097`; native inbound variant three must therefore
+take the same user `$A780` handoff used by the nonzero setup mode. It previously
+fell through the CPU `$9018` release path, changed `controlled_player` to the
+opponent role zero, and made an opponent award look like the user's inbound.
+The symmetric regression now advances both last-touch directions through
+formation, pickup, and ownership, not merely through the first `$41` assignment.
 
 The long natural FCEUX trace supplies the opposite-direction proof. Frame 5673
 writes reason `$16` from `$9635`, flips direction `$08->$40`, selects object
@@ -1181,6 +1189,14 @@ Fixed `$C02B-$C033` continuously mixes global phase `$001A` into entropy byte
 rendered frame and supplies the same bit bands without reproducing the NES busy
 loop or instruction timing.
 
+The original decision latency is dispatcher-driven as well. The opening inbound
+receiver is action `$25` at FCEUX frame 2666, becomes `$32` at frame 2679, and
+reaches `$D759` at frame 2681. That is seven alternating object updates, not the
+fourteen-update delay the native route had accidentally shared with ordinary
+live-pass reception. A deterministic regression starts at age six, dispatches
+the seventh turn, and requires re-entry into the policy without an airborne
+half-court shot.
+
 The fixed-bank ROM-file mappings, including the 16-byte iNES header, are
 `$C02B->$1C03B`, `$D759->$1D769`, `$D8B9->$1D8C9`, `$D8D5->$1D8E5`, `$D8F1->$1D901`,
 `$D92F->$1D93F`, `$D94E->$1D95E`, `$D99A->$1D9AA`, and `$DA39->$1DA49`.
@@ -1646,9 +1662,8 @@ states rather than adding new states to the denominator.
 
 ### Rule calls, CPU shot gating, native dunk, and bounce audio
 
-Status: **implemented and regression-verified**, with the specialized NES dunk
-cinematic still classified Partial presentation rather than being counted as a
-new portable gameplay state.
+Status: **implemented and regression-verified**, including the specialized
+dunk cinematic as native asset-pack data.
 
 The out-of-bounds follow starts in switched bank 0 at `$95E0` (ROM `$15F0`).
 The boundary branch reaches `$9635` (ROM `$1645`), stores reason `$16`, and
@@ -1688,13 +1703,15 @@ advancing subcounter `$003E` to `$0E`, advancing cinematic frame `$0039`, and
 requesting `$1D` or `$1A` at frame five before clearing objects `$0D-$0F` and
 returning to match state `$0E`. Bank-2 `$808E` iterates those three objects,
 loads metasprite pointers from `$90C4`, calls the `$801A` decoder, and fills
-unused OAM with `$F4`. The native portable path retains the recovered close-rim
-eligibility, a held-ball rise to the active rim, facing-specific shot sprite,
-and deterministic make/miss returns to the normal score/net or `$AF72`
-loose-ball dispatchers. It deliberately uses the ordinary pack-backed gameplay
-metasprites rather than mapper-driven objects `$0D-$0F`; exact reproduction of
-the separate blue-screen cinematic remains presentation work and receives no
-coverage credit.
+unused OAM with `$F4`. DDAP v21 resolves `$C549`'s bank/pointer table while
+building the mandatory asset pack, applies `$D403/$D409` plus the six `$D501`
+stage streams, copies the three records per stage from the six `$D55A` variant
+pointers, and expands them through native `$808E/$801A/$90C4` logic. The 36
+resulting PPU/OAM frames have no runtime ROM dependency. Native `$D40F` timing
+displays each of the six frames for fourteen ticks, requests `$1A/$1D` at the
+stage-five boundary, suspends the ordinary player scheduler while the
+cinematic owns the match dispatcher, then returns make/miss results to the
+normal score/net or `$AF72` loose-ball flow.
 
 The ball sound follow is exact at the portable dispatcher boundary. Bank 0
 `$AEC3-$AEC8` (ROM `$2ED3`), `$AF66-$AF6B` (`$2F76`), and `$AFF7-$B001`
@@ -1755,11 +1772,16 @@ the recovered `$22` pose and a regression pins action, facing, and animation.
 Finally, configuration values now become match state instead of renderer-only
 UI. `dd_gameplay_configure` validates and stores TIME, TEAM, and LEVEL, reads
 the pack-backed bank-1 `$A368` time table (`$05,$10,$20,$30`), and preserves the
-chosen values across the match. The gameplay renderer carries the selected
-team's four-byte sprite palette from the existing configuration asset entry
-into tip-off and live sprite palette two while retaining the fixed opponent in
-palette three. Tests render New York and Los Angeles from otherwise identical
-formation state and require different framebuffers.
+chosen values across the match. Ghidra `$A54C->$A6BD` shows `$0482` as the 1P
+team and `$0483` as the fixed CPU team. The original frame-2500 PPU bytes are
+`02 20 17 0F | 02 20 36 0F | 02 29 17 0F | 02 29 36 0F`, while object
+attributes `$0312-$031B` are `00 00 01 00 01 03 02 03 03 02`: user objects
+select palettes 0/1 and CPU objects select 2/3. Native rendering now replaces
+only `$3F11/$3F15` with the selected `$0482` jersey color and
+`$3F19/$3F1D` with fixed `$0483`, preserving the gameplay skin/white entries.
+The former whole-palette copy wrote the selection into CPU palettes 2/3 and
+caused the exact reversed/weird-color symptom. Isolated framebuffer regressions
+require a 1P player to change and a CPU player to remain identical.
 
 Reproduce the ignored evidence and native frames with:
 
@@ -1804,9 +1826,9 @@ rightward takeoff vector for eight frames, releases in `$BA`, and requires the
 special finish to activate; all eight literal cells and both adjacent-cell
 rejections remain covered. `tools/Capture-NativeDunk.ps1` regenerates ignored
 make/miss gather, airborne, and result screenshots through that same running
-entry. The separate bank-2 close-up graphics remain an active presentation
-gap; this correction proves the gameplay trigger and timing, not cinematic
-pixel parity.
+entry. The subsequent DDAP v21 reconciliation closes the close-up gap: the
+same shipping running entry selects one of the six `$003A` variants and renders
+the ROM-derived six-stage bank-2 presentation.
 
 The defensive follow-up corrects a separate native approximation in player
 states `$20/$22`. Ghidra at `$8A16` calls `$9102`, which loads the opponent
@@ -1950,15 +1972,24 @@ The `$C02B` regression additionally proves the exact accumulator effect
 rejects unknown, duplicate, excluded, or overlapping routine keys, and the
 coverage script rejects any portable node without a Verified mapping.
 
-The current implementation percentage and its reproducible scoring rules are
-maintained in `GAMEPLAY_COVERAGE.md`. The final result is **100% portable
-Ghidra-to-C gameplay-loop coverage**, **100% portable core-loop coverage**,
-**100% match-rules completeness**, and **100% comprehensive recursive-routine
-coverage (216 Verified, 0 Partial, 0 Missing; 7 NES mechanisms excluded)**.
-Mapper/bank switching, PPU/CHR/OAM mechanics, APU register driving, and
-hardware-only interrupt timing remain outside the denominator; all recovered
-gameplay-visible state, timing, rendering choice, and audio-event effects are
-native C and asset-pack driven.
+The current address-mapped inventory and its reproducible scoring rules are
+maintained in `GAMEPLAY_COVERAGE.md`. It reports **100% mapped portable
+Ghidra-to-C routines (216 Verified, 0 Partial, 0 Missing; 7 NES mechanisms
+excluded)**. This is an inventory result, not a claim of complete behavioral
+parity; runtime defects continue to be reconciled against Ghidra and FCEUX and
+receive targeted regressions. Mapper/bank switching, PPU/CHR/OAM mechanics,
+APU register driving, and hardware-only interrupt timing remain outside the
+denominator.
+
+The live offense freeze reconciliation follows the state gate rather than the
+ball owner alone. During `$2E->$2F`, the rebound winner legitimately owns a
+dribbling ball while the other nine objects remain in formation state `$37`.
+The former C input gate saw only `carrier == controlled` plus ball `$01`, so an
+A/B edge could interrupt `$2F`, create a pass/shot, and strand the formation.
+Native A/B dispatch now additionally requires controlled player state `$02`,
+the live user-carrier state. A deterministic frame-743 regression rejects the
+premature input; a frame-803 shipping inbound then proves all five CPU defenders
+resume updates and move while user offense is live.
 
 Future fidelity work may compare the native PCM mix and title/attract-mode
 presentation against the NES, but it does not represent missing reachable

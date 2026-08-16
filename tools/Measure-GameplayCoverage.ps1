@@ -36,7 +36,7 @@ if (Test-Path -LiteralPath $routineManifestPath -PathType Leaf) {
     }
     Write-Host ('  Routine graph    {0} nodes ({1} awaiting classification)' -f
         $routineKeys.Count, $unclassified)
-    Write-Host ('  Comprehensive   {0,5:N1}%  (V {1}, P {2}, M {3}, excluded {4})' -f
+    Write-Host ('  Mapped routines {0,5:N1}%  (V {1}, P {2}, M {3}, excluded {4})' -f
         $computedComprehensive, $verifiedRoutineCount, $partialRoutineCount,
         $missingRoutineCount, $routineManifest.coverage.excluded_count)
 }
@@ -95,5 +95,5 @@ if ([Math]::Abs($weightTotal - 1.0) -gt 0.000001) {
     throw "Gameplay coverage weights total $weightTotal instead of 1.0."
 }
 
-Write-Host ('Ghidra-to-C gameplay-loop coverage: {0:N1}%' -f (100.0 * $weightedCoverage)) -ForegroundColor Green
-Write-Host ('Match-rules completeness:             {0:N1}%' -f (100.0 * $matchCoverage))
+Write-Host ('Mapped gameplay component inventory: {0:N1}%' -f (100.0 * $weightedCoverage)) -ForegroundColor Green
+Write-Host ('Mapped match-rule inventory:         {0:N1}%' -f (100.0 * $matchCoverage))
