@@ -997,6 +997,16 @@ static uint32_t dd_possession_role_zero(const DDGameplayState *state) {
     return dd_team_role(state, first, 0u);
 }
 
+/* `$004D` is a stateful rotating object, not a pure function of `$001A`.
+   Odd frames mirror the current role index into native team 0; even frames
+   advance that role and mirror it into team 5. Starting at player eight this
+   yields the traced chain 8,3,9,4,5,0,6,1,7,2,8. */
+static uint8_t dd_advance_cpu_priority(uint8_t current, uint8_t phase) {
+    uint8_t within_team = (uint8_t)(current % 5u);
+    if ((phase & 1u) != 0u) return within_team;
+    return (uint8_t)(5u + ((within_team + 1u) % 5u));
+}
+
 static void dd_claim_loose_ball(DDGameplayState *state, uint32_t player_index) {
     DDPlayerState *player = &state->players[player_index];
     state->carrier = (uint8_t)player_index;
@@ -3299,14 +3309,12 @@ static void dd_step_inbound(const DDTipoffAssetsHeader *assets, DDGameplayState 
        state $31 therefore receives its first $AD41 flight update next frame. */
     dd_step_ball(assets, state, 0u);
     ++state->cpu_global_frame;
+    state->cpu_priority_player = dd_advance_cpu_priority(
+        state->cpu_priority_player, state->cpu_global_frame);
     if ((state->cpu_global_frame & 1u) != 0u) {
         cpu_start = 0u;
         cpu_end = 5u;
     } else {
-        state->cpu_priority_player = (uint8_t)(state->cpu_priority_player + 1u);
-        if (state->cpu_priority_player >= DD_GAMEPLAY_PLAYER_COUNT) {
-            state->cpu_priority_player = 5u;
-        }
         cpu_start = 5u;
         cpu_end = DD_GAMEPLAY_PLAYER_COUNT;
     }
@@ -3763,12 +3771,12 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         dd_step_user_contest(assets, state, state->controlled_player);
     }
     ++state->cpu_global_frame;
+    state->cpu_priority_player = dd_advance_cpu_priority(
+        state->cpu_priority_player, state->cpu_global_frame);
     if ((state->cpu_global_frame & 1u) != 0u) {
         cpu_start = 0u;
         cpu_end = 5u;
     } else {
-        state->cpu_priority_player = (uint8_t)(state->cpu_priority_player + 1u);
-        if (state->cpu_priority_player >= DD_GAMEPLAY_PLAYER_COUNT) state->cpu_priority_player = 5u;
         cpu_start = 5u;
         cpu_end = DD_GAMEPLAY_PLAYER_COUNT;
     }

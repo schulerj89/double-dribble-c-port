@@ -113,7 +113,7 @@ score_calls:write("frame,counter,ball_state,score_copy_a,score_copy_b,height,sco
 local cpu_decisions = assert(io.open(join_path(capture_root, "gameplay-cpu-decisions.csv"), "w"))
 cpu_decisions:write("frame,pc,current_object,state,animation,position,target,linked_object,linked_position,priority,global_phase,direction\n")
 local physics_calls = assert(io.open(join_path(capture_root, "gameplay-physics-calls.csv"), "w"))
-physics_calls:write("frame,pc,current_object,state,facing,x,velocity_x,depth,velocity_depth,height,vertical_base,elapsed,curve,duration,packed,target,global_phase\n")
+physics_calls:write("frame,pc,current_object,state,facing,x,velocity_x,depth,velocity_depth,height,vertical_base,elapsed,curve,duration,packed,target,priority,global_phase\n")
 local control_calls = assert(io.open(join_path(capture_root, "gameplay-control-calls.csv"), "w"))
 control_calls:write("frame,pc,current_object,receiver,switch_candidate,ball_state,owner,carrier,direction,mode,input,pressed,p2,p3,p4,p5,p6\n")
 local block_calls = assert(io.open(join_path(capture_root, "gameplay-block-calls.csv"), "w"))
@@ -391,7 +391,7 @@ local function record_physics_call(address, size, value)
                 physics_boundary_pending = false
             end
             physics_calls:write(string.format(
-                "%d,%04X,%02X,%02X,%02X,%02X%02X%02X,%02X%02X,%02X%02X%02X,%02X%02X,%02X%02X,%02X%02X,%02X,%02X,%02X,%02X%02X,%02X%02X,%02X\n",
+                "%d,%04X,%02X,%02X,%02X,%02X%02X%02X,%02X%02X,%02X%02X%02X,%02X%02X,%02X%02X,%02X%02X,%02X,%02X,%02X,%02X%02X,%02X%02X,%02X,%02X\n",
                 frame, address, object, memory.readbyte(0x0340 + tracked),
                 memory.readbyte(0x0350 + tracked),
                 memory.readbyte(0x0360 + tracked), memory.readbyte(0x0370 + tracked),
@@ -405,7 +405,7 @@ local function record_physics_call(address, size, value)
                 memory.readbyte(0x04B0 + tracked),
                 memory.readbyte(0x05C0 + tracked), memory.readbyte(0x05B0 + tracked),
                 memory.readbyte(0x05E0 + tracked), memory.readbyte(0x05D0 + tracked),
-                memory.readbyte(0x001A)))
+                memory.readbyte(0x004D), memory.readbyte(0x001A)))
         end
     end
 end

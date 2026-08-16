@@ -412,6 +412,21 @@ renderer keeps its separately verified overflow behavior. These strengthen
 existing Verified entries, so the weighted coverage remains **92.6%** rather
 than gaining duplicate credit.
 
+The alternating scheduler's cursor semantics are now instruction- and
+trace-verified. `$9E76-$9E83` advances persistent `$004D` only on even
+`$001A` phases through original slots `$07-$0B`; `$9E86-$9E8D` temporarily
+maps it down by five through `$9E90` while dispatching original slots
+`$02-$06`, then restores it. Fresh FCEUX instrumentation records `$004D`
+alongside `$001A`, and the native regression asserts the complete scheduled
+player cycle `8,3,9,4,5,0,6,1,7,2,8`. This closes a scheduler behavior gap but
+does not promote an inventory node because `$9E70` is currently a non-function
+entry inside the recursive graph; comprehensive coverage remains **86.6%**.
+Native screenshots at frames 356 and 426 remain visually intact. A detached
+`0a6ac2e` comparison also reproduces the alternating HUD displacement at frames
+357/358, proving it predates this scheduler change; phase 1 now tracks that
+renderer defect explicitly rather than misattributing it to the converted
+cursor recurrence.
+
 Period transitions/end conditions are Verified. The earlier long trace proves
 the delayed period-one reset to a second-period formation. The final-match trace
 adds the distinct bank-0 `$93AE` gate: only a zero clock with player slot two

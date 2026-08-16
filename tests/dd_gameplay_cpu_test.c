@@ -279,8 +279,12 @@ int main(int argc, char **argv) {
     static const uint8_t post_inbound_target[DD_GAMEPLAY_PLAYER_COUNT] = {
         0xE8u, 0x48u, 0xCCu, 0xB5u, 0x79u, 0x21u, 0xA6u, 0xD7u, 0xA9u, 0x8Cu
     };
+    static const uint8_t priority_cycle[10] = {
+        3u, 9u, 4u, 5u, 0u, 6u, 1u, 7u, 2u, 8u
+    };
     DDAssetPack pack;
     DDGameplayState state;
+    DDGameplayState priority_state;
     DDGameplayState jump_state;
     DDGameplayState pass_state;
     DDGameplayState inbound_pass_state;
@@ -431,6 +435,20 @@ int main(int argc, char **argv) {
         live_start_depth[player] = state.players[player].court_depth;
     }
 
+    priority_state = state;
+    for (player = 0u; player < 10u; ++player) {
+        char message[128];
+        check(dd_gameplay_step(&pack, &priority_state, 0u),
+              "$9E70 priority-cycle step succeeds");
+        snprintf(message, sizeof(message),
+                 "$9E70/$9E90 alternating priority cycle step %u", player + 1u);
+        check(priority_state.cpu_priority_player == priority_cycle[player], message);
+        check(priority_state.hud_split_y == 64u,
+              "$9E70 priority scheduling preserves the native HUD split");
+    }
+    check(priority_state.cpu_global_frame == 0xE6u,
+          "$9E70 ten-frame priority cycle advances `$001A` `$DC->$E6`");
+
     check(dd_gameplay_step(&pack, &state, 0u), "first live CPU step");
     check(state.cpu_global_frame == 0xDDu, "first live step advances CPU frame phase");
     check(state.players[1].cpu_updates == 1u && state.players[5].cpu_updates == 0u,
@@ -440,7 +458,8 @@ int main(int argc, char **argv) {
     check(state.cpu_global_frame == 0xDEu, "second live step advances CPU frame phase");
     check(state.players[1].cpu_updates == 1u && state.players[5].cpu_updates == 1u,
           "even CPU frame updates only native team slots 5-9");
-    check(state.cpu_priority_player == 9u, "priority CPU player rotates on the even team frame");
+    check(state.cpu_priority_player == 9u,
+          "$004D rotates from original slot $05 to $0B on the even team frame");
     check_checkpoint(&state, 2u, 5u, DD_PLAYER_LIVE_CARRIER, 0x70u);
 
     check(dd_gameplay_advance_to(&pack, &state, 380u, 0u), "advance to carrier reroute");
