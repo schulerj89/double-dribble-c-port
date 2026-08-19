@@ -21,6 +21,11 @@ Bank-0 `$A3E2-$A4FF` (`$A42D->$B435->$A347/$A44B`) is now fully translated and
 verified across all branches (held A-button gate `$0680,X`, `$001D` contact lock,
 `$0056` score gate, paired contest redirection, `$B435` 10px collision, `$A347`
 exceptional foul `$1A`, same-player violation `$0F`, and `$A44B` possession transfer).
+The universal CPU route/movement cadence and installed-vector execution chain
+`$ABCD -> $9D2D -> $D98D/$D98A -> $A84C` is also completely translated and
+verified (exact 8.8 velocity table expansions `$9BB0`, 5/4 speed multiplier
+`$8BF8`, 2x double-integration cadence `$A84C`, boundary clamping/collision
+zeroing `$9CA0/$9CF6`, and possession direction target mirroring `$AC64`).
 Seven mapper/APU-register/PPU mechanisms remain explicitly outside the portable
 denominator.
 

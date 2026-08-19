@@ -2256,3 +2256,38 @@ Status: **implemented and routine-verified**. Headless Ghidra and FCEUX dynamic 
   - `user-steal-foul-1a` (frame 2600): `$0025 == 0`, same facing -> triggers foul `$1A` to `$9645`.
   - `user-steal-same-player-0f` (frame 2600): Same player -> triggers whistle `$2C`, reason `$0F`.
 - Native C test suite (`check_user_ordinary_steal` in `tests/dd_gameplay_cpu_test.c`) verifies all 11 regression checks including natural approach and post-steal live dribble downcourt.
+
+### Universal CPU route/movement cadence and installed-vector execution ($ABCD → $9D2D → $D98D/$D98A → $A84C)
+
+#### Recovered 6502 Flow
+
+| Address | Bank | ROM Offset | Name / Function | Operational Description |
+| :--- | :--- | :--- | :--- | :--- |
+| `$ABCD-$AC29` | 0 | `0x2BDD-0x2C39` | `gameplay_ABCD` (Vector Installation) | Unpacks target cell coordinates via `$AB96`, computes quadrant and 16-bit distance angle via `$9D2D`, derives 8-way facing (`0..7`) via `$AA98`, and expands quadrant angle into signed 8.8 velocity components using depth tables `$9C1C/$9C1D` (`$000A/$000B -> $03E0/$03F0`) and longitudinal tables `$9C5E/$9C5F` (`$000C/$000D -> $0390/$03A0`) via `$9BB0` |
+| `$9D2D-$9DCF` | 0 | `0x1D3D-0x1DDF` | `gameplay_9D2D` (Angle Classification) | Computes `dx` and `dd` differences, determines quadrant (`$0014`), forms half-distance quotient `ratio = (half_dd * 256) / half_dx`, searches 33-entry threshold table at `$9DEB`, and produces angle direction with quadrant offsets `$00/$80` |
+| `$9BB0-$9C1B` | 0 | `0x1BC0-0x1C2B` | `gameplay_9BB0` (Velocity Expansion) | Expands angle into signed 8.8 velocities: normalizes angle to quadrant offset `0..0x40`, indexes tables `$9C1C` and `$9C5E`, applies `$9C0B` (axis swap) and `$9BF6/$9C06` (signed negation) according to quadrant bands `< $41`, `$41..$80`, `$81..$C0`, `> $C0` |
+| `$8BF8-$8C0E` | 0 | `0x0C08-0x0C1E` | `gameplay_8BF8` (5/4 Vector Scaling) | Multiplies 8.8 signed velocity components by 5/4 via arithmetic shift right 2 and addition: `v + (v >> 2)` with signed preservation |
+| `$D98D` | 7 | `0x599D` | `gameplay_D98D` (Arrival & Vector Step) | Tests cell arrival via `$D978` and falls into `$D98A` |
+| `$D98A` | 7 | `0x599A` | `gameplay_D98A` (Installed-Vector Integration) | Calls `$A84C` for object motion integration and continues to `$D990 -> $A896` animation tail |
+| `$A84C-$A859` | 0 | `0x285C-0x2869` | `gameplay_A84C` (Double Integration Cadence) | Calls depth integrator `$9CF6` twice and longitudinal integrator `$9CA0` twice per 30 Hz object dispatch turn |
+| `$9CA0-$9CF5` | 0 | `0x1CB0-0x1D05` | `gameplay_9CA0` (Longitudinal Integrator) | Adds 8.8 velocity (`$0390/$03A0`) to 16.8 position (`$0360/$0370/$0380`). Clamps to integer interval `($000F, $01F1]`. If out of bounds, retains position and zeroes velocity |
+| `$9CF6-$9D2C` | 0 | `0x1D06-0x1D3C` | `gameplay_9CF6` (Depth Integrator) | Adds 8.8 velocity (`$03E0/$03F0`) to 8.8 position (`$03C0/$03D0`). Clamps to integer interval `[$05, $98]`. If out of bounds, retains depth and zeroes velocity |
+| `$AC64-$AC77` | 0 | `0x2C74-0x2C87` | `gameplay_AC64` (Target Mirroring) | Inverts 5-bit column coordinate for inverted possession direction `$40`: `(packed & 0xE0) | (0x1F - (packed & 0x1F))` |
+
+#### Behavioral Summary
+1. **Installed 8.8 Vectors**: Target installation computes exact signed 8.8 velocities along both court axes via `$ABCD -> $9D2D -> $9BB0`, avoiding host-frame approximations.
+2. **Double-Integration Cadence (`$A84C`)**: Each active 30 Hz object dispatch executes `$9CF6` twice (depth) and `$9CA0` twice (longitudinal), advancing positions in fractional 8.8 / 16.8 subpixels.
+3. **Boundary Clamping & Collision Zeroing (`$9CA0/$9CF6`)**: Longitudinal movement outside `$0010..$01F1` and depth movement outside `$05..$98` clamps position and zeroes velocity.
+4. **5/4 Speed Scaling (`$8BF8`)**: Signed quarter-step addition accelerates carrier drives, defensive pursuit, and avoidance paths.
+5. **Direction Mirroring (`$AC64`)**: Seamlessly flips packed targets and route angles across direction 0 and direction 1 (`$40`).
+
+#### Native Tests & Verification
+- Unit test suite `check_cpu_movement_and_route_cadence` in `tests/dd_gameplay_cpu_test.c` validates:
+  1. All 8 cardinal/diagonal vector installations and zero-distance routes.
+  2. Exact 5/4 speed scaling on positive and negative components.
+  3. Fractional subpixel accumulation, carry, and borrow arithmetic.
+  4. Longitudinal and depth boundary clamping with collision zeroing.
+  5. `$A84C` 2x double integration cadence per dispatch turn.
+  6. Direction 0 and 1 coordinate mirroring via `$AC64`.
+  7. CPU cut routes (`$3D`), defensive pursuit (`$22`), carrier drives, and full 4-period match progression.
+

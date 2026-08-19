@@ -91,10 +91,9 @@ static void dd_choose_spacing_target(const DDTipoffAssetsHeader *assets,
                                      uint32_t player_index);
 static uint8_t dd_pack_cpu_position(const DDPlayerState *player);
 static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed);
-static void dd_install_cpu_route_vector(DDPlayerState *player);
 static void dd_begin_common_inbound(DDGameplayState *state, uint8_t reason,
                                     uint32_t dead_player);
-static uint8_t dd_animation_for_facing(uint8_t facing, uint32_t phase) {
+uint8_t dd_animation_for_facing(uint8_t facing, uint32_t phase) {
     static const uint8_t base[8] = {0x1Bu, 0x12u, 0x06u, 0x0Cu, 0x15u, 0x09u, 0x03u, 0x0Fu};
     uint32_t count = facing == 0u || facing == 4u ? 6u : 3u;
     return (uint8_t)(base[facing & 7u] + (phase % count));
@@ -182,7 +181,7 @@ static int32_t dd_approach(int32_t value, int32_t target, int32_t speed) {
 /* Bank-0 $9CA0 integrates a signed 8.8 longitudinal velocity into the
    16.8 world coordinate.  The integer court interval is ($000F,$01F1]; an
    invalid candidate leaves position untouched and clears that axis velocity. */
-static int dd_integrate_longitudinal(int32_t *position, int32_t *velocity) {
+int dd_integrate_longitudinal(int32_t *position, int32_t *velocity) {
     int32_t candidate;
     uint32_t integer;
     if (position == NULL || velocity == NULL) return 0;
@@ -199,7 +198,7 @@ static int dd_integrate_longitudinal(int32_t *position, int32_t *velocity) {
 
 /* Bank-0 $9CF6 is the 8.8 court-depth companion.  It accepts integer rows
    $05-$98 inclusive and otherwise preserves position while clearing speed. */
-static int dd_integrate_depth(int32_t *position, int32_t *velocity) {
+int dd_integrate_depth(int32_t *position, int32_t *velocity) {
     int32_t candidate;
     uint32_t integer;
     if (position == NULL || velocity == NULL) return 0;
@@ -749,7 +748,7 @@ static void dd_unpack_cpu_target(uint8_t packed, int32_t *x, int32_t *depth) {
 }
 
 /* $AB72 compresses the two court axes for region and occupancy decisions. */
-static uint8_t dd_pack_cpu_coordinates(int32_t court_x, int32_t court_depth) {
+uint8_t dd_pack_cpu_coordinates(int32_t court_x, int32_t court_depth) {
     uint32_t x = (uint32_t)dd_clamp(court_x >> 8, 0, 0x1FF);
     uint32_t depth = (uint32_t)dd_clamp(court_depth >> 8, 0, 0x7F);
     return (uint8_t)(((depth << 1u) & 0xE0u) | ((x >> 4u) & 0x1Fu));
@@ -807,7 +806,7 @@ static void dd_latch_reached_route_axes(DDPlayerState *player) {
 }
 
 /* $AC64 mirrors the five-bit packed court column when direction bit $40 is set. */
-static uint8_t dd_mirror_packed_target(uint8_t packed) {
+uint8_t dd_mirror_packed_target(uint8_t packed) {
     return (uint8_t)((packed & 0xE0u) | (0x1Fu - (packed & 0x1Fu)));
 }
 
@@ -836,7 +835,7 @@ static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed) {
 /* `$ABCD->$9D2D->$9BB0` expands the installed packed target into the exact
    signed 8.8 walk vector and its facing.  States `$2D/$2F` consume this
    vector directly through `$D98D`; the native target mover is not involved. */
-static void dd_install_cpu_route_vector(DDPlayerState *player) {
+void dd_install_cpu_route_vector(DDPlayerState *player) {
     uint8_t angle = dd_target_motion_vector(player->court_x, player->court_depth,
                                             player->target_x, player->target_depth,
                                             &player->route_velocity_x,
@@ -857,7 +856,7 @@ static int32_t dd_scale_route_component_five_quarters(int32_t component) {
     return (int16_t)(uint16_t)(original + quarter);
 }
 
-static void dd_scale_route_vector_five_quarters(DDPlayerState *player) {
+void dd_scale_route_vector_five_quarters(DDPlayerState *player) {
     player->route_velocity_x = dd_scale_route_component_five_quarters(
         player->route_velocity_x);
     player->route_velocity_depth = dd_scale_route_component_five_quarters(
@@ -1041,6 +1040,30 @@ static int dd_paired_player_contact(const DDGameplayState *state, uint32_t playe
            dd_axis_boxes_overlap(state->players[player].court_x,
                                  anchor_x,
                                  0x0200, 0x0200);
+}
+
+/* `$D98D/$D98A->$A84C` consumes the installed 8.8 vectors through `$9CF6`
+   (depth integrator twice) and `$9CA0` (longitudinal integrator twice).
+   It updates facing and metasprite animation for active movement. */
+void dd_step_player_installed_vectors(DDPlayerState *player, uint32_t player_index,
+                                     uint32_t live_frame) {
+    int32_t old_x = player->court_x;
+    int32_t old_depth = player->court_depth;
+    if (player->action == DD_PLAYER_REBOUND_CHASE ||
+        player->action == DD_PLAYER_REBOUND_RETURN) {
+        dd_latch_reached_route_axes(player);
+    }
+    dd_integrate_depth(&player->court_depth, &player->velocity_depth);
+    dd_integrate_depth(&player->court_depth, &player->velocity_depth);
+    dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
+    dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
+    if (player->court_x != old_x || player->court_depth != old_depth) {
+        player->facing = dd_facing_from_velocity(player->court_x - old_x,
+                                                 player->court_depth - old_depth,
+                                                 player->facing);
+        player->animation = dd_animation_for_facing(player->facing,
+                                                    live_frame / 3u + player_index);
+    }
 }
 
 static void dd_move_cpu_player(DDPlayerState *player, uint32_t player_index,
@@ -1957,8 +1980,6 @@ static DDCPUDecision dd_cpu_decide_possession(const DDTipoffAssetsHeader *assets
 static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayState *state,
                                  uint32_t player_index, uint32_t live_frame) {
     DDPlayerState *player = &state->players[player_index];
-    int32_t dispatch_start_x = player->court_x;
-    int32_t dispatch_start_depth = player->court_depth;
     int32_t speed = 0x0180;
     int integrate_existing_velocity = 0;
     ++player->cpu_updates;
@@ -2604,28 +2625,7 @@ static void dd_update_cpu_player(const DDTipoffAssetsHeader *assets, DDGameplayS
             break;
     }
     if (integrate_existing_velocity) {
-        /* `$D98D->$A84C` preserves the installed vectors and performs two
-           independently bounded integrations on each court axis. */
-        if (player->action == DD_PLAYER_REBOUND_CHASE ||
-            player->action == DD_PLAYER_REBOUND_RETURN) {
-            dd_latch_reached_route_axes(player);
-        }
-        dd_integrate_depth(&player->court_depth, &player->velocity_depth);
-        dd_integrate_depth(&player->court_depth, &player->velocity_depth);
-        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
-        dd_integrate_longitudinal(&player->court_x, &player->velocity_x);
-        if (player->court_x != dispatch_start_x ||
-            player->court_depth != dispatch_start_depth) {
-            player->facing = dd_facing_from_velocity(
-                player->court_x - dispatch_start_x,
-                player->court_depth - dispatch_start_depth,
-                player->facing);
-            /* `$D990->$A896` still runs after `$8E71/$8EBF`. The portable
-               route states therefore need the same moving metasprite tail as
-               target-driven players instead of retaining one frozen frame. */
-            player->animation = dd_animation_for_facing(
-                player->facing, live_frame / 3u + player_index);
-        }
+        dd_step_player_installed_vectors(player, player_index, live_frame);
     } else {
         dd_move_cpu_player(player, player_index, live_frame, speed);
     }

@@ -1136,6 +1136,234 @@ static void check_user_ordinary_steal(const DDAssetPack *pack) {
           "stealer advances downcourt in full control of live dribble");
 }
 
+static void check_cpu_movement_and_route_cadence(const DDAssetPack *pack) {
+    DDPlayerState p;
+    int32_t court_x;
+    int32_t court_depth;
+    int32_t vel_x;
+    int32_t vel_depth;
+    DDGameplayState state;
+    uint32_t i;
+    uint32_t player;
+
+    /* 1. Vector installation ($ABCD -> $9D2D -> $9BB0) across all 8 cardinal/diagonal directions */
+    /* Pure East (+X) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x018000;
+    p.target_depth = 0x005000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_x > 0 && p.facing == 0u,
+          "$ABCD installed positive longitudinal vector and facing 0 for pure East target");
+
+    /* Pure West (-X) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x008000;
+    p.target_depth = 0x005000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_x < 0 && p.facing == 4u,
+          "$ABCD installed negative longitudinal vector and facing 4 for pure West target");
+
+    /* Pure South (+Depth) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x010000;
+    p.target_depth = 0x008000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_depth > 0 && p.facing == 6u,
+          "$ABCD installed positive depth vector and facing 6 for pure South target");
+
+    /* Pure North (-Depth) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x010000;
+    p.target_depth = 0x002000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_depth < 0 && p.facing == 2u,
+          "$ABCD installed negative depth vector and facing 2 for pure North target");
+
+    /* Southeast (+X, +Depth) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x018000;
+    p.target_depth = 0x008000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_x > 0 && p.velocity_depth > 0,
+          "$ABCD installed positive components and facing 7 for Southeast target");
+
+    /* Southwest (-X, +Depth) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x008000;
+    p.target_depth = 0x008000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_x < 0 && p.velocity_depth > 0,
+          "$ABCD installed negative X, positive depth, and facing 5 for Southwest target");
+
+    /* Northwest (-X, -Depth) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x008000;
+    p.target_depth = 0x002000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_x < 0 && p.velocity_depth < 0,
+          "$ABCD installed negative components and facing 3 for Northwest target");
+
+    /* Northeast (+X, -Depth) */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x018000;
+    p.target_depth = 0x002000;
+    dd_install_cpu_route_vector(&p);
+    check(p.velocity_x > 0 && p.velocity_depth < 0,
+          "$ABCD installed positive X, negative depth, and facing 1 for Northeast target");
+
+    /* Zero distance route */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.target_x = 0x010000;
+    p.target_depth = 0x005000;
+    dd_step_player_installed_vectors(&p, 0u, 0u);
+    check(p.velocity_x == 0 && p.velocity_depth == 0,
+          "$ABCD produces zero velocity for zero-distance route");
+
+    /* 2. 5/4 Speed Scaling ($8BF8 / $8C02) */
+    memset(&p, 0, sizeof(p));
+    p.route_velocity_x = 0x0100;
+    p.route_velocity_depth = -0x0080;
+    dd_scale_route_vector_five_quarters(&p);
+    check(p.velocity_x == 0x0140 && (int16_t)p.velocity_depth == (int16_t)-0x00A0,
+          "$8BF8 scales positive and signed negative vector components by 5/4");
+
+    /* 3. Fractional subpixel accumulation, carry, and borrow ($9CA0, $9CF6) */
+    /* Longitudinal positive carry: 0x80 + 0xC0 = 0x140 -> subpixel 0x40, carry into pixel */
+    court_x = 0x010080;
+    vel_x = 0x00C0;
+    check(dd_integrate_longitudinal(&court_x, &vel_x) && court_x == 0x010140,
+          "$9CA0 adds fractional subpixel and carries into integer pixel");
+
+    /* Longitudinal negative borrow: 0x20 - 0xC0 = -0xA0 -> subpixel 0x60, borrow from pixel */
+    court_x = 0x010120;
+    vel_x = -0x00C0;
+    check(dd_integrate_longitudinal(&court_x, &vel_x) && court_x == 0x010060,
+          "$9CA0 subtracts fractional subpixel and borrows across integer pixel");
+
+    /* Depth positive carry */
+    court_depth = 0x005080;
+    vel_depth = 0x00C0;
+    check(dd_integrate_depth(&court_depth, &vel_depth) && court_depth == 0x005140,
+          "$9CF6 adds fractional subpixel and carries into integer depth row");
+
+    /* Depth negative borrow */
+    court_depth = 0x005120;
+    vel_depth = -0x00C0;
+    check(dd_integrate_depth(&court_depth, &vel_depth) && court_depth == 0x005060,
+          "$9CF6 subtracts fractional subpixel and borrows across integer depth row");
+
+    /* 4. Court Boundary Clamping and Collision Zeroing ($9CA0, $9CF6) */
+    /* Longitudinal lower limit ($0010): stepping west below $0010 clamps and zeroes velocity */
+    court_x = 0x001040;
+    vel_x = -0x0100;
+    check(!dd_integrate_longitudinal(&court_x, &vel_x) && court_x == 0x001040 && vel_x == 0,
+          "$9CA0 clamps at lower longitudinal bound $0010 and zeroes velocity");
+
+    /* Longitudinal upper limit ($01F1): stepping east above $01F1 clamps and zeroes velocity */
+    court_x = 0x01F180;
+    vel_x = 0x0100;
+    check(!dd_integrate_longitudinal(&court_x, &vel_x) && court_x == 0x01F180 && vel_x == 0,
+          "$9CA0 clamps at upper longitudinal bound $01F1 and zeroes velocity");
+
+    /* Depth lower limit ($05): stepping north below $05 clamps and zeroes velocity */
+    court_depth = 0x000540;
+    vel_depth = -0x0100;
+    check(!dd_integrate_depth(&court_depth, &vel_depth) && court_depth == 0x000540 && vel_depth == 0,
+          "$9CF6 clamps at lower depth bound $05 and zeroes velocity");
+
+    /* Depth upper limit ($98): stepping south above $98 clamps and zeroes velocity */
+    court_depth = 0x009880;
+    vel_depth = 0x0100;
+    check(!dd_integrate_depth(&court_depth, &vel_depth) && court_depth == 0x009880 && vel_depth == 0,
+          "$9CF6 clamps at upper depth bound $98 and zeroes velocity");
+
+    /* 5. Double Integration ($A84C) and Animation Cadence */
+    memset(&p, 0, sizeof(p));
+    p.court_x = 0x010000;
+    p.court_depth = 0x005000;
+    p.velocity_x = 0x0100;
+    p.velocity_depth = 0x0080;
+    dd_step_player_installed_vectors(&p, 5u, 30u);
+    check(p.court_x == 0x010200 && p.court_depth == 0x005100 &&
+          p.facing == 7u && p.animation == dd_animation_for_facing(7u, 30u / 3u + 5u),
+          "$A84C executes two bounded steps per dispatch turn and updates animation");
+
+    /* 6. Both Possession Directions and Target Mirroring ($AC64) */
+    check(dd_mirror_packed_target(0x70u) == 0x6Fu &&
+          dd_mirror_packed_target(0x21u) == 0x3Eu,
+          "$AC64 mirrors packed columns 0x1F - col across possession directions");
+
+    /* 7. Live Match CPU route execution & State Transitions */
+    memset(&state, 0, sizeof(state));
+    check(dd_gameplay_advance_to(pack, &state, 356u, 0u), "advance to live gameplay");
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.carrier = 0u;
+    state.ball.owner = 0u;
+    state.ball.action = DD_BALL_DRIBBLE;
+
+    /* Off-ball CPU cut route progression: Player 8 (Team 2) in DD_PLAYER_LIVE_CPU_CUT */
+    state.players[8].action = DD_PLAYER_LIVE_CPU_CUT;
+    state.players[8].target_x = 0x015000;
+    state.players[8].target_depth = 0x005800;
+    state.players[8].target_zone = dd_pack_cpu_coordinates(0x015000, 0x005800);
+    state.players[8].court_x = 0x014000;
+    state.players[8].court_depth = 0x005800;
+    dd_install_cpu_route_vector(&state.players[8]);
+    check(state.players[8].velocity_x > 0, "CPU cut vector installed pointing toward target");
+
+    /* Step until arrival at target zone */
+    for (i = 0u; i < 40u; ++i) {
+        check(dd_gameplay_step(pack, &state, 0u), "step live gameplay during CPU cut");
+        if (state.players[8].action == DD_PLAYER_LIVE_CPU_CUT_RUN) break;
+    }
+    check(state.players[8].action == DD_PLAYER_LIVE_CPU_CUT_RUN,
+          "CPU cut runner reached target and transitioned to $3D CUT_RUN");
+
+    /* Defensive tracking: Player 5 pursues carrier collision anchor */
+    state.players[5].action = DD_PLAYER_LIVE_TEAMMATE;
+    state.players[5].paired_player = 0u;
+    state.players[0].court_x = 0x010000;
+    state.players[0].court_depth = 0x005800;
+    state.players[5].court_x = 0x012000;
+    state.players[5].court_depth = 0x005800;
+    for (i = 0u; i < 40u; ++i) {
+        check(dd_gameplay_step(pack, &state, 0u), "step live gameplay during defender pursuit");
+        if (state.players[5].action == DD_PLAYER_LIVE_PAIRED_DEFENDER) break;
+    }
+    check(state.players[5].action == DD_PLAYER_LIVE_PAIRED_DEFENDER,
+          "paired defender pursued anchor and latched into $22 PAIRED_DEFENDER");
+
+    /* 8. Full settings-to-live multi-frame soak progression */
+    memset(&state, 0, sizeof(state));
+    check(dd_gameplay_advance_to(pack, &state, 600u, 0u),
+          "advance 600 frames from settings through live match");
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        check(state.players[player].court_x >= 0x001000 &&
+              state.players[player].court_x <= 0x01F100 &&
+              state.players[player].court_depth >= 0x000500 &&
+              state.players[player].court_depth <= 0x009800,
+              "all 10 players remain strictly within court bounds throughout live play");
+    }
+}
+
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
         0x0Fu, 0x20u, 0x20u, 0x20u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Du, 0x3Eu
@@ -1183,6 +1411,7 @@ int main(int argc, char **argv) {
     check_user_offense_cpu_defense(&pack);
     check_cpu_free_throw_level_policy(&pack);
     check_user_ordinary_steal(&pack);
+    check_cpu_movement_and_route_cadence(&pack);
     check(assets->cpu_role_targets[6] == 0xD5u && assets->cpu_role_targets[7] == 0x5Au &&
           assets->cpu_role_targets[16] == 0x54u && assets->cpu_role_targets[17] == 0xD7u,
           "asset pack exposes the observed role targets at both half-court phases");

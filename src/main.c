@@ -32,6 +32,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay-tip-jump <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-free-throw <input.assetpack> <ready|gather|airborne> <output.bmp>");
     puts("  --render-gameplay-user-steal <input.assetpack> <before|after> <output.bmp>");
+    puts("  --render-gameplay-cpu-route <input.assetpack> <transition-frame> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
@@ -367,6 +368,25 @@ int main(int argc, char **argv) {
                 ok = dd_gameplay_step(&pack, &state, DD_INPUT_A);
             }
         }
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-gameplay-cpu-route") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t target_frame = (uint32_t)strtoul(argv[3], NULL, 0);
+        int ok;
+        if (!dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, target_frame, 0u);
         pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
                                     pack.tipoff_meta.height * sizeof(uint32_t));
         ok = ok && pixels != NULL &&

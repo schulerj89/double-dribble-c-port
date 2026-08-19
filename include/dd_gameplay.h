@@ -242,4 +242,14 @@ int dd_gameplay_step(const DDAssetPack *pack, DDGameplayState *state, uint32_t i
 int dd_gameplay_advance_to(const DDAssetPack *pack, DDGameplayState *state,
                            uint32_t scene_frame, uint32_t input_mask);
 
+int dd_integrate_longitudinal(int32_t *position, int32_t *velocity);
+int dd_integrate_depth(int32_t *position, int32_t *velocity);
+void dd_install_cpu_route_vector(DDPlayerState *player);
+void dd_scale_route_vector_five_quarters(DDPlayerState *player);
+void dd_step_player_installed_vectors(DDPlayerState *player, uint32_t player_index,
+                                     uint32_t live_frame);
+uint8_t dd_pack_cpu_coordinates(int32_t court_x, int32_t court_depth);
+uint8_t dd_mirror_packed_target(uint8_t packed);
+uint8_t dd_animation_for_facing(uint8_t facing, uint32_t phase);
+
 #endif
