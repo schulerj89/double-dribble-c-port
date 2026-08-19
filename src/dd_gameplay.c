@@ -3608,6 +3608,9 @@ static void dd_begin_free_throw_shot(const DDTipoffAssetsHeader *assets,
     player->action = DD_PLAYER_FREE_THROW_GATHER;
     player->action_age = 0u;
     player->animation = assets->shot_animation[player->facing & 7u];
+    player->velocity_x = 0;
+    player->velocity_depth = 0;
+    player->velocity_height = 0;
     state->ball.action = DD_BALL_SHOT_GATHER;
     state->ball.action_age = 0u;
     state->ball.owner = (uint8_t)shooter;
@@ -3619,6 +3622,8 @@ static void dd_begin_free_throw_shot(const DDTipoffAssetsHeader *assets,
     state->last_touch_player = (uint8_t)shooter;
     state->shot_value = 1u;
     state->free_throw_coarse_age = 0u;
+    /* Bank-0 `$8880-$8882`: clear score-return / contact gate `$0056`. */
+    state->score_contact_gate = 0u;
 }
 
 static void dd_release_free_throw(DDGameplayState *state) {
@@ -3766,11 +3771,32 @@ static void dd_step_free_throw(const DDTipoffAssetsHeader *assets,
                     dd_begin_free_throw_shot(assets, state, shooter);
                 }
             } else {
-                if (state->free_throw_timer != 0u) --state->free_throw_timer;
-                if (state->free_throw_timer == 0u &&
-                    (((state->cpu_entropy & 0x80u) == 0u) ||
-                     state->free_throw_aim == 0x60u)) {
-                    dd_begin_free_throw_shot(assets, state, shooter);
+                /* Bank-0 `$8832-$884F`: CPU free-throw delay and LEVEL policy.
+                   `$8832`: LDA $0067; BEQ $883A; DEC $0067; BNE $884C.
+                   `$883A`: LDA $07E8; CMP #$09; BCS $8845.
+                   `$8841`: LDA $001A; BPL $884F.
+                   `$8845`: LDA $033C; CMP #$60; BEQ $884F.
+                   `$884C`: JMP $D990 (hold). */
+                int can_evaluate_policy = 0;
+                if (state->free_throw_timer == 0u) {
+                    can_evaluate_policy = 1;
+                } else {
+                    --state->free_throw_timer;
+                    if (state->free_throw_timer == 0u) {
+                        can_evaluate_policy = 1;
+                    }
+                }
+                if (can_evaluate_policy) {
+                    if (state->gameplay_level < 9u) {
+                        if ((int8_t)state->cpu_global_frame >= 0 ||
+                            state->free_throw_aim == 0x60u) {
+                            dd_begin_free_throw_shot(assets, state, shooter);
+                        }
+                    } else {
+                        if (state->free_throw_aim == 0x60u) {
+                            dd_begin_free_throw_shot(assets, state, shooter);
+                        }
+                    }
                 }
             }
         } else if (shooter_state->action == DD_PLAYER_FREE_THROW_GATHER) {

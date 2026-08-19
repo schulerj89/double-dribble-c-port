@@ -27,10 +27,10 @@ denominator.
 The targeted fixed-bank CPU region-two chain is routine-verified. Broader CPU
 possession/contact behavior remains Partial because ordinary live-dribble user
 steal root `$A3E2->$A42D` is still absent. The bounded LEVEL slice is now
-translated: `$A593` installs `$0068/$006C`, `$A631` maps visible choices to
+translated and routine-verified: `$A593` installs `$0068/$006C`, `$A631` maps visible choices to
 mutable gameplay LEVEL 0/4/8, `$91A6` and `$9FA3`
-consume its contact rules, and `$8A57` consumes the paired-tracking
-threshold.
+consume its contact rules, `$8A57` consumes the paired-tracking
+threshold, and `$883A-$884F` implements the CPU free-throw delay and aim decision matrix.
 A deterministic four-period no-input match now requires CPU passes, shots, and
 inbounds, rejects orphan dribbles/out-of-bounds players, detects a stationary
 CPU carrier beyond 640 frames, and reaches GAME SET/return-to-title.
@@ -355,15 +355,15 @@ releases state `$02`; this closes the stationary orphan-ball failure in both
 ordinary CPU passing and CPU inbound.
 
 The independent commit-gate audit explicitly limits that result to this branch;
-it does not certify all CPU behavior. The formerly unresolved LEVEL chain is now
-a bounded Verified slice: configuration `$A593-$A5BD` feeds `$0068/$006C`,
+it does not certify all CPU behavior. The bounded LEVEL slice is now
+translated and routine-verified: configuration `$A593-$A5BD` feeds `$0068/$006C`,
+`$A631` maps visible choices to mutable gameplay LEVEL 0/4/8,
 bank-0 `$91A6-$91FB` and mirrored `$9FA3-$A011` consume mutable LEVEL `$07E8`
-with exact `$001D/$0056` preserve exits and the level-6/7/8 pair matrix, and
-`$8A57-$8A97` consumes `$006C` before entering player state `$21`. The broader
-possession category remains Partial for the separately listed `$A3E2` steal gap.
-This does not claim every LEVEL consumer: CPU free-throw release
-`$883A-$884F` still needs its `<9`/signed-phase/aim matrix translated and
-remains inside the separately Partial free-throw/match-rule area.
+with exact `$001D/$0056` preserve exits and the level-6/7/8 pair matrix,
+`$8A57-$8A97` consumes `$006C` before entering player state `$21`, and
+CPU free-throw release `$883A-$884F` implements its exact `<9`/signed-phase/aim
+matrix, `$0067` delay countdown, and `$8882` `$0056` gate clearing.
+The broader possession category remains Partial for the separately listed `$A3E2` steal gap.
 
 The inbound entry is Verified. Ghidra `$A780/$A129/$A21F/$A482` and natural
 FCEUX frames 3004-3051 prove directional receiver selection, held-ball

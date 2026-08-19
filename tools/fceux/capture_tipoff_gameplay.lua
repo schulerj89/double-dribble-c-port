@@ -27,6 +27,12 @@ local inject_contact_phase = tonumber(os.getenv("DD_INJECT_CONTACT_PHASE") or "-
 local inject_contact_ball_state = tonumber(os.getenv("DD_INJECT_CONTACT_BALL_STATE") or "-1")
 local inject_contact_pair = os.getenv("DD_INJECT_CONTACT_PAIR") or "owner"
 local inject_user_free_throw_frame = tonumber(os.getenv("DD_INJECT_USER_FREE_THROW_FRAME") or "-1")
+local inject_cpu_free_throw_frame = tonumber(os.getenv("DD_INJECT_CPU_FREE_THROW_FRAME") or "-1")
+local inject_cpu_free_throw_level = tonumber(os.getenv("DD_INJECT_CPU_FREE_THROW_LEVEL") or "-1")
+local inject_cpu_free_throw_phase = tonumber(os.getenv("DD_INJECT_CPU_FREE_THROW_PHASE") or "-1")
+local inject_cpu_free_throw_aim = tonumber(os.getenv("DD_INJECT_CPU_FREE_THROW_AIM") or "-1")
+local inject_cpu_free_throw_timer = tonumber(os.getenv("DD_INJECT_CPU_FREE_THROW_TIMER") or "-1")
+local inject_cpu_free_throw_gate = tonumber(os.getenv("DD_INJECT_CPU_FREE_THROW_GATE") or "-1")
 local inject_basket_frame = tonumber(os.getenv("DD_INJECT_BASKET_FRAME") or "-1")
 local inject_basket_result = tonumber(os.getenv("DD_INJECT_BASKET_RESULT") or "1")
 local inject_basket_counter = tonumber(os.getenv("DD_INJECT_BASKET_COUNTER") or "0")
@@ -219,7 +225,8 @@ end)
 for _, address in ipairs({
     0x852F, 0x8534, 0x85EF, 0x8603, 0x860A, 0x862A, 0x8636,
     0x8682, 0x8694, 0x86C3, 0x872F, 0x8774, 0x87C0, 0x87F2,
-    0x87F7, 0x8832, 0x884F, 0x8887, 0x88BE, 0x88CD, 0x88DE,
+    0x87F7, 0x8832, 0x883A, 0x8841, 0x8845, 0x884C, 0x884F,
+    0x8882, 0x8887, 0x88BE, 0x88CD, 0x88DE,
     0x8902, 0x891C, 0x894C, 0x8957, 0x8974, 0x897A, 0x897F
 }) do
     memory.registerexecute(address, 1, function(address, size, value)
@@ -892,6 +899,37 @@ while emu.framecount() < final_frame do
         memory.writebyte(0x0370 + 0x02, 0x92)
         memory.writebyte(0x03C0 + 0x02, 0x58)
         memory.writebyte(0x0410 + 0x02, 0x10)
+    end
+    if next_frame == inject_cpu_free_throw_frame then
+        -- Controlled entry immediately before the original `$87F7->$8832`
+        -- CPU free-throw decision handler.
+        local cpu_shooter = 0x07
+        memory.writebyte(0x0340, 0x00)
+        memory.writebyte(0x005B, cpu_shooter)
+        memory.writebyte(0x0048, cpu_shooter)
+        memory.writebyte(0x0056, inject_cpu_free_throw_gate >= 0 and inject_cpu_free_throw_gate or 0x00)
+        memory.writebyte(0x0050, 0x08)
+        memory.writebyte(0x0066, 0x00)
+        memory.writebyte(0x0067, inject_cpu_free_throw_timer >= 0 and inject_cpu_free_throw_timer or 0x00)
+        memory.writebyte(0x002C, 0x00)
+        if inject_cpu_free_throw_level >= 0 then
+            memory.writebyte(0x07E8, inject_cpu_free_throw_level)
+        end
+        if inject_cpu_free_throw_phase >= 0 then
+            memory.writebyte(0x001A, inject_cpu_free_throw_phase)
+        end
+        for slot = 0x02, 0x0B do
+            memory.writebyte(0x0340 + slot, 0x44)
+            memory.writebyte(0x0690 + slot, (slot - 0x02) % 5)
+        end
+        memory.writebyte(0x0340 + cpu_shooter, 0x46)
+        memory.writebyte(0x0360 + cpu_shooter, 0x00)
+        memory.writebyte(0x0370 + cpu_shooter, 0x6E)
+        memory.writebyte(0x03C0 + cpu_shooter, 0x58)
+        memory.writebyte(0x0410 + cpu_shooter, 0x10)
+        if inject_cpu_free_throw_aim >= 0 then
+            memory.writebyte(0x033C, inject_cpu_free_throw_aim)
+        end
     end
     if next_frame == inject_basket_frame then
         -- Controlled $AE25->$B377 classifier probe.  $AE25 increments $04F0

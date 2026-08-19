@@ -2150,6 +2150,50 @@ the live user-carrier state. A deterministic frame-743 regression rejects the
 premature input; a frame-803 shipping inbound then proves all five CPU defenders
 resume updates and move while user offense is live.
 
+## CPU free-throw delay and LEVEL policy closure ($883A-$884F)
+
+Status: **implemented and routine-verified**. Headless Ghidra and FCEUX dynamic traces
+resolve the bank-0 CPU free-throw release decision chain at `$8832-$884F` (ROM file offsets
+`0x0842-0x085F`), with shot setup through `$884F-$8884` (ROM file offsets `0x085F-0x0894`).
+
+### Recovered 6502 Flow
+
+| Address | Bank | ROM Offset | Disassembly | Effect |
+|---|---|---|---|---|
+| `$8832` | 0 | `0x0842` | `LDA $0067` | Load free-throw delay countdown |
+| `$8834` | 0 | `0x0844` | `BEQ $883A` | If delay is zero, evaluate policy immediately |
+| `$8836` | 0 | `0x0846` | `DEC $0067` | Decrement delay timer |
+| `$8838` | 0 | `0x0848` | `BNE $884C` | If decremented timer != 0, hold in action `$46` via `$D990` |
+| `$883A` | 0 | `0x084A` | `LDA $07E8` | Load gameplay LEVEL (0, 4, 8 in 1P mode; higher in progression) |
+| `$883D` | 0 | `0x084D` | `CMP #$09` | Unsigned comparison with 9 |
+| `$883F` | 0 | `0x084F` | `BCS $8845` | If LEVEL >= 9, bypass phase check -> require exact center aim `$60` |
+| `$8841` | 0 | `0x0851` | `LDA $001A` | Load global frame / phase counter |
+| `$8843` | 0 | `0x0853` | `BPL $884F` | If signed `$001A >= 0` (bit 7 == 0, 50% of frames), SHOOT immediately |
+| `$8845` | 0 | `0x0855` | `LDA $033C` | Load hoop aim indicator position (`$50..$60`) |
+| `$8848` | 0 | `0x0858` | `CMP #$60` | Check if aim indicator is centered at hoop (`$60`) |
+| `$884A` | 0 | `0x085A` | `BEQ $884F` | If aim == `$60`, SHOOT |
+| `$884C` | 0 | `0x085C` | `JMP $D990` | Hold in state `$46` (no shot this dispatch) |
+| `$884F` | 0 | `0x085F` | `LDX $004B` ... | Initialize shooter state `$47`, height script `$9B34`, ball `$04` gather |
+| `$887D` | 0 | `0x088D` | `JSR $B503` | Clear motion velocities |
+| `$8880` | 0 | `0x0890` | `LDA #$00; STA $0056` | Clear score-return / contact gate `$0056 = 0` |
+| `$8884` | 0 | `0x0894` | `JMP $D98D` | Exit object dispatcher |
+
+### Behavioral Summary
+1. **LEVEL `< 9` vs `>= 9`**:
+   - For `LEVEL < 9` (Level 1 = 0, Level 2 = 4, Level 3 = 8): when global phase `$001A` has bit 7 clear (`$00`..`$7F`), the CPU releases immediately on timer expiry, causing realistic variable accuracy depending on aim position `$033C`. When bit 7 is set (`$80`..`$FF`), the CPU waits for exact aim `$60`.
+   - For `LEVEL >= 9`: the CPU skips the phase check via `$883F BCS` and strictly waits until aim `$033C == $60` on every frame, guaranteeing 100% free-throw accuracy on high/expert levels.
+2. **Delay Timer `$0067`**: Initialized to `0x30` on entering action `$46`. Decrements once per scheduled 30 Hz dispatch; falls through to the policy check when reaching zero.
+3. **Score/Contact Gate `$0056`**: Set to `0xFF` on foul entry; cleared to `0` at `$8882` on shot initiation.
+
+### FCEUX Dynamic Verification & Native Tests
+- Controlled FCEUX traces verify all 5 matrix permutations and timing transitions:
+  - `cpu-ft-level8-pos` (frame 2601): LEVEL 8, phase `$10` (`>=0`), aim `$52` (`!=$60`) -> executes `$883A->$8841->$884F->$8882`.
+  - `cpu-ft-level8-neg-hold` (frame 2601): LEVEL 8, phase `$90` (`<0`), aim `$52` (`!=$60`) -> executes `$883A->$8841->$8845->$884C` (holds in `$46`).
+  - `cpu-ft-level9-pos-hold` (frame 2601): LEVEL 9, phase `$10` (`>=0`), aim `$52` (`!=$60`) -> executes `$883A->$8845->$884C` (bypasses `$8841`, holds in `$46`).
+  - `cpu-ft-level9-aim60-full` (frame 2631): LEVEL 9, aim reaches `$60` -> executes `$883A->$8845->$884F->$8882`.
+  - `cpu-ft-delay-timer2` (frames 2601/2603): timer decrements `2->1` (holds via `$8838 BNE`), then `1->0` (shoots on reach zero).
+- Native C test suite (`check_cpu_free_throw_level_policy` in `tests/dd_gameplay_cpu_test.c`) verifies the full 9-point assertion matrix, menu configuration mapping (`0->0, 1->4, 2->8`), `$0067` delay transitions, `$0056` gate clearing, and ball flight to rim collision.
+
 Future fidelity work may compare the native PCM mix and title/attract-mode
 presentation against the NES, but it does not represent missing reachable
 portable gameplay behavior in this inventory.

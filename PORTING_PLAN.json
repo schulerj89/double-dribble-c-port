@@ -269,6 +269,20 @@
       ],
       "coverage_change_percent": 10.2,
       "reason": "The final 44 portable nodes pass the same address-level Ghidra, native-symbol, test/capture, and exclusion-boundary gates as the earlier routines, closing the exhaustive reachable non-NES graph without adding emulation."
+    },
+    {
+      "milestone": "phase-5b-cpu-free-throw-level-policy",
+      "status": "verified",
+      "completed": [
+        "Bank-0 `$8832-$884F` CPU free-throw delay and LEVEL decision policy",
+        "LEVEL <9 vs >=9 aim-$60 requirement and signed phase `$001A` verification",
+        "`$0067` delay countdown decrement and expiration transition",
+        "`$8880-$8882` score/contact gate `$0056` clearing on shot initiation",
+        "five controlled FCEUX dynamic traces across the full matrix",
+        "nine deterministic native C regression checks covering the complete decision matrix and shot progression"
+      ],
+      "coverage_change_percent": 0.0,
+      "reason": "Closes the missing CPU free-throw LEVEL policy slice with exact 6502 disassembly, FCEUX traces, native state machine translation, and deterministic assertions."
     }
   ],
   "phases": [

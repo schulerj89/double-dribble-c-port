@@ -638,6 +638,175 @@ static void check_user_offense_cpu_defense(const DDAssetPack *pack) {
           "all five CPU defenders keep responding while the user offense owns the ball");
 }
 
+static void check_cpu_free_throw_level_policy(const DDAssetPack *pack) {
+    DDGameplayState state;
+    uint32_t i;
+
+    /* 1. Verify Menu configuration mapping to gameplay LEVEL ($A631) */
+    memset(&state, 0, sizeof(state));
+    check(dd_gameplay_configure(pack, &state, 0u, 0u, 0u), "configure level 0");
+    check(state.gameplay_level == 0u, "menu level 0 maps to gameplay level 0");
+    memset(&state, 0, sizeof(state));
+    check(dd_gameplay_configure(pack, &state, 0u, 0u, 1u), "configure level 1");
+    check(state.gameplay_level == 4u, "menu level 1 maps to gameplay level 4");
+    memset(&state, 0, sizeof(state));
+    check(dd_gameplay_configure(pack, &state, 0u, 0u, 2u), "configure level 2");
+    check(state.gameplay_level == 8u, "menu level 2 maps to gameplay level 8");
+
+    /* Base setup for CPU free throw shooter at line ($46) */
+    memset(&state, 0, sizeof(state));
+    check(dd_gameplay_advance_to(pack, &state, 356u, 0u), "advance to live");
+    state.phase = DD_GAMEPLAY_FREE_THROW;
+    state.foul_shooter = 5u;
+    state.foul_offender = 0u;
+    state.free_throw_initialized = 1u;
+    state.free_throw_attempts = 0u;
+    state.carrier = 5u;
+    state.ball.owner = 5u;
+    state.ball.action = DD_BALL_AWARDED;
+    state.ball.court_x = 0x006E00;
+    state.ball.court_depth = 0x005800;
+    state.possession_direction = 0u;
+    for (i = 0u; i < DD_GAMEPLAY_PLAYER_COUNT; ++i) {
+        state.players[i].action = (i == 5u) ? DD_PLAYER_FREE_THROW_SET : DD_PLAYER_FREE_THROW_SPOT;
+        state.players[i].court_x = 0x006E00;
+        state.players[i].court_depth = 0x005800;
+        state.players[i].facing = 4u;
+    }
+
+    /* 2. Test $0067 delay timer decrement and transition */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 8u;
+        test_state.cpu_global_frame = 0x11u; /* next step makes it 0x12 (even/scheduled, positive signed) */
+        test_state.free_throw_timer = 2u;
+        test_state.free_throw_aim = 0x54u;
+        test_state.score_contact_gate = 0xFFu;
+
+        /* Step 1: timer decrements 2 -> 1, BNE $884C holds */
+        check(dd_gameplay_step(pack, &test_state, 0u), "step free throw timer 2->1");
+        check(test_state.free_throw_timer == 1u, "$8836 decrements free_throw_timer from 2 to 1");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_SET,
+              "$8838 BNE holds shooter in $46 when timer remains nonzero");
+        check(test_state.ball.action == DD_BALL_AWARDED, "ball remains awarded while timer > 0");
+
+        /* Step 2: timer decrements 1 -> 0, falls through to $883A. Since level < 9 and phase positive, shoots! */
+        test_state.cpu_global_frame = 0x11u; /* keep scheduled */
+        check(dd_gameplay_step(pack, &test_state, 0u), "step free throw timer 1->0");
+        check(test_state.free_throw_timer == 0u, "$8836 decrements free_throw_timer from 1 to 0");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_GATHER,
+              "$8838 BNE falls through when timer reaches 0, entering gather $47");
+        check(test_state.ball.action == DD_BALL_SHOT_GATHER,
+              "ball transitions to $04 gather on shot trigger");
+        check(test_state.score_contact_gate == 0u,
+              "$8882 explicitly clears score_contact_gate $0056 on shot release");
+        check(test_state.shot_value == 1u, "free-throw shot value is 1 point");
+    }
+
+    /* 3. Decision Matrix: Level < 9, positive phase (0x10), aim != 0x60 (0x54) -> SHOOTS */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 8u;
+        test_state.cpu_global_frame = 0x0Fu; /* next step makes it 0x10 (scheduled, positive signed) */
+        test_state.free_throw_timer = 0u;
+        test_state.free_throw_aim = 0x54u;
+        check(dd_gameplay_step(pack, &test_state, 0u), "step level 8 positive phase");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_GATHER &&
+              test_state.ball.action == DD_BALL_SHOT_GATHER,
+              "LEVEL < 9 with positive signed $001A takes $8843 BPL and shoots with aim != $60");
+    }
+
+    /* 4. Decision Matrix: Level < 9, negative phase (0x90), aim != 0x60 (0x54) -> HOLDS */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 8u;
+        test_state.cpu_global_frame = 0x8Fu; /* next step makes it 0x90 (scheduled, negative signed) */
+        test_state.free_throw_timer = 0u;
+        test_state.free_throw_aim = 0x54u;
+        check(dd_gameplay_step(pack, &test_state, 0u), "step level 8 negative phase hold");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_SET &&
+              test_state.ball.action == DD_BALL_AWARDED,
+              "LEVEL < 9 with negative signed $001A and aim != $60 holds in $46 via $884C");
+    }
+
+    /* 5. Decision Matrix: Level < 9, negative phase (0x90), aim == 0x60 -> SHOOTS */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 8u;
+        test_state.cpu_global_frame = 0x8Fu; /* next step makes it 0x90 (scheduled, negative signed) */
+        test_state.free_throw_timer = 0u;
+        test_state.free_throw_aim = 0x62u; /* decrements by 2 to 0x60 */
+        test_state.free_throw_aim_direction = 0;
+        check(dd_gameplay_step(pack, &test_state, 0u), "step level 8 negative phase with aim 0x60");
+        check(test_state.free_throw_aim == 0x60u, "aim decrements to exact 0x60");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_GATHER &&
+              test_state.ball.action == DD_BALL_SHOT_GATHER,
+              "LEVEL < 9 with negative signed $001A and aim == $60 takes $884A BEQ and shoots");
+    }
+
+    /* 6. Decision Matrix: Level >= 9, positive phase (0x10), aim != 0x60 (0x54) -> HOLDS */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 9u;
+        test_state.cpu_global_frame = 0x0Fu; /* next step makes it 0x10 (scheduled, positive signed) */
+        test_state.free_throw_timer = 0u;
+        test_state.free_throw_aim = 0x54u;
+        check(dd_gameplay_step(pack, &test_state, 0u), "step level 9 positive phase hold");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_SET &&
+              test_state.ball.action == DD_BALL_AWARDED,
+              "LEVEL >= 9 bypasses $8841 BPL via $883F BCS and holds when aim != $60");
+    }
+
+    /* 7. Decision Matrix: Level >= 9, negative phase (0x90), aim != 0x60 (0x54) -> HOLDS */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 9u;
+        test_state.cpu_global_frame = 0x8Fu; /* next step makes it 0x90 (scheduled, negative signed) */
+        test_state.free_throw_timer = 0u;
+        test_state.free_throw_aim = 0x54u;
+        check(dd_gameplay_step(pack, &test_state, 0u), "step level 9 negative phase hold");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_SET &&
+              test_state.ball.action == DD_BALL_AWARDED,
+              "LEVEL >= 9 with negative phase and aim != $60 holds in $46");
+    }
+
+    /* 8. Decision Matrix: Level >= 9, aim == 0x60 -> SHOOTS */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 9u;
+        test_state.cpu_global_frame = 0x8Fu; /* negative phase */
+        test_state.free_throw_timer = 0u;
+        test_state.free_throw_aim = 0x62u; /* decrements to 0x60 */
+        test_state.free_throw_aim_direction = 0;
+        check(dd_gameplay_step(pack, &test_state, 0u), "step level 9 with aim 0x60");
+        check(test_state.free_throw_aim == 0x60u, "aim reaches 0x60");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_GATHER &&
+              test_state.ball.action == DD_BALL_SHOT_GATHER,
+              "LEVEL >= 9 with aim == $60 takes $884A BEQ and shoots");
+    }
+
+    /* 9. Progression from shot gather through height-script release to airborne flight */
+    {
+        DDGameplayState test_state = state;
+        test_state.gameplay_level = 9u;
+        test_state.cpu_global_frame = 0x8Fu;
+        test_state.free_throw_timer = 0u;
+        test_state.free_throw_aim = 0x62u;
+        test_state.free_throw_aim_direction = 0;
+        check(dd_gameplay_step(pack, &test_state, 0u), "initiate level 9 aim 60 shot");
+        check(test_state.players[5].action == DD_PLAYER_FREE_THROW_GATHER, "shooter in gather");
+
+        /* Step height script through apex release $81 */
+        for (i = 0u; i < 50u && test_state.ball.action == DD_BALL_SHOT_GATHER; ++i) {
+            check(dd_gameplay_step(pack, &test_state, 0u), "advance gather height script");
+        }
+        check(test_state.ball.action == DD_BALL_AIRBORNE,
+              "height script apex $81 releases free throw to DD_BALL_AIRBORNE $05");
+        check(test_state.last_shooter == 5u && test_state.shot_value == 1u,
+              "shooter and 1-point value preserved across airborne flight");
+    }
+}
+
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
         0x0Fu, 0x20u, 0x20u, 0x20u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Du, 0x3Eu
@@ -683,6 +852,7 @@ int main(int argc, char **argv) {
     check_level_gameplay(&pack);
     check_long_run_native_match(&pack);
     check_user_offense_cpu_defense(&pack);
+    check_cpu_free_throw_level_policy(&pack);
     check(assets->cpu_role_targets[6] == 0xD5u && assets->cpu_role_targets[7] == 0x5Au &&
           assets->cpu_role_targets[16] == 0x54u && assets->cpu_role_targets[17] == 0xD7u,
           "asset pack exposes the observed role targets at both half-court phases");

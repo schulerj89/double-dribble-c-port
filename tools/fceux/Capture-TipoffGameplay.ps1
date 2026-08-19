@@ -32,6 +32,17 @@ param(
     [ValidateSet('owner', 'wrong')]
     [string]$ContactPair = 'owner',
     [int]$UserFreeThrowFrame = -1,
+    [int]$CpuFreeThrowFrame = -1,
+    [ValidateRange(-1, 255)]
+    [int]$CpuFreeThrowLevel = -1,
+    [ValidateRange(-1, 255)]
+    [int]$CpuFreeThrowPhase = -1,
+    [ValidateRange(-1, 255)]
+    [int]$CpuFreeThrowAim = -1,
+    [ValidateRange(-1, 255)]
+    [int]$CpuFreeThrowTimer = -1,
+    [ValidateRange(-1, 255)]
+    [int]$CpuFreeThrowGate = -1,
     [int]$BasketFrame = -1,
     [ValidateRange(1, 4)]
     [int]$BasketResult = 1,
@@ -92,6 +103,12 @@ $env:DD_INJECT_CONTACT_PHASE = $ContactPhase.ToString([Globalization.CultureInfo
 $env:DD_INJECT_CONTACT_BALL_STATE = $ContactBallState.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_CONTACT_PAIR = $ContactPair
 $env:DD_INJECT_USER_FREE_THROW_FRAME = $UserFreeThrowFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CPU_FREE_THROW_FRAME = $CpuFreeThrowFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CPU_FREE_THROW_LEVEL = $CpuFreeThrowLevel.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CPU_FREE_THROW_PHASE = $CpuFreeThrowPhase.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CPU_FREE_THROW_AIM = $CpuFreeThrowAim.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CPU_FREE_THROW_TIMER = $CpuFreeThrowTimer.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_CPU_FREE_THROW_GATE = $CpuFreeThrowGate.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_FRAME = $BasketFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_RESULT = $BasketResult.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BASKET_COUNTER = $BasketCounter.ToString([Globalization.CultureInfo]::InvariantCulture)
