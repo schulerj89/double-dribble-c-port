@@ -387,20 +387,20 @@
     },
     {
       "name": "user_live_defensive_contact_dispatch",
-      "status": "partial",
+      "status": "verified",
       "routines": [
         "bank0:A3E2"
       ],
       "evidence": [
-        "Headless Ghidra `$A3E2-$A44B` shows both the paired jump-contest path and the ordinary live-dribble fallback `$A42D->$B435->$A347/$A44B`",
-        "FCEUX and native checks cover paired shot/block contests and loose-ball pickup, but do not yet cover a controlled defender taking a normally dribbling ball from a CPU carrier"
+        "Headless Ghidra `$A3E2-$A4FF` proves the paired jump-contest path, held A-button gate, `$001D/$0056` rejection, collision check `$B435`, exceptional foul `$A347`, same-player violation `$A439`, and full possession transfer `$A44B`",
+        "FCEUX dynamic traces verify success and all rejection paths across 11 checkpoints with pre/post steal frame captures"
       ],
       "native_symbols": [
-        "dd_step_live", "dd_user_contest_eligible", "dd_try_user_loose_ball_pickup",
-        "dd_begin_user_contest", "dd_step_user_contest", "dd_transfer_contact_possession"
+        "dd_step_live", "dd_step_user_defense_action", "dd_begin_user_contest",
+        "dd_step_user_contest", "dd_transfer_contact_possession", "dd_possession_ball_contact"
       ],
       "regression_tests": [
-        "tests/dd_gameplay_cpu_test.c covers jump contests and loose-ball pickup; a shipping-input CPU-dribble steal regression is still missing"
+        "tests/dd_gameplay_cpu_test.c `check_user_ordinary_steal` covers all 11 decision and progression cases including button gates, lock timers, boundary radius, exceptional foul `$1A`, violation `$0F`, role swaps, and natural approach"
       ]
     },
     {

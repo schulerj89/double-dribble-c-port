@@ -39,6 +39,15 @@ local inject_basket_counter = tonumber(os.getenv("DD_INJECT_BASKET_COUNTER") or 
 local inject_basket_shot_kind = tonumber(os.getenv("DD_INJECT_BASKET_SHOT_KIND") or "0")
 local inject_block_frame = tonumber(os.getenv("DD_INJECT_BLOCK_FRAME") or "-1")
 local inject_user_block_frame = tonumber(os.getenv("DD_INJECT_USER_BLOCK_FRAME") or "-1")
+local inject_user_steal_frame = tonumber(os.getenv("DD_INJECT_USER_STEAL_FRAME") or "-1")
+local inject_user_steal_button = os.getenv("DD_INJECT_USER_STEAL_BUTTON") or "A"
+local inject_user_steal_lock = tonumber(os.getenv("DD_INJECT_USER_STEAL_LOCK") or "-1")
+local inject_user_steal_gate = tonumber(os.getenv("DD_INJECT_USER_STEAL_GATE") or "-1")
+local inject_user_steal_ball_state = tonumber(os.getenv("DD_INJECT_USER_STEAL_BALL_STATE") or "-1")
+local inject_user_steal_paired_action = tonumber(os.getenv("DD_INJECT_USER_STEAL_PAIRED_ACTION") or "-1")
+local inject_user_steal_collision = os.getenv("DD_INJECT_USER_STEAL_COLLISION") or "hit"
+local inject_user_steal_foul = os.getenv("DD_INJECT_USER_STEAL_FOUL") == "1"
+local inject_user_steal_same_player = os.getenv("DD_INJECT_USER_STEAL_SAME_PLAYER") == "1"
 local inject_ball_state_frame = tonumber(os.getenv("DD_INJECT_BALL_STATE_FRAME") or "-1")
 local inject_ball_state = tonumber(os.getenv("DD_INJECT_BALL_STATE") or "12")
 local inject_loose_launch_frame = tonumber(os.getenv("DD_INJECT_LOOSE_LAUNCH_FRAME") or "-1")
@@ -580,13 +589,19 @@ for _, address in ipairs({0xA3E2, 0xA504, 0xA607, 0x9102, 0x9139,
         end
     end)
 end
-for _, address in ipairs({0xA3E2, 0xA402, 0xA40A, 0xA426, 0xA607,
+for _, address in ipairs({0xA3E2, 0xA402, 0xA40A, 0xA426, 0xA42D,
+                          0xA434, 0xA439, 0xA43F, 0xA444, 0xA44B,
+                          0xA460, 0xA478, 0xA607, 0x9645,
                           0xA638, 0xA651, 0xA656, 0xA672, 0xA67D,
                           0xA68A, 0xA693, 0xA6AD, 0xA6B8, 0xA6C3}) do
     memory.registerexecute(address, 1, function(address, size, value)
         local frame = emu.framecount()
         if frame >= trace_start and frame <= trace_end and current_switch_bank() == 0 then
             local object = memory.readbyte(0x004B)
+            if address == 0xA3E2 and frame == inject_user_steal_frame and object == 0x02 then
+                if inject_user_steal_lock >= 0 then memory.writebyte(0x001D, inject_user_steal_lock) end
+                if inject_user_steal_gate >= 0 then memory.writebyte(0x0056, inject_user_steal_gate) end
+            end
             local paired = memory.readbyte(0x0580 + object)
             local script_low = memory.readbyte(0x0500 + object)
             local script_high = memory.readbyte(0x0510 + object)
@@ -714,6 +729,9 @@ while emu.framecount() < final_frame do
     end
     if next_frame >= move_start and next_frame <= move_end and move_direction ~= "none" then
         input[move_direction] = true
+    end
+    if next_frame == inject_user_steal_frame and inject_user_steal_button == "A" then
+        input.A = true
     end
     if next_frame == pass_frame - 1 and user_position_frame < 0 and user_shot_depth >= 0 then
         -- Controlled full-path shooting probe.  Only the user carrier's court
@@ -930,6 +948,76 @@ while emu.framecount() < final_frame do
         if inject_cpu_free_throw_aim >= 0 then
             memory.writebyte(0x033C, inject_cpu_free_throw_aim)
         end
+    end
+    if next_frame == inject_user_steal_frame then
+        local defender = 0x02
+        local cpu_carrier = 0x07
+        memory.writebyte(0x004B, defender)
+        memory.writebyte(0x0340 + defender, 0x0F)
+        memory.writebyte(0x0690 + defender, 0x00)
+        memory.writebyte(0x0580 + defender, cpu_carrier)
+        memory.writebyte(0x0580 + cpu_carrier, defender)
+        memory.writebyte(0x0340 + cpu_carrier, inject_user_steal_paired_action >= 0 and inject_user_steal_paired_action or 0x25)
+        memory.writebyte(0x0690 + cpu_carrier, 0x00)
+        memory.writebyte(0x005B, inject_user_steal_same_player and defender or cpu_carrier)
+        memory.writebyte(0x0048, cpu_carrier)
+        memory.writebyte(0x0050, 0x08)
+        memory.writebyte(0x001D, inject_user_steal_lock >= 0 and inject_user_steal_lock or 0x00)
+        memory.writebyte(0x0056, inject_user_steal_gate >= 0 and inject_user_steal_gate or 0x00)
+        memory.writebyte(0x0340, inject_user_steal_ball_state >= 0 and inject_user_steal_ball_state or 0x01)
+        memory.writebyte(0x002C, 0x01)
+
+        memory.writebyte(0x0360 + cpu_carrier, 0x00)
+        memory.writebyte(0x0370 + cpu_carrier, 0x90)
+        memory.writebyte(0x03C0 + cpu_carrier, 0x58)
+        memory.writebyte(0x0410 + cpu_carrier, 0x10)
+
+        memory.writebyte(0x0360, 0x00)
+        memory.writebyte(0x0370, 0x90)
+        memory.writebyte(0x03C0, 0x58)
+        memory.writebyte(0x0410, 0x10)
+
+        if inject_user_steal_collision == "hit" then
+            memory.writebyte(0x0360 + defender, 0x00)
+            memory.writebyte(0x0370 + defender, 0x90)
+            memory.writebyte(0x03C0 + defender, 0x58)
+            memory.writebyte(0x0410 + defender, 0x10)
+        elseif inject_user_steal_collision == "boundary_in" then
+            memory.writebyte(0x0360 + defender, 0x00)
+            memory.writebyte(0x0370 + defender, 0x9A)
+            memory.writebyte(0x03C0 + defender, 0x62)
+            memory.writebyte(0x0410 + defender, 0x10)
+        elseif inject_user_steal_collision == "boundary_out" then
+            memory.writebyte(0x0360 + defender, 0x00)
+            memory.writebyte(0x0370 + defender, 0x9B)
+            memory.writebyte(0x03C0 + defender, 0x63)
+            memory.writebyte(0x0410 + defender, 0x10)
+        else
+            memory.writebyte(0x0360 + defender, 0x00)
+            memory.writebyte(0x0370 + defender, 0x50)
+            memory.writebyte(0x03C0 + defender, 0x20)
+            memory.writebyte(0x0410 + defender, 0x10)
+        end
+
+        if inject_user_steal_button == "A" then
+            memory.writebyte(0x0680 + defender, 0x80)
+        else
+            memory.writebyte(0x0680 + defender, 0x00)
+        end
+
+        if inject_user_steal_foul then
+            memory.writebyte(0x0025, 0x00)
+            memory.writebyte(0x0350 + defender, 0x04)
+            memory.writebyte(0x0350 + cpu_carrier, 0x04)
+        else
+            memory.writebyte(0x0025, 0x50)
+            memory.writebyte(0x0350 + defender, 0x00)
+            memory.writebyte(0x0350 + cpu_carrier, 0x04)
+        end
+
+        capture_frames[inject_user_steal_frame] = true
+        capture_frames[inject_user_steal_frame + 1] = true
+        capture_frames[inject_user_steal_frame + 2] = true
     end
     if next_frame == inject_basket_frame then
         -- Controlled $AE25->$B377 classifier probe.  $AE25 increments $04F0

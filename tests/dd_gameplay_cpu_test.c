@@ -807,6 +807,335 @@ static void check_cpu_free_throw_level_policy(const DDAssetPack *pack) {
     }
 }
 
+static void check_user_ordinary_steal(const DDAssetPack *pack) {
+    DDGameplayState base;
+    DDGameplayState state;
+    uint32_t player;
+    uint32_t i;
+
+    memset(&base, 0, sizeof(base));
+    check(dd_gameplay_advance_to(pack, &base, 356u, 0u), "advance to live for steal fixture");
+
+    /* 1. Rejection when defender is in live defense without A button on ball $01 */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.players[0].court_x = state.players[5].court_x;
+    state.players[0].court_depth = state.players[5].court_depth;
+    state.ball.court_x = state.players[5].court_x;
+    state.ball.court_depth = state.players[5].court_depth;
+    state.ball.height = state.players[5].height + 0x0800;
+    check(dd_gameplay_step(pack, &state, 0u), "step user defense without A input");
+    check(state.carrier == 5u && state.ball.owner == 5u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER,
+          "$A408 BCC rejects live dribble steal when A button is not pressed");
+
+    /* 2. Rejection when contact lock $001D is nonzero */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 2u;
+    state.score_contact_gate = 0u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.players[0].court_x = state.players[5].court_x;
+    state.players[0].court_depth = state.players[5].court_depth;
+    state.ball.court_x = state.players[5].court_x;
+    state.ball.court_depth = state.players[5].court_depth;
+    state.ball.height = state.players[5].height + 0x0800;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user defense with $001D nonzero");
+    check(state.carrier == 5u && state.ball.owner == 5u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER,
+          "$A40A BNE rejects live dribble steal when $001D is nonzero");
+
+    /* 3. Rejection when dead-ball/score gate $0056 is nonzero */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 1u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.players[0].court_x = state.players[5].court_x;
+    state.players[0].court_depth = state.players[5].court_depth;
+    state.ball.court_x = state.players[5].court_x;
+    state.ball.court_depth = state.players[5].court_depth;
+    state.ball.height = state.players[5].height + 0x0800;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user defense with $0056 nonzero");
+    check(state.carrier == 5u && state.ball.owner == 5u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER,
+          "$A40E BNE rejects live dribble steal when $0056 is nonzero");
+
+    /* 4. Rejection when ball state is invalid (e.g. ball $00 awarded) */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.ball.action = DD_BALL_AWARDED;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.players[0].court_x = state.players[5].court_x;
+    state.players[0].court_depth = state.players[5].court_depth;
+    state.ball.court_x = state.players[5].court_x;
+    state.ball.court_depth = state.players[5].court_depth;
+    state.ball.height = state.players[5].height + 0x0800;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user defense with ball $00");
+    check(state.carrier == 5u && state.ball.owner == 5u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER,
+          "$A400 BNE rejects when ball state is neither loose nor live dribble/shot");
+
+    /* 5. Redirection to jump contest $A607 when paired opponent is in carrier route/decide $26/$27 */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[0].paired_player = 5u;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER_ROUTE;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user defense with paired carrier in $26");
+    check(state.players[0].action == DD_PLAYER_USER_CONTEST &&
+          state.players[0].height_script_index == 11u &&
+          state.carrier == 5u,
+          "$A41A BEQ $A426 redirects paired carrier state $26 to jump contest $A607");
+
+    /* 6. Collision miss via $B435 outside 10px boundary */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[0].paired_player = 5u;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.ball.court_x = 0x010000;
+    state.ball.court_depth = 0x005800;
+    state.ball.height = 0x1000;
+    /* Defender at dx = 11 px (0x0B00) > 10 px radius */
+    state.players[0].court_x = state.ball.court_x + 0x0B00;
+    state.players[0].court_depth = state.ball.court_depth;
+    state.players[0].height = state.ball.height;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user steal at distance 11px");
+    check(state.carrier == 5u && state.ball.owner == 5u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER,
+          "$A434 BCS rejects steal when defender is outside the $B435 10px collision radius");
+
+    /* 7. Collision hit via $B435 at exact 10px boundary (dx = 10 px, dz = 10 px) */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.possession_foul_timer = 0x50u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[0].paired_player = 5u;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.players[0].facing = 0u;
+    state.players[5].facing = 4u;
+    state.ball.court_x = 0x010000;
+    state.ball.court_depth = 0x005800;
+    state.ball.height = 0x1000;
+    /* Defender at exact boundary dx = 10 px (0x0A00), dz = 10 px (0x0A00) */
+    state.players[0].court_x = state.ball.court_x + 0x0A00;
+    state.players[0].court_depth = state.ball.court_depth + 0x0A00;
+    state.players[0].height = state.ball.height;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user steal at exact 10px boundary");
+    check(state.carrier == 0u && state.ball.owner == 0u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER_CARRIER &&
+          state.possession_direction == 1u,
+          "$B435 recognizes exact 10px boundary overlap and transfers possession through $A44B");
+
+    /* 8. Exceptional foul $1A via $A347 when $0025 == 0, ball is $01, and facings match */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.possession_foul_timer = 0u; /* $0025 == 0 */
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[0].paired_player = 5u;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.players[0].facing = 4u;
+    state.players[5].facing = 4u; /* matching facing direction */
+    state.ball.court_x = 0x010000;
+    state.ball.court_depth = 0x005800;
+    state.ball.height = 0x1000;
+    state.players[5].court_x = state.ball.court_x;
+    state.players[5].court_depth = state.ball.court_depth;
+    state.players[5].height = state.ball.height;
+    state.players[0].court_x = state.ball.court_x;
+    state.players[0].court_depth = state.ball.court_depth;
+    state.players[0].height = state.ball.height;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user steal during zero $0025 with same facing");
+    check(state.phase == DD_GAMEPLAY_FREE_THROW &&
+          state.foul_shooter == 5u &&
+          state.free_throw_coarse_age == 0u,
+          "$A347 triggers exceptional foul free throw sequence $1A when $0025 is zero and facings match");
+
+    /* 9. Same-player violation via $A439 when defender == owner */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 0u;
+    state.carrier = 0u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.possession_foul_timer = 0x50u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 0u; /* defender owns the ball already */
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+    state.players[0].paired_player = 5u;
+    state.players[5].action = DD_PLAYER_LIVE_CPU;
+    state.ball.court_x = 0x010000;
+    state.ball.court_depth = 0x005800;
+    state.ball.height = 0x1000;
+    state.players[0].court_x = state.ball.court_x;
+    state.players[0].court_depth = state.ball.court_depth;
+    state.players[0].height = state.ball.height;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user steal when defender is already owner");
+    check(state.phase == DD_GAMEPLAY_INBOUND &&
+          state.inbound_reason == 0x0Fu &&
+          state.audio_event == 0x2Cu,
+          "$A439-$A444 takes whistle $2C and reason-$0F turnover inbound when defender equals owner");
+
+    /* 10. Complete $A44B state reset and role-zero swap with reciprocal paired link swap */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.cpu_global_frame = 0u;
+    state.controlled_player = 2u; /* player 2 (role 2) is the controlled defender */
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.possession_foul_timer = 0x50u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.ball.velocity_x = 0x0123;
+    state.ball.velocity_depth = 0x0045;
+    state.ball.velocity_height = 0x0067;
+    for (player = 0u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+        state.players[player].role = (uint8_t)(player % 5u);
+        state.players[player].height = 0x2A00;
+    }
+    state.players[0].paired_player = 5u;
+    state.players[2].paired_player = 7u;
+    state.players[5].paired_player = 0u;
+    state.players[7].paired_player = 2u;
+    state.players[2].action = DD_PLAYER_LIVE_USER;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    state.ball.court_x = 0x010000;
+    state.ball.court_depth = 0x005800;
+    state.ball.height = 0x1000;
+    state.players[2].court_x = state.ball.court_x;
+    state.players[2].court_depth = state.ball.court_depth;
+    state.players[2].height = state.ball.height;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_A), "step user steal on non-role-zero defender");
+    check(state.carrier == 2u && state.ball.owner == 2u &&
+          state.controlled_player == 2u &&
+          state.possession_direction == 1u &&
+          state.score_contact_gate == 0u &&
+          state.ball.action == DD_BALL_DRIBBLE &&
+          state.ball.velocity_x == 0 && state.ball.velocity_depth == 0 && state.ball.velocity_height == 0 &&
+          state.players[2].role == 0u &&
+          state.players[0].role == 2u &&
+          state.players[2].paired_player == 5u &&
+          state.players[5].paired_player == 2u &&
+          state.players[2].action == DD_PLAYER_LIVE_USER_CARRIER &&
+          state.players[0].action == DD_PLAYER_LIVE_TEAMMATE &&
+          state.players[1].action == DD_PLAYER_LIVE_TEAMMATE &&
+          state.players[3].action == DD_PLAYER_LIVE_TEAMMATE &&
+          state.players[4].action == DD_PLAYER_LIVE_TEAMMATE &&
+          state.players[5].action == DD_PLAYER_LIVE_CPU &&
+          state.players[8].action == DD_PLAYER_LIVE_CPU_CUT &&
+          state.players[9].action == DD_PLAYER_LIVE_CPU_ROUTE &&
+          state.players[0].height == 0x1000 &&
+          state.players[2].height == 0x1000 &&
+          state.players[5].height == 0x1000,
+          "$A44B resets owner, carrier, direction, role links, and defensive formations");
+
+    /* 11. Multi-frame natural live approach: defender runs toward carrier, presses A, steals and dribbles downcourt */
+    state = base;
+    state.phase = DD_GAMEPLAY_LIVE;
+    state.controlled_player = 0u;
+    state.carrier = 5u;
+    state.contact_lock_timer = 0u;
+    state.score_contact_gate = 0u;
+    state.possession_foul_timer = 0x50u;
+    state.ball.action = DD_BALL_DRIBBLE;
+    state.ball.owner = 5u;
+    state.ball.court_x = 0x010000;
+    state.ball.court_depth = 0x005800;
+    state.ball.height = 0x1000;
+    state.players[5].court_x = 0x010000;
+    state.players[5].court_depth = 0x005800;
+    state.players[5].height = 0x1000;
+    state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+    /* Defender starts 16px to the left */
+    state.players[0].court_x = 0x010000 - (16 * 256);
+    state.players[0].court_depth = 0x005800;
+    state.players[0].height = 0x1000;
+    state.players[0].action = DD_PLAYER_LIVE_USER;
+
+    /* Advance defender right toward carrier */
+    for (i = 0u; i < 10u; ++i) {
+        check(dd_gameplay_step(pack, &state, DD_INPUT_RIGHT), "approach carrier moving right");
+    }
+    check(state.players[0].action == DD_PLAYER_LIVE_USER && state.carrier == 5u,
+          "defender remains in live defense while approaching");
+
+    /* Ensure defender is at carrier position and press A */
+    state.players[0].court_x = state.ball.court_x;
+    state.players[0].court_depth = state.ball.court_depth;
+    check(dd_gameplay_step(pack, &state, DD_INPUT_RIGHT | DD_INPUT_A), "execute steal upon arrival");
+    check(state.carrier == 0u && state.ball.owner == 0u &&
+          state.players[0].action == DD_PLAYER_LIVE_USER_CARRIER,
+          "natural user approach and steal successfully acquires ball into live user carrier");
+
+    /* Dribble downcourt as user carrier */
+    for (i = 0u; i < 10u; ++i) {
+        check(dd_gameplay_step(pack, &state, DD_INPUT_RIGHT), "dribble right downcourt");
+    }
+    check(state.players[0].action == DD_PLAYER_LIVE_USER_CARRIER &&
+          state.ball.action == DD_BALL_DRIBBLE &&
+          state.players[0].court_x > 0x010000,
+          "stealer advances downcourt in full control of live dribble");
+}
+
 int main(int argc, char **argv) {
     static const uint8_t post_inbound_action[DD_GAMEPLAY_PLAYER_COUNT] = {
         0x0Fu, 0x20u, 0x20u, 0x20u, 0x20u, 0x40u, 0x25u, 0x37u, 0x3Du, 0x3Eu
@@ -853,6 +1182,7 @@ int main(int argc, char **argv) {
     check_long_run_native_match(&pack);
     check_user_offense_cpu_defense(&pack);
     check_cpu_free_throw_level_policy(&pack);
+    check_user_ordinary_steal(&pack);
     check(assets->cpu_role_targets[6] == 0xD5u && assets->cpu_role_targets[7] == 0x5Au &&
           assets->cpu_role_targets[16] == 0x54u && assets->cpu_role_targets[17] == 0xD7u,
           "asset pack exposes the observed role targets at both half-court phases");
@@ -2417,9 +2747,9 @@ int main(int argc, char **argv) {
     check(dispatch_state.carrier == 1u && dispatch_state.ball.owner == 1u &&
           dispatch_state.controlled_player == 1u &&
           dispatch_state.players[1].action == DD_PLAYER_LIVE_USER_CARRIER &&
-          dispatch_state.players[0].action == DD_PLAYER_LIVE_CPU &&
-          dispatch_state.players[3].action == DD_PLAYER_LIVE_CPU_CUT &&
-          dispatch_state.players[5].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[0].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[3].action == DD_PLAYER_LIVE_TEAMMATE &&
+          dispatch_state.players[5].action == DD_PLAYER_LIVE_CPU &&
           dispatch_state.players[1].role == 0u &&
           dispatch_state.players[0].role == 1u &&
           dispatch_state.players[0].height == 0x1000 &&
@@ -3117,6 +3447,8 @@ int main(int argc, char **argv) {
     contest_state.cpu_global_frame = 0u;
     contest_state.controlled_player = 0u;
     contest_state.carrier = 5u;
+    contest_state.contact_lock_timer = 0u;
+    contest_state.score_contact_gate = 0u;
     contest_state.ball.action = DD_BALL_SHOT_GATHER;
     contest_state.ball.owner = 5u;
     contest_state.players[0].action = DD_PLAYER_LIVE_USER;
@@ -3171,6 +3503,8 @@ int main(int argc, char **argv) {
     contest_state.cpu_global_frame = 0u;
     contest_state.controlled_player = 0u;
     contest_state.carrier = 0xFFu;
+    contest_state.contact_lock_timer = 0u;
+    contest_state.score_contact_gate = 0u;
     contest_state.ball.action = DD_BALL_REBOUND;
     contest_state.ball.owner = 0xFFu;
     contest_state.ball.velocity_height = 0;
@@ -3204,6 +3538,8 @@ int main(int argc, char **argv) {
     contest_state.phase = DD_GAMEPLAY_LIVE;
     contest_state.controlled_player = 0u;
     contest_state.carrier = 0xFFu;
+    contest_state.contact_lock_timer = 0u;
+    contest_state.score_contact_gate = 0u;
     contest_state.players[0].action = DD_PLAYER_LIVE_USER;
     contest_state.players[5].action = DD_PLAYER_ROUTE_WAIT;
     contest_state.ball.action = DD_BALL_REBOUND;
@@ -3241,6 +3577,8 @@ int main(int argc, char **argv) {
     dispatch_state.phase = DD_GAMEPLAY_LIVE;
     dispatch_state.controlled_player = 0u;
     dispatch_state.carrier = 5u;
+    dispatch_state.contact_lock_timer = 0u;
+    dispatch_state.score_contact_gate = 0u;
     dispatch_state.ball.action = DD_BALL_DRIBBLE;
     dispatch_state.ball.owner = 5u;
     dispatch_state.ball.court_x = 0x010000;

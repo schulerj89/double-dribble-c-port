@@ -31,6 +31,7 @@ static void dd_usage(void) {
     puts("  --render-gameplay-top-edge <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-tip-jump <input.assetpack> <output.bmp>");
     puts("  --render-gameplay-free-throw <input.assetpack> <ready|gather|airborne> <output.bmp>");
+    puts("  --render-gameplay-user-steal <input.assetpack> <before|after> <output.bmp>");
     puts("  --dump-title-wav <input.assetpack> <output.wav>");
     puts("  --dump-intro-wav <input.assetpack> <output.wav>");
     puts("  --dump-select-wav <input.assetpack> <output.wav>");
@@ -325,6 +326,54 @@ int main(int argc, char **argv) {
                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
             dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
                          pack.tipoff_meta.height);
+        free(pixels);
+        dd_asset_pack_unload(&pack);
+        return ok ? 0 : 1;
+    }
+    if (argc == 5 && strcmp(argv[1], "--render-gameplay-user-steal") == 0) {
+        DDGameplayState state;
+        uint32_t *pixels;
+        uint32_t player;
+        int after = strcmp(argv[3], "after") == 0;
+        int ok = after || strcmp(argv[3], "before") == 0;
+        if (!ok || !dd_asset_pack_load(argv[2], &pack)) return 1;
+        memset(&state, 0, sizeof(state));
+        ok = dd_gameplay_advance_to(&pack, &state, 356u, 0u);
+        if (ok) {
+            state.phase = DD_GAMEPLAY_LIVE;
+            state.possession_direction = 0u;
+            state.controlled_player = 0u;
+            state.carrier = 5u;
+            state.contact_lock_timer = 0u;
+            state.score_contact_gate = 0u;
+            state.possession_foul_timer = 0x50u;
+            state.ball.action = DD_BALL_DRIBBLE;
+            state.ball.owner = 5u;
+            state.players[0].action = DD_PLAYER_LIVE_USER;
+            state.players[5].action = DD_PLAYER_LIVE_CARRIER;
+            state.ball.court_x = 0x010000;
+            state.ball.court_depth = 0x005800;
+            state.ball.height = 0x1000;
+            state.players[5].court_x = state.ball.court_x;
+            state.players[5].court_depth = state.ball.court_depth;
+            state.players[5].height = state.ball.height;
+            state.players[0].court_x = state.ball.court_x;
+            state.players[0].court_depth = state.ball.court_depth;
+            state.players[0].height = state.ball.height;
+            for (player = 1u; player < DD_GAMEPLAY_PLAYER_COUNT; ++player) {
+                if (player != 5u) state.players[player].action = DD_PLAYER_ROUTE_WAIT;
+            }
+            if (after) {
+                ok = dd_gameplay_step(&pack, &state, DD_INPUT_A);
+            }
+        }
+        pixels = (uint32_t *)malloc((size_t)pack.tipoff_meta.width *
+                                    pack.tipoff_meta.height * sizeof(uint32_t));
+        ok = ok && pixels != NULL &&
+             dd_render_gameplay(&pack, &state, pixels,
+                                pack.tipoff_meta.width, pack.tipoff_meta.height) &&
+             dd_write_bmp(argv[4], pixels, pack.tipoff_meta.width,
+                          pack.tipoff_meta.height);
         free(pixels);
         dd_asset_pack_unload(&pack);
         return ok ? 0 : 1;

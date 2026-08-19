@@ -57,16 +57,16 @@ $components = @(
     [pscustomobject]@{
         Name = 'Core loop'; Weight = 0.25; Expected = 7
         Verified = @('objects','scheduler','targets','dribble-audio',
-                     'movement-physics','general-collision')
-        Partial = @('user-control')
+                     'movement-physics','general-collision','user-control')
+        Partial = @()
         Missing = @()
     },
     [pscustomobject]@{
         Name = 'Match rules'; Weight = 0.20; Expected = 13
         Verified = @('tipoff','made-shot','score-hud','misses','periods','user-control',
                      'inbound','rebound','possession-transfer',
-                     'clock','fouls-out-of-bounds')
-        Partial = @('cpu-choice','steals-blocks')
+                     'clock','fouls-out-of-bounds','steals-blocks')
+        Partial = @('cpu-choice')
         Missing = @()
     }
 )

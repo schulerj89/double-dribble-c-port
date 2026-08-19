@@ -2197,3 +2197,62 @@ resolve the bank-0 CPU free-throw release decision chain at `$8832-$884F` (ROM f
 Future fidelity work may compare the native PCM mix and title/attract-mode
 presentation against the NES, but it does not represent missing reachable
 portable gameplay behavior in this inventory.
+
+## Ordinary User Live-Dribble Stealing and Possession Transfer ($A3E2-$A4FF)
+
+Status: **implemented and routine-verified**. Headless Ghidra and FCEUX dynamic traces resolve the complete Bank-0 user defense live-dribble stealing and possession transfer chain at `$A3E2-$A4FF` (ROM file offsets `0x23F2-0x2513`).
+
+### Recovered 6502 Flow
+
+| Address | Bank | ROM Offset | Disassembly | Effect |
+|---|---|---|---|---|
+| `$A3E2` | 0 | `0x23F2` | `LDX $004B; LDA $0340` | Load active player object index into X and ball state into A |
+| `$A3E5` | 0 | `0x23F5` | `CMP #$09; BEQ $A402` | Ball state `$09` (loose pickup) -> bypass button check |
+| `$A3E9` | 0 | `0x23F9` | `CMP #$07; BEQ $A402` | Ball state `$07` (rebound) -> bypass button check |
+| `$A3EB` | 0 | `0x23FB` | `CMP #$01; BEQ $A3FF` | Ball state `$01` (dribble) -> check controller button |
+| `$A3F0` | 0 | `0x2400` | `CMP #$04; BEQ $A3FF` | Ball state `$04` (gather) -> check controller button |
+| `$A3F5` | 0 | `0x2405` | `CMP #$05; BEQ $A3FF` | Ball state `$05` (airborne) -> check controller button |
+| `$A3FA` | 0 | `0x240A` | `CMP #$06; BNE $A3DF` | Other ball states (`$00, $02, $03, $08, $0A, $0B, $0C`) reject |
+| `$A3FF` | 0 | `0x240F` | `LDA $0680,X; ASL A; BCC $A3DF` | Check bit 7 of held controller input (`$0680,X` - Button A). If not held, reject |
+| `$A40A` | 0 | `0x241A` | `LDA $001D; BNE $A3DF` | If contact lock `$001D != 0` (e.g. post-tipoff 32-frame freeze), reject |
+| `$A40E` | 0 | `0x241E` | `LDA $0056; BNE $A3DF` | If score-return / dead-ball gate `$0056 != 0`, reject |
+| `$A412` | 0 | `0x2422` | `LDA $0580,X; TAX; LDA $0300,X` | Load paired opponent action |
+| `$A41A` | 0 | `0x242A` | `CMP #$26; BEQ $A426` | If paired opponent in action `$26` (carrier route) -> jump contest |
+| `$A41E` | 0 | `0x242E` | `CMP #$27; BEQ $A426` | If paired opponent in action `$27` (carrier decide) -> jump contest |
+| `$A422` | 0 | `0x2432` | `CMP #$03; BEQ $A426` | If paired opponent in action `$03` (takeoff) -> jump contest |
+| `$A426` | 0 | `0x2436` | `JMP $A607` | Redirect to jump contest entry |
+| `$A42D` | 0 | `0x243D` | `LDA #$03; JSR $B435; BCS $A3DF` | Test 10px longitudinal and depth radius collision with ball. If no overlap, reject |
+| `$A436` | 0 | `0x2446` | `JSR $A347` | Test exceptional foul `$1A` (`$0025 == 0`, ball `$01`, facings match) |
+| `$A439` | 0 | `0x2449` | `LDX $004B; CPX $005B; BNE $A44B` | Check if current player X == ball owner `$005B`. If equal, turnover violation |
+| `$A43F` | 0 | `0x244F` | `LDA #$2C; JSR $C141` | Play whistle SFX `$2C` |
+| `$A444` | 0 | `0x2454` | `LDA #$0F; STA $0065; JMP $9645` | Set inbound reason `$0F` and enter common inbound setup |
+| `$A44B` | 0 | `0x245B` | `LDX $004B; STX $0048; STX $005B` | Transfer possession: set carrier `$0048` and ball owner `$005B` to winner X |
+| `$A456` | 0 | `0x2466` | `LDA #$40; STA $0055` | Flip possession direction to `$40` (Team 1 heading right) |
+| `$A460` | 0 | `0x2470` | `LDA #$00; STA $0056` | Clear score-return / dead-ball gate `$0056 = 0` |
+| `$A468` | 0 | `0x2478` | `LDA #$02; STA $0300,X` | Set winner action to `DD_PLAYER_LIVE_USER_CARRIER` (`$02`) |
+| `$A46F` | 0 | `0x247F` | `JSR $99D9; JSR $9A31` | Swap role zero and reciprocal paired links (`$0580`) if winner was not role 0 |
+| `$A482-$A4B7` | 0 | `0x2492-0x24C7` | Team 1 teammate loop | Set winner to `$02`, other four teammates to `DD_PLAYER_LIVE_TEAMMATE` (`$20`) |
+| `$A4B8-$A4F1` | 0 | `0x24C8-0x2501` | Team 2 defensive loop | Set CPU roles 0,1,2 to `$40` (`DD_PLAYER_LIVE_CPU`), role 3 to `$3C` (`DD_PLAYER_LIVE_CPU_CUT`), role 4 to `$3E` (`DD_PLAYER_LIVE_CPU_ROUTE`) |
+| `$A4F2-$A4FF` | 0 | `0x2502-0x250F` | Height and ball reset | Reset all 10 player heights to `$10` (`0x1000`), clear ball velocities, set ball action `$01` (`DD_BALL_DRIBBLE`) |
+
+### Behavioral Summary
+1. **Held Button Input Gate (`$A404-$A408`)**: Uses `$0680,X` (held input), not single-frame edge `$0670,X`. Bit 7 (Button A) must be set for live-dribble stealing.
+2. **Phase / Gate Protections (`$A40A-$A410`)**: Requires `$001D == 0` (contact lock countdown) and `$0056 == 0` (score gate).
+3. **Collision Detection (`$B435`)**: Evaluates a 10-pixel longitudinal and depth boundary radius around the ball. Distance <= 10 pixels succeeds; distance >= 11 pixels rejects.
+4. **Turnover & Exceptional Foul Helpers (`$A347, $A439`)**: Exceptional foul `$1A` triggers if `$0025 == 0`, ball is `$01`, and facings match. If defender is already the ball owner, whistle `$2C` and turnover inbound reason `$0F` are triggered.
+5. **Team Formation & Role Reassignment (`$A44B-$A4FF`)**: Assigns stealer to `DD_PLAYER_LIVE_USER_CARRIER` (`$02`), teammates to `DD_PLAYER_LIVE_TEAMMATE` (`$20`), CPU defense to `$40/$3C/$3E`, swaps role zero / reciprocal links, and clears ball velocities.
+
+### FCEUX Dynamic Verification & Native Tests
+- Controlled FCEUX traces verify all 11 execution branches:
+  - `user-steal-success` (frame 2600): Executes full `$A3E2 -> $A402 -> $A40A -> $A42D -> $B435 -> $A347 -> $A44B -> $A460 -> $A478` transfer.
+  - `user-steal-no-button` (frame 2600): Button A not held -> rejects via `$A404 ASL/BCC`.
+  - `user-steal-lock1d` (frame 2600): Contact lock `$001D != 0` -> rejects via `$A40A BNE`.
+  - `user-steal-gate56` (frame 2600): Score gate `$0056 != 0` -> rejects via `$A40E BNE`.
+  - `user-steal-wrong-ball` (frame 2600): Ball state `$00` -> rejects via `$A3EB BNE`.
+  - `user-steal-collision-miss` (frame 2600): Outside collision radius -> rejects via `$A434 BCS`.
+  - `user-steal-boundary-in` (frame 2600): Distance 10px -> succeeds inside `$B435`.
+  - `user-steal-boundary-out` (frame 2600): Distance 11px -> rejects via `$A434 BCS`.
+  - `user-steal-paired-26-contest` (frame 2600): Opponent in `$26` -> redirects via `$A41A BEQ` to jump contest `$A607`.
+  - `user-steal-foul-1a` (frame 2600): `$0025 == 0`, same facing -> triggers foul `$1A` to `$9645`.
+  - `user-steal-same-player-0f` (frame 2600): Same player -> triggers whistle `$2C`, reason `$0F`.
+- Native C test suite (`check_user_ordinary_steal` in `tests/dd_gameplay_cpu_test.c`) verifies all 11 regression checks including natural approach and post-steal live dribble downcourt.

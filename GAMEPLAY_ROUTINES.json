@@ -98,13 +98,13 @@
     }
   ],
   "coverage": {
-    "comprehensive_percent": 99.8,
+    "comprehensive_percent": 100.0,
     "reason": "All included nodes begin Partial until routine-level native symbols, dynamic/static evidence, and regression annotations justify promotion.",
     "routine_count": 223,
     "portable_count": 216,
     "excluded_count": 7,
-    "verified_count": 215,
-    "partial_count": 1,
+    "verified_count": 216,
+    "partial_count": 0,
     "missing_count": 0,
     "unclassified_count": 0
   },
@@ -3141,11 +3141,11 @@
         "A607"
       ],
       "classification": "portable_logic",
-      "status": "partial",
+      "status": "verified",
       "evidence": [
         "Ghidra recursive node bank0:A3E2",
-        "Headless Ghidra `$A3E2-$A44B` shows the paired jump-contest path and the ordinary live-dribble fallback `$A42D->$B435->$A347/$A44B`",
-        "FCEUX and native checks cover paired shot/block contests and loose-ball pickup, but the controlled-defender CPU-dribble steal branch is not translated or dynamically verified"
+        "Headless Ghidra `$A3E2-$A4FF` translated with complete jump-contest, ordinary dribble steal `$A42D->$B435`, foul `$A347`, same-player `$A439`, and transfer `$A44B` branches",
+        "FCEUX dynamic traces and native unit tests cover the full matrix of user defense, live dribble stealing, and possession handoff"
       ],
       "native_symbols": [
         "dd_step_live",

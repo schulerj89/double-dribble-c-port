@@ -6,27 +6,25 @@ This ledger tracks how much of the original gameplay loop has been translated fr
 
 **Address discovery/mapping inventory: Incomplete (216 portable routines currently cataloged; denominator still under audit)**
 
-**Behavior-weighted catalog coverage: 96.7% (not an end-to-end parity claim)**
+**Behavior-weighted catalog coverage: 99.2% (not an end-to-end parity claim)**
 
-**Match-rules catalog coverage: 92.3% (11 Verified, 2 Partial, 0 Missing)**
+**Match-rules catalog coverage: 96.2% (12 Verified, 1 Partial, 0 Missing)**
 
-**Current-manifest routine verification: 99.8% (215 Verified, 1 Partial, 0 Missing; 7 NES mechanisms excluded)**
+**Current-manifest routine verification: 100.0% (216 Verified, 0 Partial, 0 Missing; 7 NES mechanisms excluded)**
 
 Address discovery is no longer claimed complete. The independent audit found
 known gameplay roots missing from the 223-node manifest, including bank-0
 `$852F-$89AF` free-throw handlers, `$93AE/$9431/$9490` period/clock code, and
-fixed `$D40F/$D5F9` dunk logic. The 99.8% figure describes verification only
-inside the current incomplete manifest. A branch audit also found that user dispatcher `$A3E2` is
-only Partial: the native port covers paired jump contests and loose-ball pickup,
-but not the ordinary live-dribble steal branch
-`$A42D->$B435->$A347/$A44B`. Therefore neither the routine-verification score nor
-the gameplay-behavior scores may be reported as 100%. Seven
-mapper/APU-register/PPU mechanisms remain explicitly outside the portable
+fixed `$D40F/$D5F9` dunk logic. The 100.0% figure describes verification only
+inside the current manifest. The ordinary user live-dribble stealing path from
+Bank-0 `$A3E2-$A4FF` (`$A42D->$B435->$A347/$A44B`) is now fully translated and
+verified across all branches (held A-button gate `$0680,X`, `$001D` contact lock,
+`$0056` score gate, paired contest redirection, `$B435` 10px collision, `$A347`
+exceptional foul `$1A`, same-player violation `$0F`, and `$A44B` possession transfer).
+Seven mapper/APU-register/PPU mechanisms remain explicitly outside the portable
 denominator.
 
-The targeted fixed-bank CPU region-two chain is routine-verified. Broader CPU
-possession/contact behavior remains Partial because ordinary live-dribble user
-steal root `$A3E2->$A42D` is still absent. The bounded LEVEL slice is now
+The targeted fixed-bank CPU region-two chain is routine-verified. The bounded LEVEL slice is now
 translated and routine-verified: `$A593` installs `$0068/$006C`, `$A631` maps visible choices to
 mutable gameplay LEVEL 0/4/8, `$91A6` and `$9FA3`
 consume its contact rules, `$8A57` consumes the paired-tracking
@@ -304,37 +302,40 @@ selected defender. A B-switch regression immediately enters `$A607` with A,
 proving the newly selected player can attempt the paired block. The remaining
 gap is controlled ground stealing from a normally dribbling CPU carrier.
 
-The verified portion of user defense follows `$A3E2->$A607->$A638`. Ball states `$01/$04/$05`
-require the A-button edge while `$07/$09` enter without input; the mutable
-`$0580` opponent must expose `$26/$27/$03`. `$A607` installs user state `$11`
-and the `$9B26` jump stream. `$A638` tests `$A6C3` only when the next stream
-byte is zero, changes contact to ball state `$00`, queues SFX `$20`, and delays
-`$92BD->$A44B` possession transfer until landing. A miss exposes `$10` for one
-dispatch before `$A5D0` restores `$0F`. Natural FCEUX frame 2748 proves the
-A-edge `$0F->$11` path against paired shooter `$07`; native tests cover contact,
-delayed ownership, and miss recovery. The opening reciprocal pair map is now
-the observed `$02<->$07` and `$06<->$08`; the later inbound `$99D9/$9A31`
-swap produces the separately observed `$02<->$08` mapping. However, when the
-paired opponent is not in `$26/$27/$03`, original `$A3E2` continues through
-`$A42D->$B435->$A347/$A44B`. The C dispatcher currently rejects that ordinary
-live-dribble contact path, so `$A3E2` and this subsystem remain Partial.
+The verified user defense follows `$A3E2-$A4FF`. Ball states `$01/$04/$05`
+require the held A-button (`$0680,X`) while `$07/$09` enter without input. If the
+mutable `$0580` opponent exposes `$26/$27/$03`, `$A3E2` branches to `$A607`,
+installing user state `$11` and the `$9B26` jump stream. `$A638` tests `$A6C3` only
+when the next stream byte is zero, changes contact to ball state `$00`, queues SFX
+`$20`, and delays `$92BD->$A44B` possession transfer until landing. A miss exposes
+`$10` for one dispatch before `$A5D0` restores `$0F`. Natural FCEUX frame 2748 proves
+the A-edge `$0F->$11` path against paired shooter `$07`; native tests cover contact,
+delayed ownership, and miss recovery. When the paired opponent is in ordinary
+live dribble (`$25`), `$A3E2` continues through `$A42D->$B435->$A347/$A44B`.
+The 10-pixel longitudinal/depth collision box is tested via `$B435`. If `$0025 == 0`,
+ball is `$01`, and facings match, `$A347` triggers exceptional foul `$1A`. If the
+defender is already the ball owner, `$A439` triggers same-player turnover violation
+reason `$0F` and whistle `$2C`. Otherwise, `$A44B` successfully flips possession
+direction, resets ball velocities, sets the stealer as `DD_PLAYER_LIVE_USER_CARRIER` (`$02`),
+swaps role zero and reciprocal paired links if needed, and resets teammate and
+opponent actions. All 11 paths are verified with FCEUX dynamic traces and native regressions.
 
 Excluded NES-only presentation mechanisms: camera-driven CHR streaming,
 metasprite/OAM construction, and exact dynamic OAM ordering. Mapper and bank
 switching are likewise excluded globally and are not represented as gameplay
 coverage entries.
 
-## Match rules and possession flow — 92.3%
+## Match rules and possession flow — 96.2%
 
 Thirteen tracked match-level capabilities produce this score.
 
 | Status | Capabilities |
 | --- | --- |
-| V (11) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions; live user control; inbound sequence; rebound sequence; possession transfer; game clock; fouls/free-throw continuation |
-| P (2) | CPU pass/shot choice; defensive steals/blocks (CPU and jump-contest paths covered; controlled live-dribble steal missing) |
+| V (12) | opening tip-off and possession award; made-shot sequence; score/HUD updates; missed-shot outcomes; period transitions/end conditions; live user control; inbound sequence; rebound sequence; possession transfer; game clock; fouls/free-throw continuation; defensive steals/blocks |
+| P (1) | CPU pass/shot choice |
 | M (0) | none |
 
-Score: `(11 + 0.5 + 0.5) / 13 = 92.3%`.
+Score: `(12 + 0.5) / 13 = 96.2%`.
 
 CPU pass/shot choice remains Partial overall. The targeted
 `$8B5A->$D99A->$D759/$D77B-$D8B0` region-two chain is Verified: helper-produced
@@ -402,14 +403,14 @@ original frame 2602 proves reason `$17` and all four `$98A3` writes; frame 2822
 then awards the foul shot to that defender. Native tests cover both reasons and
 their shooter/offender ownership.
 
-The defensive entry is Partial: sustained-contact steals, paired CPU contests, user
+The defensive entry is Verified: sustained-contact steals, paired CPU contests, user
 `$A3E2->$A607->$A638` contests, owned-ball arbitration, apex-only `$A6C3`
-contact, landing-delayed possession, miss recovery, and loose-ball possession
+contact, landing-delayed possession, miss recovery, loose-ball possession,
+and controlled live-dribble stealing (`$A3E2->$A42D->$B435->$A347/$A44B`)
 are native. The `$001D` presentation gate, full `$0056` contact/dead-ball
-lifetime, and pack-backed block requests `$10/$20` follow their recovered
-branches and have deterministic coverage. The missing branch is the controlled
-defender's A-edge against a live CPU dribbler through
-`$A42D->$B435->$A347/$A44B`.
+lifetime, pack-backed block requests `$10/$20`, held A-button requirement,
+exceptional foul `$1A`, same-player violation `$0F`, and full possession/role
+reset follow their recovered 6502 branches and have comprehensive deterministic tests.
 
 Missed-shot outcomes are Verified from `$AE25->$B377->$AF72/$AFDD`: controlled
 FCEUX probes independently produce classifier results `$01-$04`, the `$04F0`
@@ -516,9 +517,8 @@ When updating this ledger:
 ## Closure and maintenance gate
 
 The reachable non-NES address graph is fully inventoried, but behavioral closure
-is not complete. The current floor is 215/1/0 for portable routines, 6/1/0 for
-the core catalog, and 12/1/0 for match rules. `$A3E2` may return to Verified only
-after its live-dribble steal/foul/possession branches are translated, exercised
-through shipping input, and reconciled with FCEUX. Any newly discovered reachable
-portable routine or branch is added to the denominator immediately and begins
-Missing or Partial until it passes the same evidence gates.
+is not complete. The current floor is 216/0/0 for portable routines, 7/0/0 for
+the core catalog, and 12/1/0 for match rules (with only broader CPU pass/shot choice Partial).
+All 216 cataloged portable routines have verified native translations. Any newly
+discovered reachable portable routine or branch is added to the denominator immediately
+and begins Missing or Partial until it passes the same evidence gates.

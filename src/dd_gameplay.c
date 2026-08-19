@@ -1,6 +1,7 @@
 #include "dd_gameplay.h"
 
 #include <limits.h>
+#include <stdio.h>
 #include <string.h>
 
 #define DD_FORMATION_VISIBLE_FRAME 144u
@@ -91,6 +92,8 @@ static void dd_choose_spacing_target(const DDTipoffAssetsHeader *assets,
 static uint8_t dd_pack_cpu_position(const DDPlayerState *player);
 static void dd_set_cpu_target(DDPlayerState *player, uint8_t packed);
 static void dd_install_cpu_route_vector(DDPlayerState *player);
+static void dd_begin_common_inbound(DDGameplayState *state, uint8_t reason,
+                                    uint32_t dead_player);
 static uint8_t dd_animation_for_facing(uint8_t facing, uint32_t phase) {
     static const uint8_t base[8] = {0x1Bu, 0x12u, 0x06u, 0x0Cu, 0x15u, 0x09u, 0x03u, 0x0Fu};
     uint32_t count = facing == 0u || facing == 4u ? 6u : 3u;
@@ -528,12 +531,16 @@ static void dd_transfer_contact_possession(DDGameplayState *state, uint32_t winn
             object->action = winner < 5u
                 ? DD_PLAYER_LIVE_USER_CARRIER : DD_PLAYER_LIVE_CARRIER;
         } else if (player >= first && player < first + 5u) {
-            if (object->role == 3u) object->action = DD_PLAYER_LIVE_CPU_CUT;
-            else if (object->role == 4u) object->action = DD_PLAYER_LIVE_CPU_ROUTE;
-            else object->action = DD_PLAYER_LIVE_CPU;
+            object->action = DD_PLAYER_LIVE_TEAMMATE;
         } else if (player >= other_first && player < other_first + 5u) {
-            object->action = player == state->controlled_player
-                ? DD_PLAYER_LIVE_USER : DD_PLAYER_LIVE_TEAMMATE;
+            if (other_first == 0u) {
+                object->action = player == state->controlled_player
+                    ? DD_PLAYER_LIVE_USER : DD_PLAYER_LIVE_TEAMMATE;
+            } else {
+                if (object->role == 3u) object->action = DD_PLAYER_LIVE_CPU_CUT;
+                else if (object->role == 4u) object->action = DD_PLAYER_LIVE_CPU_ROUTE;
+                else object->action = DD_PLAYER_LIVE_CPU;
+            }
         } else {
             object->action = DD_PLAYER_LIVE_TEAMMATE;
         }
@@ -1174,49 +1181,6 @@ static int dd_step_player_height_script(const DDTipoffAssetsHeader *assets,
     }
 }
 
-/* User defender dispatcher `$A3E2` accepts loose/rebound states `$09/$07`
-   immediately, but requires the A-button edge for dribble/gather/flight
-   states `$01/$04/$05`.  The linked opponent must still expose one of the
-   carrier/shooter states `$26/$27/$03` before `$A607` installs state `$11`. */
-static int dd_user_contest_eligible(const DDGameplayState *state,
-                                    uint32_t player_index, uint32_t pressed) {
-    uint32_t paired;
-    uint8_t paired_action;
-    if (state == NULL || player_index >= 5u ||
-        state->phase != DD_GAMEPLAY_LIVE ||
-        state->players[player_index].action != DD_PLAYER_LIVE_USER) return 0;
-    if (state->ball.action == DD_BALL_DRIBBLE ||
-        state->ball.action == DD_BALL_SHOT_GATHER ||
-        state->ball.action == DD_BALL_AIRBORNE) {
-        if ((pressed & DD_INPUT_A) == 0u) return 0;
-    } else if (state->ball.action != DD_BALL_REBOUND &&
-               state->ball.action != DD_BALL_LOOSE_AIRBORNE) {
-        return 0;
-    }
-    paired = state->players[player_index].paired_player;
-    if (paired >= DD_GAMEPLAY_PLAYER_COUNT) return 0;
-    paired_action = state->players[paired].action;
-    return paired_action == DD_PLAYER_LIVE_CARRIER_ROUTE ||
-           paired_action == DD_PLAYER_LIVE_CARRIER_DECIDE ||
-           paired_action == DD_PLAYER_USER_SHOOT;
-}
-
-/* If `$A3E2` cannot enter the linked-opponent jump branch, `$A42D` still
-   calls ordinary result-three contact `$B435`.  A ground-level loose/rebound
-   ball therefore transfers through `$A44B` as soon as the user overlaps it;
-   no button edge or paired shooter state is required for this fallback. */
-static int dd_try_user_loose_ball_pickup(DDGameplayState *state,
-                                         uint32_t player_index) {
-    if (state == NULL || player_index >= 5u ||
-        state->phase != DD_GAMEPLAY_LIVE ||
-        state->players[player_index].action != DD_PLAYER_LIVE_USER ||
-        (state->ball.action != DD_BALL_REBOUND &&
-         state->ball.action != DD_BALL_LOOSE_AIRBORNE) ||
-        !dd_possession_ball_contact(state, player_index)) return 0;
-    dd_transfer_contact_possession(state, player_index);
-    return 1;
-}
-
 /* `$A607` initializes the signed `$9B26->$9B34` height stream.  `$A638`
    checks contact only when the next script byte is zero (the apex plateau),
    changes the ball to owned state `$00`, and queues SFX `$20`.  Possession is
@@ -1231,6 +1195,82 @@ static void dd_begin_user_contest(DDPlayerState *player) {
     player->release_timer = 1u;
     player->action = DD_PLAYER_USER_CONTEST;
     player->action_age = 0u;
+}
+
+/* User defender dispatcher `$A3E2-$A4FF`:
+   - Loose/rebound states `$09/$07` bypass the input check and test `$001D/$0056` immediately.
+   - Live dribble/gather/flight `$01/$04/$05` require the A-button edge at `$A404-$A408`.
+   - Contact lock `$001D` and score/dead-ball gate `$0056` must be zero.
+   - If paired opponent is in `$26/$27/$03`, `$A426->$A607` enters jump contest action `$11`.
+   - Otherwise, `$A42D` calls result-three collision `$B435`.
+   - On collision:
+     - `$A347` tests for exceptional foul `$1A` when `$0025 == 0`, ball is `$01`, and facings match.
+     - `$A439-$A448` tests if defender == owner (same-player violation -> whistle `$2C`, reason `$0F`).
+     - `$A44B` performs full possession transfer, role 0 swap, reciprocal pair links, and clears `$0056`. */
+static int dd_step_user_defense_action(DDGameplayState *state,
+                                       uint32_t player_index,
+                                       uint32_t pressed) {
+    DDPlayerState *defender;
+    uint32_t paired;
+    uint8_t paired_action;
+    uint8_t ball_action;
+    if (state == NULL || player_index >= 5u ||
+        state->phase != DD_GAMEPLAY_LIVE) return 0;
+    defender = &state->players[player_index];
+    if (defender->action != DD_PLAYER_LIVE_USER) return 0;
+
+    ball_action = state->ball.action;
+    /* `$A3EB-$A400`: ball state classification */
+    if (ball_action == DD_BALL_REBOUND || ball_action == DD_BALL_LOOSE_AIRBORNE) {
+        /* `$07/$09` bypasses A-button check and jumps directly to `$A40A` */
+    } else if (ball_action == DD_BALL_DRIBBLE ||
+               ball_action == DD_BALL_SHOT_GATHER ||
+               ball_action == DD_BALL_AIRBORNE) {
+        /* `$01/$04/$05` requires A-button input at `$A404-$A408` */
+        if ((pressed & DD_INPUT_A) == 0u) return 0;
+    } else {
+        /* Any other ball state exits at `$A400 BNE $A3DF` */
+        return 0;
+    }
+
+    /* `$A40A-$A410`: contact lock `$001D` and dead-ball gate `$0056` */
+    if (state->contact_lock_timer != 0u || state->score_contact_gate != 0u) return 0;
+
+    /* `$A412-$A424`: paired opponent action check */
+    paired = defender->paired_player;
+    paired_action = (paired < DD_GAMEPLAY_PLAYER_COUNT)
+        ? state->players[paired].action : 0xFFu;
+    if (paired_action == DD_PLAYER_LIVE_CARRIER_ROUTE ||
+        paired_action == DD_PLAYER_LIVE_CARRIER_DECIDE ||
+        paired_action == DD_PLAYER_USER_SHOOT) {
+        /* `$A426->$A607`: User jump contest / block attempt */
+        dd_begin_user_contest(defender);
+        return 1;
+    }
+
+    /* `$A42D`: Ordinary dribble steal / loose ball pickup */
+    if (!dd_possession_ball_contact(state, player_index)) return 0;
+
+    /* `$A436`: Contact/foul helper `$A347` */
+    if (state->possession_foul_timer == 0u && ball_action == DD_BALL_DRIBBLE &&
+        state->ball.owner < DD_GAMEPLAY_PLAYER_COUNT &&
+        state->players[state->ball.owner].facing == defender->facing) {
+        dd_begin_free_throw(state, state->ball.owner, player_index, 0x1Au);
+        return 1;
+    }
+
+    /* `$A439-$A448`: Current player vs ball owner check */
+    if (state->ball.owner == player_index) {
+        /* Same-player violation: whistle `$2C`, reason `$0F`, inbound setup */
+        dd_request_audio_event(state, 0x2Cu);
+        state->inbound_reason = 0x0Fu;
+        dd_begin_common_inbound(state, 0x0Fu, player_index);
+        return 1;
+    }
+
+    /* `$A44B`: Successful steal / possession transfer */
+    dd_transfer_contact_possession(state, player_index);
+    return 1;
 }
 
 static void dd_step_user_contest(const DDTipoffAssetsHeader *assets,
@@ -3862,6 +3902,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
     int32_t input_depth = 0;
     int queued_user_inbound_pass = 0;
     int started_user_contest = 0;
+    int defense_action_executed = 0;
     /* Fixed $C02B-$C033 continuously mixes $001A into entropy byte $0063
        between NMIs.  Native code advances one deterministic equivalent per
        rendered frame; decision code consumes the same high/low bit bands. */
@@ -3970,11 +4011,10 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         controlled->velocity_x = 0;
         controlled->velocity_depth = 0;
     }
-    if (dd_user_contest_eligible(state, state->controlled_player, pressed)) {
-        dd_begin_user_contest(controlled);
-        started_user_contest = 1;
-    } else if (dd_try_user_loose_ball_pickup(state, state->controlled_player)) {
+    if (dd_step_user_defense_action(state, state->controlled_player, pressed)) {
         controlled = &state->players[state->controlled_player];
+        started_user_contest = (controlled->action == DD_PLAYER_USER_CONTEST);
+        defense_action_executed = 1;
     }
     if (dd_step_user_exceptional_contact(state, input_mask)) {
         dd_update_camera(state);
@@ -4070,7 +4110,7 @@ static void dd_step_live(const DDTipoffAssetsHeader *assets, DDGameplayState *st
         state->previous_input = input_mask;
         return;
     }
-    if (state->carrier == state->controlled_player &&
+    if (!defense_action_executed && state->carrier == state->controlled_player &&
         state->ball.action == DD_BALL_DRIBBLE &&
         state->players[state->controlled_player].action == DD_PLAYER_LIVE_USER_CARRIER) {
         if ((pressed & DD_INPUT_B) != 0u) {

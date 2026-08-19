@@ -283,6 +283,24 @@
       ],
       "coverage_change_percent": 0.0,
       "reason": "Closes the missing CPU free-throw LEVEL policy slice with exact 6502 disassembly, FCEUX traces, native state machine translation, and deterministic assertions."
+    },
+    {
+      "milestone": "phase-5c-user-live-dribble-stealing",
+      "status": "verified",
+      "completed": [
+        "Bank-0 `$A3E2-$A4FF` user live-dribble stealing and possession transfer chain",
+        "`$A404-$A408` held A-button gate (`$0680,X`) on ball state `$01`",
+        "`$A40A-$A410` contact lock `$001D` and score/dead-ball gate `$0056` rejection",
+        "`$A412-$A426` paired carrier route/decide `$26/$27` contest redirection to `$A607`",
+        "`$A42D->$B435` 10-pixel longitudinal and depth collision detection",
+        "`$A436->$A347` exceptional foul `$1A` trigger on matching facing and expired foul timer",
+        "`$A439-$A448` same-player violation turnover setup with whistle `$2C` and reason `$0F`",
+        "`$A44B-$A4FF` complete possession transfer, direction flip, role zero assignment, and team formation setup",
+        "eleven verified FCEUX dynamic trace checkpoints covering all success and rejection paths",
+        "eleven deterministic native C unit and progression regression checks"
+      ],
+      "coverage_change_percent": 0.0,
+      "reason": "Implements and verifies the complete ordinary user live-dribble stealing path from Bank 0 $A3E2-$A4FF (ROM file offsets 0x23F2-0x2513) with full branch fidelity and comprehensive test coverage."
     }
   ],
   "phases": [

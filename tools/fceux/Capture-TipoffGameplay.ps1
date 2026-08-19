@@ -52,6 +52,21 @@ param(
     [int]$BasketShotKind = 0,
     [int]$BlockFrame = -1,
     [int]$UserBlockFrame = -1,
+    [int]$UserStealFrame = -1,
+    [ValidateSet('A', 'none')]
+    [string]$UserStealButton = 'A',
+    [ValidateRange(-1, 255)]
+    [int]$UserStealLock = -1,
+    [ValidateRange(-1, 255)]
+    [int]$UserStealGate = -1,
+    [ValidateRange(-1, 255)]
+    [int]$UserStealBallState = -1,
+    [ValidateRange(-1, 255)]
+    [int]$UserStealPairedAction = -1,
+    [ValidateSet('hit', 'miss', 'boundary_in', 'boundary_out')]
+    [string]$UserStealCollision = 'hit',
+    [switch]$UserStealFoul,
+    [switch]$UserStealSamePlayer,
     [int]$InboundRuleFrame = -1,
     [ValidateRange(0, 4)]
     [int]$InboundRuleCase = 0,
@@ -115,6 +130,15 @@ $env:DD_INJECT_BASKET_COUNTER = $BasketCounter.ToString([Globalization.CultureIn
 $env:DD_INJECT_BASKET_SHOT_KIND = $BasketShotKind.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_BLOCK_FRAME = $BlockFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_USER_BLOCK_FRAME = $UserBlockFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_STEAL_FRAME = $UserStealFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_STEAL_BUTTON = $UserStealButton
+$env:DD_INJECT_USER_STEAL_LOCK = $UserStealLock.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_STEAL_GATE = $UserStealGate.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_STEAL_BALL_STATE = $UserStealBallState.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_STEAL_PAIRED_ACTION = $UserStealPairedAction.ToString([Globalization.CultureInfo]::InvariantCulture)
+$env:DD_INJECT_USER_STEAL_COLLISION = $UserStealCollision
+$env:DD_INJECT_USER_STEAL_FOUL = if ($UserStealFoul) { '1' } else { '0' }
+$env:DD_INJECT_USER_STEAL_SAME_PLAYER = if ($UserStealSamePlayer) { '1' } else { '0' }
 $env:DD_INJECT_INBOUND_RULE_FRAME = $InboundRuleFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_INBOUND_RULE_CASE = $InboundRuleCase.ToString([Globalization.CultureInfo]::InvariantCulture)
 $env:DD_INJECT_EXCEPTIONAL_REASON_FRAME = $ExceptionalReasonFrame.ToString([Globalization.CultureInfo]::InvariantCulture)
