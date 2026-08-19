@@ -1,61 +1,76 @@
 # Double Dribble Native C Port
 
-Source-only native C port of **Double Dribble (USA) (Rev 1)** for NES. The runtime does not emulate a 6502/PPU/APU and never opens the ROM. A validated importer converts the user-owned ROM into an ignored, versioned asset pack.
+A source-only native C port of **Double Dribble (USA) (Rev 1)** for the NES.
 
-## Current milestone
+This project translates the original game's behavior into portable C rather than embedding an emulator. The game runs from a generated asset pack and never reads or executes the NES ROM during normal play.
 
-The native Win32 program renders the title screen, plays the spoken "Double Dribble" cue and 1P-confirm music, plays the complete 1P city/road introduction, implements the original shooting-driven configuration screen with its looping four-channel music, and follows END through tip-off, the opening CPU shot/rebound sequence, dead-ball formation, inbound pass, and resumed possession. B can contest the tip; native CPU carriers choose a pass or shot, paired CPU defenders recognize the native user-shot state and can block the owned airborne ball, and all players continue updating on the original alternating 30 Hz team cadence. On defense, B switches the role-zero user while preserving the original reciprocal opponent links, so A can block with the newly selected player. User and CPU shots use the original facing-specific shooting poses. User state `$03` preserves takeoff momentum while airborne, the ball releases through the recovered fixed-point arc, and shots can naturally make or miss through the original rim classifier. A make drives the recovered three-phase net tiles and complete `$18->$1F/$22` scoring cue before the automatic CPU inbound; make and miss pickups attach the ball with the exact `$B035` hand-offset axes and initialize every CPU pass on the original `$9018->$B0B8` schedule. Both outcomes install their traced formations: a make uses the ROM-backed `$8503/$8507` targets, while a miss reaches `$AF46->$9635` reason `$16` and the wrapped baseline target. The inbound flow also includes the extended packed boundary target, role/pair swaps, 5-tick inbound timeout, 10/24-tick violations, return-to-backcourt rule, sloped out-of-bounds geometry, exceptional foul reasons `$17/$1A`, and the exact `$2C` rule whistle. Fouls enter the native `$42-$49` two-attempt free-throw dispatcher with ROM-backed lane positions, user/CPU aim timing, B-button launch, height-script release, one-point scoring, and second-attempt reattachment. DDAP v21 additionally carries all 36 decoded `$D40F/$D507` dunk presentation frames and bank-2 `$808E/$90C4` OAM results; the game displays the original six-stage close-up without reading the ROM at runtime. Stable title, intro, configuration, and pre-jump tip-off checkpoints match local FCEUX references exactly; later gameplay remains a bounded port under active behavioral reconciliation. Every build runs deterministic gameplay regressions against the generated asset pack.
+## Project status
 
-## Build
+The port currently includes:
+
+- the title screen, voice cue, and 1P selection;
+- the complete city and road introduction with music;
+- time, team, and difficulty settings;
+- tip-off and live player control;
+- passing, shooting, rebounding, steals, blocks, and dunks;
+- scoring, animated nets, sound effects, and free throws;
+- inbounding, out-of-bounds calls, backcourt violations, and period progression;
+- CPU offense, defense, routing, and possession decisions;
+- native rendering and audio driven entirely by the asset pack.
+
+Gameplay is actively being reconciled against the original game. The title, introduction, configuration, and opening gameplay sequences have received the most extensive fidelity testing.
+
+## Requirements
+
+- Windows
+- Visual Studio 2022 Build Tools with the C++ workload
+- PowerShell
+- A user-owned copy of **Double Dribble (USA) (Rev 1)**
+
+No game ROM or extracted game assets are included in this repository.
+
+## Build and run
+
+From a Visual Studio developer shell, run:
 
 ```powershell
-.\build.ps1 -RomPath 'F:\Games\NES\Double Dribble\Double Dribble (USA) (Rev 1).nes'
+.\build.ps1 -RomPath "<your Double Dribble Rev 1 ROM>"
 ```
 
-Every build requires the supported ROM, produces `build\double-dribble.assetpack`, runs gameplay regressions, and prints the validated Ghidra-to-C gameplay coverage. No ROM-derived outputs are tracked by Git.
+The build validates the supported ROM, generates the local asset pack, compiles the native executables, and runs the regression tests.
 
-Run the native port:
+Start the game with:
 
 ```powershell
 .\build\double_dribble_game.exe .\build\double-dribble.assetpack
 ```
 
-Use Up/Down to choose a title option. Press Enter, Space, or X on **1P** to start the intro; the selected words continue flashing at the original eight-frame cadence until the scene changes. On the configuration screen, Up/Down moves between TIME, TEAM, LEVEL, and END. X (NES A) or Z (NES B) takes the selected basket shot. TIME cycles 5, 10, 20, and 30 minutes; TEAM cycles New York, Chicago, and Los Angeles; LEVEL cycles 1–3. END performs the original shot, plays its acceptance cue, and advances through the opening tip. Press Z (NES B) to jump for the tip. Once live, the flashing 1UP player moves with the arrow keys; hold Z to gather a shot and release Z to launch it, or press X (NES A) to pass while that player carries the ball. Escape exits.
+Generated assets, executables, captures, and analysis outputs are ignored by Git.
 
-The original no-input gameplay trace does not run a continuous background song. Its live audio driver repeatedly queues pulse/triangle/noise streams while the ball is in dribble state `$01`, then falls silent during dead-ball and other non-dribble intervals. The native port follows that state-driven behavior.
+## Controls
 
-Reproduce the reference and native captures:
+| Action | Key |
+| --- | --- |
+| Move or navigate | Arrow keys |
+| Start or confirm 1P | Enter, Space, or X |
+| NES A / pass | X |
+| NES B / jump or shoot | Z |
+| Exit | Escape |
 
-```powershell
-.\tools\fceux\Capture-OriginalTitle.ps1 -FinalFrame 30
-.\tools\Capture-NativeTitle.ps1
-.\tools\Compare-TitleCaptures.ps1
-.\tools\fceux\Capture-Original1PIntro.ps1 -StartFrame 75 -FinalFrame 2084 -TraceStart 1260 -TraceEnd 2084
-.\tools\Capture-NativeIntro.ps1 -OriginalFrame 2040
-.\tools\Compare-IntroCaptures.ps1 -OriginalFrame 2040
-.\tools\Capture-NativeConfig.ps1 -OriginalFrame 2100
-.\tools\Compare-ConfigCaptures.ps1 -OriginalFrame 2100
-.\tools\fceux\Capture-Original1PIntro.ps1 -FinalFrame 2500 -TraceStart 2328 -TraceEnd 2490 -InputScript '2105:down,2107:down,2109:down,2112:a,2113:a' -CaptureRangeStart 2328 -CaptureRangeEnd 2490
-.\tools\Capture-NativeTipoff.ps1
-.\tools\Compare-TipoffCaptures.ps1
-.\tools\fceux\Capture-TipoffGameplay.ps1
-.\tools\fceux\Capture-TipoffGameplay.ps1 -CaptureName original-tipoff-jump-b-2502 -JumpStart 2502 -JumpEnd 2503 -JumpButton B -FinalFrame 2580
-.\tools\ghidra\Run-GameplayLoopAnalysis.ps1
-.\tools\ghidra\Run-GameplayAudioAnalysis.ps1
-.\tools\Capture-NativeGameplay.ps1
-.\tools\Compare-GameplayCaptures.ps1
-.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2580 -FinalFrame 2660 -CaptureName original-user-shot-block -JumpStart 2502 -JumpEnd 2502 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -BlockFrame 2606 -DisablePcCounts
-.\tools\Capture-NativeDefenseBlock.ps1
-.\tools\Compare-DefenseBlockCaptures.ps1
-.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2815 -CaptureName original-user-shot-make-final -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -UserShotDepth 0x61 -UserShotX 0xF7 -DisablePcCounts
-.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2598 -FinalFrame 2820 -CaptureName original-user-shot-miss-final -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2600 -PassButton B -DisablePcCounts
-.\tools\fceux\Capture-TipoffGameplay.ps1 -TraceStart 2588 -FinalFrame 2640 -CaptureName original-user-shot-held -JumpStart 2502 -JumpEnd 2515 -JumpButton B -PassFrame 2600 -PassEnd 2612 -PassButton B -DisablePcCounts
-.\tools\Capture-NativeShooting.ps1
-.\build\double_dribble_port.exe --render-gameplay-moving-shot .\build\double-dribble.assetpack held .\captures\native-shooting\held-shot.bmp
-.\build\double_dribble_port.exe --dump-gameplay-wav .\build\double-dribble.assetpack .\build\gameplay-dribble.wav
-# Render the same live frame while holding Right (input mask 2).
-.\tools\Capture-NativeGameplay.ps1 -TransitionFrames 399 -HeldInputMask 2
-```
+On the settings screen, use Up and Down to select a row and X or Z to change it. During gameplay, hold Z to gather a shot and release it to shoot. Press X to pass while carrying the ball. Defensive controls allow player switching, jumping, stealing, and blocking according to the current play state.
 
-See `PORTING.md` for source addresses, Ghidra evidence, asset-pack boundaries, and fidelity status.
-See `GAMEPLAY_COVERAGE.md` for the reproducible dispatcher counts, weighted translation percentage, missing states, and next coverage targets.
+## Asset-pack design
+
+The importer validates the supported game revision before creating a versioned asset pack. The shipping game loads only this generated pack; it has no runtime dependency on the ROM and contains no emulator or bank-switching layer.
+
+Repository tests use synthetic fixtures where possible. ROM-derived assets, recordings, screenshots, and analysis outputs remain local and are not committed.
+
+## Documentation
+
+- [PORTING.md](PORTING.md) contains the reverse-engineering evidence and translation notes.
+- [GAMEPLAY_COVERAGE.md](GAMEPLAY_COVERAGE.md) tracks gameplay implementation and verification coverage.
+- [AGENTS.md](AGENTS.md) defines contribution, fidelity, and asset-handling requirements.
+
+## Legal
+
+This is an independent preservation and porting project. You must provide your own legally obtained copy of the supported game. Double Dribble and its original assets are the property of their respective rights holders.
